@@ -3,6 +3,7 @@ param([string]$OutputDirectory = '')
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 
 $pluginRoot = Split-Path -Parent $PSScriptRoot
@@ -26,17 +27,14 @@ if (Test-Path -LiteralPath $archive) {
 $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ('codex-quality-orchestrator-package-' + [guid]::NewGuid().ToString('N'))
 try {
   New-Item -ItemType Directory -Path $tempRoot -ErrorAction Stop | Out-Null
-  $backupDirectories = @(Get-ChildItem -LiteralPath $pluginRoot -Directory -Recurse -Force | Where-Object {
-    $_.Name -eq '.backups' -or $_.Name -match '-\d{8}-\d{9}$'
-  })
-  if ($backupDirectories.Count -gt 0) {
-    throw "Plugin source contains backup directories: $($backupDirectories.FullName -join ', ')"
-  }
-
   $stagedRoot = Join-Path (Join-Path $tempRoot 'stage') $manifest.name
   New-Item -ItemType Directory -Path $stagedRoot -Force | Out-Null
   foreach ($file in Get-ChildItem -LiteralPath $pluginRoot -File -Recurse -Force) {
     $relative = $file.FullName.Substring($pluginRoot.Length).TrimStart([char[]]@('\', '/'))
+    $relativeParts = $relative -split '[\\/]+'
+    if ($relativeParts | Where-Object { $_ -eq '.backups' -or $_ -match '-\d{8}-\d{9}$' }) {
+      continue
+    }
     if ($relative -match '(^|[\\/])__pycache__([\\/]|$)' -or
         $file.Extension -ieq '.pyc' -or
         $file.Name -in @('.DS_Store', 'Thumbs.db')) {
@@ -47,12 +45,39 @@ try {
     Copy-Item -LiteralPath $file.FullName -Destination $destination -ErrorAction Stop
   }
 
-  [IO.Compression.ZipFile]::CreateFromDirectory(
-    (Split-Path -Parent $stagedRoot),
-    $archive,
-    [IO.Compression.CompressionLevel]::Optimal,
-    $false
-  )
+  $stagedFiles = @(Get-ChildItem -LiteralPath $stagedRoot -File -Recurse -Force)
+  $zip = [IO.Compression.ZipFile]::Open($archive, [IO.Compression.ZipArchiveMode]::Create)
+  try {
+    foreach ($file in $stagedFiles) {
+      $relative = $file.FullName.Substring($stagedRoot.Length).TrimStart([char[]]@('\', '/'))
+      $entryName = $manifest.name + '/' + $relative.Replace('\', '/')
+      [IO.Compression.ZipFileExtensions]::CreateEntryFromFile(
+        $zip,
+        $file.FullName,
+        $entryName,
+        [IO.Compression.CompressionLevel]::Optimal
+      ) | Out-Null
+    }
+  } finally {
+    if ($null -ne $zip) { $zip.Dispose() }
+  }
+
+  $zip = [IO.Compression.ZipFile]::OpenRead($archive)
+  try {
+    $invalidEntries = @($zip.Entries | Where-Object {
+      $_.FullName.Contains('\') -or
+        -not $_.FullName.StartsWith($manifest.name + '/', [StringComparison]::Ordinal)
+    })
+    if ($invalidEntries.Count -gt 0) {
+      throw "Archive contains non-portable entries: $($invalidEntries.FullName -join ', ')"
+    }
+    if ($zip.Entries.Count -ne $stagedFiles.Count) {
+      throw "Archive entry count $($zip.Entries.Count) does not match staged file count $($stagedFiles.Count)"
+    }
+  } finally {
+    if ($null -ne $zip) { $zip.Dispose() }
+  }
+
   $extractRoot = Join-Path $tempRoot 'extract'
   Expand-Archive -LiteralPath $archive -DestinationPath $extractRoot -Force
   $standaloneRoot = Join-Path $extractRoot $manifest.name
@@ -75,5 +100,6 @@ try {
 [pscustomobject]@{
   Archive = $archive
   SHA256 = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+  PortableEntries = 'PASS'
   StandaloneVerified = $true
 } | ConvertTo-Json -Compress

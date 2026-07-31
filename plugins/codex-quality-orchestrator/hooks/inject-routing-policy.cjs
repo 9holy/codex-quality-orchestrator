@@ -56,6 +56,36 @@ function configuredRootNote(home, policy) {
   );
 }
 
+function writeRuntimeSmokeProof(nonce, details) {
+  const requestedPath = process.env.CQO_RUNTIME_SMOKE_PROOF_PATH;
+  if (!/^[a-f0-9]{32}$/.test(nonce ?? '') || !requestedPath) return null;
+
+  const tempRoot = `${path.resolve(os.tmpdir())}${path.sep}`.toLowerCase();
+  const proofPath = path.resolve(requestedPath);
+  if (!proofPath.toLowerCase().startsWith(tempRoot)) {
+    throw new Error('runtime smoke proof path must be inside the OS temporary directory');
+  }
+
+  const temporaryPath = `${proofPath}.tmp-${process.pid}-${Date.now()}`;
+  try {
+    fs.writeFileSync(
+      temporaryPath,
+      `${JSON.stringify({
+        schemaVersion: 1,
+        hookEventName: 'SessionStart',
+        nonce,
+        rule16Status: details.rule16Status,
+        missingProfiles: details.missingProfiles,
+      })}\n`,
+      { encoding: 'utf8', flag: 'wx' },
+    );
+    fs.renameSync(temporaryPath, proofPath);
+  } finally {
+    if (fs.existsSync(temporaryPath)) fs.rmSync(temporaryPath, { force: true });
+  }
+  return proofPath;
+}
+
 function main() {
   const canonical = fs.readFileSync(canonicalPath, 'utf8').trim();
   const policy = JSON.parse(fs.readFileSync(policyPath, 'utf8'));
@@ -71,6 +101,9 @@ function main() {
     : null;
 
   const notes = ['[CQO_SESSION_START_LOADED]'];
+  const runtimeSmokeNonce = process.env.CQO_RUNTIME_SMOKE_NONCE;
+  const rule16Status =
+    installedRule === null ? 'injected' : installedRule === canonical ? 'match' : 'mismatch';
   if (installedRule === null) {
     notes.push(`[CQO_RULE16_INJECTED]\n${canonical}`);
   } else if (installedRule !== canonical) {
@@ -94,6 +127,19 @@ function main() {
       `[CQO_AGENT_PROFILES_MISSING] 缺少具名代理配置：${missingProfiles.join(', ')}。` +
         '在完成显式安装前不得调用这些代理，也不得静默回退。',
     );
+  }
+
+  if (/^[a-f0-9]{32}$/.test(runtimeSmokeNonce ?? '')) {
+    notes.push(`[CQO_RUNTIME_SMOKE:${runtimeSmokeNonce}]`);
+    try {
+      writeRuntimeSmokeProof(runtimeSmokeNonce, {
+        rule16Status,
+        missingProfiles,
+      });
+      notes.push('[CQO_RUNTIME_SMOKE_PROOF_WRITTEN]');
+    } catch (error) {
+      notes.push(`[CQO_RUNTIME_SMOKE_PROOF_ERROR] ${error.message}`);
+    }
   }
 
   process.stdout.write(

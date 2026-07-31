@@ -24,30 +24,67 @@ if ($installedBaseVersion -ne $expectedBaseVersion) {
   throw "Installed base version $installedBaseVersion does not match source $expectedBaseVersion"
 }
 
-$probePrompt = @(
-  'Do not use tools.',
-  'If developer context contains [CQO_RULE16_MISMATCH], reply exactly RULE_MISMATCH.',
-  'If it contains [CQO_AGENT_PROFILES_MISSING], reply exactly PROFILES_MISSING.',
-  'If it contains [CQO_SESSION_START_LOADED], reply exactly HOOK_OK.',
-  'Otherwise reply exactly HOOK_MISSING.'
-) -join ' '
-$probeRaw = & $codex exec --ephemeral --json --dangerously-bypass-hook-trust `
-  -m gpt-5.6-sol -c 'model_reasoning_effort="medium"' -s read-only $probePrompt |
-  Out-String
-if ($LASTEXITCODE -ne 0) { throw 'codex exec runtime probe failed' }
+$nonce = [guid]::NewGuid().ToString('N')
+$proofPath = Join-Path ([IO.Path]::GetTempPath()) ("cqo-runtime-smoke-$nonce.json")
+$hadNonce = Test-Path Env:CQO_RUNTIME_SMOKE_NONCE
+$previousNonce = $env:CQO_RUNTIME_SMOKE_NONCE
+$hadProofPath = Test-Path Env:CQO_RUNTIME_SMOKE_PROOF_PATH
+$previousProofPath = $env:CQO_RUNTIME_SMOKE_PROOF_PATH
+$hostExitCode = $null
+$proof = $null
+try {
+  if (Test-Path -LiteralPath $proofPath) {
+    Remove-Item -LiteralPath $proofPath -Force -ErrorAction Stop
+  }
+  $env:CQO_RUNTIME_SMOKE_NONCE = $nonce
+  $env:CQO_RUNTIME_SMOKE_PROOF_PATH = $proofPath
+  $previousErrorAction = $ErrorActionPreference
+  try {
+    $ErrorActionPreference = 'Continue'
+    $probeRaw = & $codex exec --ephemeral --json -m gpt-5.6-sol `
+      -c 'model_reasoning_effort="medium"' -s read-only `
+      'Codex Quality Orchestrator runtime smoke probe. Reply with exactly CQO_HOST_PROBE.' 2>&1 |
+      Out-String
+    $hostExitCode = $LASTEXITCODE
+  } finally {
+    $ErrorActionPreference = $previousErrorAction
+  }
+  if (-not (Test-Path -LiteralPath $proofPath -PathType Leaf)) {
+    throw "SessionStart Hook proof is absent. Open /hooks, trust the current plugin Hook definition, then retry (host exit $hostExitCode)"
+  }
+  $proof = Get-Content -LiteralPath $proofPath -Raw -Encoding UTF8 | ConvertFrom-Json
+  if ([int]$proof.schemaVersion -ne 1 -or
+      [string]$proof.hookEventName -ne 'SessionStart' -or
+      [string]$proof.nonce -ne $nonce -or
+      [string]$proof.rule16Status -notin @('injected', 'match', 'mismatch')) {
+    throw 'SessionStart Hook proof is invalid or belongs to a different smoke run'
+  }
+} finally {
+  if ($hadNonce) {
+    $env:CQO_RUNTIME_SMOKE_NONCE = $previousNonce
+  } else {
+    Remove-Item Env:CQO_RUNTIME_SMOKE_NONCE -ErrorAction SilentlyContinue
+  }
+  if ($hadProofPath) {
+    $env:CQO_RUNTIME_SMOKE_PROOF_PATH = $previousProofPath
+  } else {
+    Remove-Item Env:CQO_RUNTIME_SMOKE_PROOF_PATH -ErrorAction SilentlyContinue
+  }
+  if (Test-Path -LiteralPath $proofPath) {
+    Remove-Item -LiteralPath $proofPath -Force -ErrorAction SilentlyContinue
+  }
+}
 
-$replies = @($probeRaw -split '\r?\n' | Where-Object { $_.TrimStart().StartsWith('{') } |
-  ForEach-Object { $_ | ConvertFrom-Json } |
-  Where-Object { $_.type -eq 'item.completed' -and $_.item.type -eq 'agent_message' } |
-  ForEach-Object { $_.item.text })
-if ($replies -contains 'RULE_MISMATCH') {
+$modelProbeStatus = if ($hostExitCode -eq 0) { 'PASS' } else { 'UNAVAILABLE' }
+if ($proof -eq $null) {
+  throw 'SessionStart Hook proof was not produced'
+}
+
+if ([string]$proof.rule16Status -eq 'mismatch') {
   throw 'Plugin loaded, but the global Rule 16 conflicts with the plugin policy'
 }
-if ($replies -contains 'PROFILES_MISSING') {
+if (@($proof.missingProfiles).Count -gt 0) {
   throw 'Plugin loaded, but one or more named agent profiles are missing'
-}
-if ($replies -notcontains 'HOOK_OK') {
-  throw 'Plugin SessionStart context is absent from the model-visible prompt'
 }
 
 [pscustomobject]@{
@@ -55,5 +92,9 @@ if ($replies -notcontains 'HOOK_OK') {
   Version = $installed.version
   Installed = $true
   Enabled = $true
+  SessionStartHookTrust = 'PASS'
+  PreToolUseHookTrust = 'NOT_VERIFIED'
   SessionStart = 'PASS'
+  HostExitCode = $hostExitCode
+  ModelProbe = $modelProbeStatus
 } | ConvertTo-Json -Compress

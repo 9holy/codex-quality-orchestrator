@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.2 - 2026-07-31
+
+- Replace model self-reporting with a real `codex exec` host probe and a nonce-bound temporary SessionStart proof file.
+- Keep PreToolUse trust as a separate verification requirement instead of reporting blanket Hook trust.
+- Remove the Hook-trust bypass and add static release guards against reintroducing either bypassed or model-reported checks.
+- Build ZIP archives with portable `/` entry paths, reject non-portable entries, and verify the Windows artifact on Ubuntu CI.
+
 ## 0.1.1 - 2026-07-31
 
 - Require Sol to evaluate bounded delegation opportunities on every non-short task without creating an agent-call quota.

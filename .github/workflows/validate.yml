@@ -24,3 +24,34 @@ jobs:
       - name: Verify source and standalone archive
         shell: pwsh
         run: ./plugins/codex-quality-orchestrator/scripts/package.ps1
+      - name: Upload Windows release archive
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release-archive
+          path: dist/codex-quality-orchestrator-*.zip
+          if-no-files-found: error
+
+  verify-windows-archive-on-ubuntu:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-release-archive
+          path: dist
+      - name: Verify the Windows archive on Ubuntu
+        shell: pwsh
+        run: |
+          $archives = @(Get-ChildItem -LiteralPath dist -Filter 'codex-quality-orchestrator-*.zip')
+          if ($archives.Count -ne 1) { throw "Expected one Windows archive, found $($archives.Count)" }
+          $extractRoot = Join-Path $PWD 'dist/windows-archive'
+          Expand-Archive -LiteralPath $archives[0].FullName -DestinationPath $extractRoot
+          & (Join-Path $extractRoot 'codex-quality-orchestrator/scripts/verify.ps1')

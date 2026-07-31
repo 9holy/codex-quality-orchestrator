@@ -35,7 +35,7 @@ flowchart LR
 - `PreToolUse` Hook：校验具名代理、模型覆盖、推理档位和 `fork_turns`。
 - 三个代理模板：`terra_worker`、`luna_worker`、`sol_reviewer`。
 - 显式安装、卸载、验证和打包脚本。
-- 无模型路由矩阵测试，不产生模型调用费用。
+- 静态路由矩阵测试不产生模型调用费用；运行时烟雾验证会启动一次临时只读宿主会话。
 
 ## 本地安装
 
@@ -54,11 +54,13 @@ codex plugin list --json
 
 `codex plugin list --json` 必须显示插件已经安装且启用；仅有 `~/.codex/plugins/cache` 目录不能证明插件或 Hook 正在生效。若 CC Switch 或其他配置管理工具覆盖了 marketplace/插件注册，应先恢复注册再新建任务。
 
-安装并信任 Hook 后，运行真实宿主烟雾验证。该命令会创建一次临时、只读的 `Sol / medium` 探针，并要求返回 `SessionStart=PASS`；发现全局 Rule 16 冲突或缺少具名代理配置时会失败：
+安装并信任 Hook 后，运行真实宿主烟雾验证。该命令启动一次临时只读 `codex exec`，由 SessionStart Hook 将随机 nonce 写入受限于系统临时目录的证明文件；脚本只校验证明文件，不让模型自报 Hook 状态。成功时返回 `SessionStartHookTrust=PASS` 和 `SessionStart=PASS`，发现全局 Rule 16 冲突或缺少具名代理配置时会失败：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\plugins\codex-quality-orchestrator\scripts\runtime-smoke.ps1
 ```
+
+烟雾脚本不会使用 `--dangerously-bypass-hook-trust`。当前 SessionStart 定义尚未通过 `/hooks` 持久信任、定义已变化或 Hook 未加载时，验证必须失败，不能把一次性信任旁路当作通过证据。该结果不证明独立的 PreToolUse 定义已信任；在 `/hooks` 审核两项定义并实际确认非法代理调用被拒绝前，不得移除旧全局路由 Hook。
 
 插件系统目前不会从插件包原生注册自定义代理，因此显式运行安装脚本是必要步骤；Hook 不会静默写入 `~/.codex`。
 
@@ -76,7 +78,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\plugins\codex-quality-orch
 powershell -NoProfile -ExecutionPolicy Bypass -File .\plugins\codex-quality-orchestrator\scripts\package.ps1
 ```
 
-产物写入 `dist/codex-quality-orchestrator-<version>.zip`，打包脚本会解压成品并复跑独立验证，然后输出 SHA-256。
+产物写入 `dist/codex-quality-orchestrator-<version>.zip`，打包脚本会强制使用可移植的 `/` 条目路径，拒绝反斜杠条目，解压成品并复跑独立验证，然后输出 SHA-256。
 
 ## 卸载
 

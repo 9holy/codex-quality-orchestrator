@@ -144,9 +144,11 @@ powershell -NoProfile -ExecutionPolicy Bypass `
   -File .\plugins\codex-quality-orchestrator\scripts\runtime-smoke.ps1
 ```
 
-该脚本通过一次临时、只读的 `Sol / medium` 新会话确认插件已经安装启用，且 `SessionStart` 上下文实际进入模型输入。成功输出中的 `SessionStart` 必须为 `PASS`；全局 Rule 16 不存在时允许插件注入 canonical 规则，规则冲突或缺少具名代理配置时失败。它不同于直接执行 Hook 脚本的单元测试。
+该脚本启动一次临时只读 `codex exec` 宿主会话，并设置随机 nonce 与系统临时目录中的证明路径。SessionStart Hook 只在该环境变量存在时写入包含 nonce 的证明文件；脚本校验证明文件、Hook 事件名和 nonce，不让模型自报 Hook 状态。成功输出中的 `SessionStartHookTrust` 和 `SessionStart` 必须为 `PASS`；若模型请求因用量或认证失败但证明文件已写入，`ModelProbe` 会明确为 `UNAVAILABLE`，不能把它解释为模型调用成功。全局 Rule 16 不存在时允许插件注入 canonical 规则，规则冲突或缺少具名代理配置时失败。它不同于直接执行 Hook 脚本的单元测试。
 
-如果系统中仍有安装插件前手工配置的全局路由 Hook，应先通过上述运行时烟雾，并在新任务中确认插件 `PreToolUse` 能拒绝非法代理调用；然后备份并移除旧 Hook，避免双重执行和规则漂移。验证失败时保留或恢复旧 Hook，不得静默迁移。
+脚本禁止使用 `--dangerously-bypass-hook-trust`，也不让模型自报 Hook 是否存在。未通过 `/hooks` 信任当前精确 SessionStart 定义时必须失败；一次性旁路只证明 Hook 在绕过信任检查后可执行，不能作为安装验收证据。
+
+SessionStart 与 PreToolUse 是独立 Hook 定义。上述烟雾输出会明确把 `PreToolUseHookTrust` 标为 `NOT_VERIFIED`；必须在 `/hooks` 审核两项定义，并在新任务中确认插件 PreToolUse 能拒绝非法代理调用。如果系统中仍有安装插件前手工配置的全局路由 Hook，完成这两项验证后才能备份并移除，避免双重执行和规则漂移。验证失败时保留或恢复旧 Hook，不得静默迁移。
 
 安装器遇到已存在且符合契约的代理配置时会将其视为外部文件，不声明所有权。这种情况下安装状态文件可以不存在，不能仅据此判定安装失败；插件注册、Hook 加载和代理配置应分别核验。
 
@@ -193,16 +195,17 @@ powershell -NoProfile -ExecutionPolicy Bypass `
 
 1. 先验证源码。
 2. 使用临时 staging 目录复制文件，并保留隐藏的 `.codex-plugin` manifest。
-3. 生成单一插件根目录的 ZIP。
+3. 生成单一插件根目录的 ZIP，并强制条目路径使用 `/`。
 4. 解压 ZIP 后直接运行独立验证，确保成品不依赖仓库级 marketplace。
-5. 输出 SHA-256。
+5. 拒绝反斜杠或根目录异常的 ZIP 条目并输出 SHA-256。
 
 ## 8. 发布核验
 
 - 仓库：[9holy/codex-quality-orchestrator](https://github.com/9holy/codex-quality-orchestrator)
-- 目标版本：`v0.1.1`
+- 目标版本：`v0.1.2`
 - Release 资产与 SHA-256 必须以该版本的 GitHub Release 页面为准。
 - 发布完成只以当前提交的 Windows、Ubuntu Actions 均通过为准，不能沿用旧提交结果。
+- CI 必须把 Windows 生成的发布 ZIP 交给 Ubuntu 解压并复跑独立验证，不能只验证各平台自行生成的产物。
 
 ## 9. 明确边界
 

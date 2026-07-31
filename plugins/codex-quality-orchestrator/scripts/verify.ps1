@@ -31,14 +31,32 @@ foreach ($relative in $nodeFiles) {
   if ($LASTEXITCODE -ne 0) { throw "Node syntax check failed: $relative" }
 }
 
+$runtimeSmokePath = Join-Path $pluginRoot 'scripts\runtime-smoke.ps1'
 $tokens = $null
 $parseErrors = $null
 [void][System.Management.Automation.Language.Parser]::ParseFile(
-  (Join-Path $pluginRoot 'scripts\runtime-smoke.ps1'),
+  $runtimeSmokePath,
   [ref]$tokens,
   [ref]$parseErrors
 )
 if ($parseErrors.Count -gt 0) { throw 'Runtime smoke PowerShell syntax check failed' }
+
+$runtimeSmokeSource = Get-Content -LiteralPath $runtimeSmokePath -Raw -Encoding UTF8
+if ($runtimeSmokeSource.Contains('--dangerously-bypass-hook-trust')) {
+  throw 'Runtime smoke must not bypass persisted Hook trust'
+}
+if ($runtimeSmokeSource.Contains('debug prompt-input')) {
+  throw 'Runtime smoke must use a real host session, not debug prompt-input'
+}
+if (-not $runtimeSmokeSource.Contains('& $codex exec')) {
+  throw 'Runtime smoke must start a real host session'
+}
+if (-not $runtimeSmokeSource.Contains('CQO_RUNTIME_SMOKE_PROOF_PATH')) {
+  throw 'Runtime smoke must verify a host-written SessionStart proof'
+}
+if (-not $runtimeSmokeSource.Contains("PreToolUseHookTrust = 'NOT_VERIFIED'")) {
+  throw 'Runtime smoke must not claim PreToolUse trust without a dedicated host-event probe'
+}
 
 & $python (Join-Path $pluginRoot 'tests\validate_profiles.py')
 if ($LASTEXITCODE -ne 0) { throw 'Agent profile validation failed' }
@@ -64,6 +82,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Installer isolation test failed' }
   JSON = 'PASS'
   NodeSyntax = 'PASS'
   PowerShellSyntax = 'PASS'
+  RuntimeSmokeSessionTrust = 'STRICT'
   Profiles = 'PASS'
   Marketplace = $marketplaceStatus
   RoutingMatrix = 'PASS'

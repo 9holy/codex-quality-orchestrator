@@ -21,10 +21,19 @@ function installProfiles() {
   }
 }
 
-function invoke() {
+function invoke(runtimeSmokeNonce, runtimeSmokeProofPath) {
+  const env = { ...process.env, CODEX_HOME: codexHome };
+  delete env.CQO_RUNTIME_SMOKE_NONCE;
+  delete env.CQO_RUNTIME_SMOKE_PROOF_PATH;
+  if (runtimeSmokeNonce !== undefined) {
+    env.CQO_RUNTIME_SMOKE_NONCE = runtimeSmokeNonce;
+  }
+  if (runtimeSmokeProofPath !== undefined) {
+    env.CQO_RUNTIME_SMOKE_PROOF_PATH = runtimeSmokeProofPath;
+  }
   const result = spawnSync(process.execPath, [hookPath], {
     encoding: 'utf8',
-    env: { ...process.env, CODEX_HOME: codexHome },
+    env,
   });
   assert.equal(result.status, 0, result.stderr);
   return JSON.parse(result.stdout).hookSpecificOutput.additionalContext;
@@ -58,6 +67,22 @@ try {
   assert.doesNotMatch(canonical, /nested-model-must-not-win/);
   assert.match(canonical, /插件不会改写/);
   assert.match(canonical, /普通非短任务默认使用 gpt-5\.6-sol \/ xhigh/);
+
+  const nonce = '0123456789abcdef0123456789abcdef';
+  const proofPath = path.join(tempRoot, 'session-start-proof.json');
+  assert.match(invoke(nonce, proofPath), new RegExp(`\\[CQO_RUNTIME_SMOKE:${nonce}\\]`));
+  assert.deepEqual(JSON.parse(fs.readFileSync(proofPath, 'utf8')), {
+    schemaVersion: 1,
+    hookEventName: 'SessionStart',
+    nonce,
+    rule16Status: 'match',
+    missingProfiles: [],
+  });
+  const outsideProofPath = path.join(os.homedir(), '.cqo-runtime-smoke-outside-proof.json');
+  fs.rmSync(outsideProofPath, { force: true });
+  assert.match(invoke(nonce, outsideProofPath), /\[CQO_RUNTIME_SMOKE_PROOF_ERROR\]/);
+  assert.equal(fs.existsSync(outsideProofPath), false);
+  assert.doesNotMatch(invoke('invalid nonce'), /\[CQO_RUNTIME_SMOKE:/);
 
   fs.writeFileSync(
     path.join(codexHome, 'config.toml'),
