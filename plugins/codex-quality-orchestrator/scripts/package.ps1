@@ -3,6 +3,7 @@ param([string]$OutputDirectory = '')
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+Add-Type -AssemblyName System.IO.Compression.FileSystem
 
 $pluginRoot = Split-Path -Parent $PSScriptRoot
 $repoRoot = Split-Path -Parent (Split-Path -Parent $pluginRoot)
@@ -46,7 +47,12 @@ try {
     Copy-Item -LiteralPath $file.FullName -Destination $destination -ErrorAction Stop
   }
 
-  Compress-Archive -LiteralPath $stagedRoot -DestinationPath $archive -CompressionLevel Optimal
+  [IO.Compression.ZipFile]::CreateFromDirectory(
+    (Split-Path -Parent $stagedRoot),
+    $archive,
+    [IO.Compression.CompressionLevel]::Optimal,
+    $false
+  )
   $extractRoot = Join-Path $tempRoot 'extract'
   Expand-Archive -LiteralPath $archive -DestinationPath $extractRoot -Force
   $standaloneRoot = Join-Path $extractRoot $manifest.name
