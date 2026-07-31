@@ -7,7 +7,7 @@
           {
             "type": "command",
             "command": "node \"${PLUGIN_ROOT}/hooks/inject-routing-policy.cjs\"",
-            "commandWindows": "node \"%PLUGIN_ROOT%\\hooks\\inject-routing-policy.cjs\"",
+            "commandWindows": "node \"$env:PLUGIN_ROOT\\hooks\\inject-routing-policy.cjs\"",
             "timeout": 5,
             "statusMessage": "加载质量路由规则",
             "additionalContextLimit": 2500
@@ -22,7 +22,7 @@
           {
             "type": "command",
             "command": "node \"${PLUGIN_ROOT}/hooks/enforce-agent-routing.cjs\"",
-            "commandWindows": "node \"%PLUGIN_ROOT%\\hooks\\enforce-agent-routing.cjs\"",
+            "commandWindows": "node \"$env:PLUGIN_ROOT\\hooks\\enforce-agent-routing.cjs\"",
             "timeout": 5,
             "statusMessage": "检查代理路由"
           }

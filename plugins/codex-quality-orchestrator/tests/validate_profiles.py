@@ -14,10 +14,17 @@ def load_json(path: pathlib.Path) -> dict:
 
 policy = load_json(PLUGIN_ROOT / "routing-policy.json")
 manifest = load_json(PLUGIN_ROOT / ".codex-plugin" / "plugin.json")
+hooks = load_json(PLUGIN_ROOT / "hooks" / "hooks.json")
 rule = (PLUGIN_ROOT / "references" / "RULE16.md").read_text(encoding="utf-8")
 
 assert manifest["name"] == "codex-quality-orchestrator"
 assert manifest["version"] == policy["policyVersion"]
+assert hooks["hooks"]["SessionStart"][0]["hooks"][0]["commandWindows"] == (
+    'node "$env:PLUGIN_ROOT\\hooks\\inject-routing-policy.cjs"'
+)
+assert hooks["hooks"]["PreToolUse"][0]["hooks"][0]["commandWindows"] == (
+    'node "$env:PLUGIN_ROOT\\hooks\\enforce-agent-routing.cjs"'
+)
 
 for agent_type, config in policy["namedAgents"].items():
     profile_path = PLUGIN_ROOT / "templates" / "agents" / config["profileFile"]

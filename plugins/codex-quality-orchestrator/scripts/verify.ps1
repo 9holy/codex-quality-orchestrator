@@ -23,12 +23,22 @@ foreach ($relative in $jsonFiles) {
 $nodeFiles = @(
   'hooks\inject-routing-policy.cjs',
   'hooks\enforce-agent-routing.cjs',
+  'tests\inject-routing-policy.test.cjs',
   'tests\enforce-agent-routing.test.cjs'
 )
 foreach ($relative in $nodeFiles) {
   & $node --check (Join-Path $pluginRoot $relative)
   if ($LASTEXITCODE -ne 0) { throw "Node syntax check failed: $relative" }
 }
+
+$tokens = $null
+$parseErrors = $null
+[void][System.Management.Automation.Language.Parser]::ParseFile(
+  (Join-Path $pluginRoot 'scripts\runtime-smoke.ps1'),
+  [ref]$tokens,
+  [ref]$parseErrors
+)
+if ($parseErrors.Count -gt 0) { throw 'Runtime smoke PowerShell syntax check failed' }
 
 & $python (Join-Path $pluginRoot 'tests\validate_profiles.py')
 if ($LASTEXITCODE -ne 0) { throw 'Agent profile validation failed' }
@@ -43,6 +53,9 @@ if (Test-Path -LiteralPath $marketplacePath -PathType Leaf) {
 & $node (Join-Path $pluginRoot 'tests\enforce-agent-routing.test.cjs')
 if ($LASTEXITCODE -ne 0) { throw 'Routing hook matrix test failed' }
 
+& $node (Join-Path $pluginRoot 'tests\inject-routing-policy.test.cjs')
+if ($LASTEXITCODE -ne 0) { throw 'Session hook contract test failed' }
+
 & (Join-Path $pluginRoot 'tests\install.test.ps1')
 if ($LASTEXITCODE -ne 0) { throw 'Installer isolation test failed' }
 
@@ -50,8 +63,10 @@ if ($LASTEXITCODE -ne 0) { throw 'Installer isolation test failed' }
   Plugin = 'codex-quality-orchestrator'
   JSON = 'PASS'
   NodeSyntax = 'PASS'
+  PowerShellSyntax = 'PASS'
   Profiles = 'PASS'
   Marketplace = $marketplaceStatus
   RoutingMatrix = 'PASS'
+  SessionContract = 'PASS'
   Installer = 'PASS'
 } | ConvertTo-Json -Compress

@@ -23,6 +23,10 @@ flowchart LR
 
 质量与胜任能力优先于速度和成本。Hook 不判断任务语义，也不会自动选择模型；它只拒绝违反已确认边界的调用。
 
+对非短任务，Sol 必须先检查是否存在边界清晰、可独立验收的工作单元。目标代理能够可靠胜任且下派不降低质量时，原则上应交给 Terra 或 Luna；不能只因当前 Sol 档位更高就把全部工作保留。任务太短或上下文无法安全隔离时仍由 Sol 直接完成，这不是代理调用配额。
+
+`Sol / xhigh` 是普通非短任务的建议根档位，不是 Hook 能强制改写的设置。根任务模型和档位在插件运行前由桌面模型选择器、CC Switch 或 `config.toml` 决定；高风险任务使用 `max`，`ultra` 只用于极少数超复杂长任务。
+
 完整矩阵见 [docs/ROUTING_MATRIX.md](docs/ROUTING_MATRIX.md)。
 
 ## 包含内容
@@ -41,11 +45,20 @@ flowchart LR
 powershell -NoProfile -ExecutionPolicy Bypass -File .\plugins\codex-quality-orchestrator\scripts\install.ps1
 codex plugin marketplace add .
 codex plugin add codex-quality-orchestrator@codex-quality-orchestrator --json
+codex plugin list --json
 ```
 
 安装脚本只安装具名代理配置。已有配置满足关键契约时保持不动；存在冲突时默认停止且不修改任何文件。只有明确确认后才使用 `-Force`，脚本会先建立同目录时间戳备份再替换。
 
 安装插件后，在 Codex CLI 中使用 `/hooks` 审核并信任插件 Hook，然后新建任务。现有任务不会热加载新的 Rule 16 或代理配置。
+
+`codex plugin list --json` 必须显示插件已经安装且启用；仅有 `~/.codex/plugins/cache` 目录不能证明插件或 Hook 正在生效。若 CC Switch 或其他配置管理工具覆盖了 marketplace/插件注册，应先恢复注册再新建任务。
+
+安装并信任 Hook 后，运行真实宿主烟雾验证。该命令会创建一次临时、只读的 `Sol / medium` 探针，并要求返回 `SessionStart=PASS`；发现全局 Rule 16 冲突或缺少具名代理配置时会失败：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\plugins\codex-quality-orchestrator\scripts\runtime-smoke.ps1
+```
 
 插件系统目前不会从插件包原生注册自定义代理，因此显式运行安装脚本是必要步骤；Hook 不会静默写入 `~/.codex`。
 
@@ -55,7 +68,7 @@ codex plugin add codex-quality-orchestrator@codex-quality-orchestrator --json
 powershell -NoProfile -ExecutionPolicy Bypass -File .\plugins\codex-quality-orchestrator\scripts\verify.ps1
 ```
 
-验证内容包括 JSON、Node 语法、manifest、TOML 代理契约、Rule 16 一致性，以及完整允许/拒绝路由矩阵。在源码仓库中还会校验 marketplace；在独立插件目录中不依赖仓库外文件。
+静态验证包括 JSON、Node 与 PowerShell 语法、manifest、TOML 代理契约、Rule 16 一致性、SessionStart 脚本输出契约，以及完整允许/拒绝路由矩阵。在源码仓库中还会校验 marketplace；在独立插件目录中不依赖仓库外文件。静态验证不等于宿主已加载 Hook，安装后的实际链路以 `runtime-smoke.ps1` 为准。
 
 ## 打包
 

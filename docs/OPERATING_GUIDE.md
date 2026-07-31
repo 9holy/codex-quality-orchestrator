@@ -8,6 +8,8 @@
 
 质量和胜任能力优先于速度和成本。存在疑问时保留任务给 Sol 或向上升级，不静默降级，也不为了使用子代理而拆分短任务。
 
+对每个非短任务，Sol 必须检查是否存在边界清晰、可独立验收的工作单元。目标代理能够可靠胜任且下派不降低质量时，原则上应下派；不得仅因当前 Sol 档位更高或 Sol 自己也能完成就保留全部工作。这是语义判断，不是代理调用配额。
+
 ## 2. 默认工作流
 
 ```mermaid
@@ -17,21 +19,27 @@ flowchart TD
     B -->|否| D[Sol xhigh 理解需求和风险]
     D --> E{高风险或关键裁决?}
     E -->|是| F[Sol max]
-    E -->|否| G{Sol 直接完成更可靠?}
-    G -->|是| H[Sol 执行]
-    G -->|否| I{存在边界清晰的安全子任务?}
-    I -->|否| H
-    I -->|是| J[Terra 或 Luna 执行]
+    E -->|否| I{存在可独立验收的工作单元?}
+    F --> I
+    I -->|否| H[Sol 执行]
+    I -->|是| G{目标代理能可靠胜任且不降低质量?}
+    G -->|否| H
+    G -->|是| J[Terra 或 Luna 执行]
     J --> K[Sol 检查实际差异并复跑验证]
     K --> L{关键变更?}
     L -->|是| M[sol_reviewer 独立只读审核]
     L -->|否| N[Sol 最终验收]
     M --> N
-    F --> N
     H --> N
 ```
 
 只有至少两个工作单元可以安全并行，且并行确实提升质量或节省明显时间时才并行。写入型子任务必须明确文件范围、成功标准、验证命令和备份状态。
+
+### 2.1 根任务档位边界
+
+根任务模型和推理档位在插件 Hook 运行前由桌面模型选择器、CC Switch 或 `config.toml` 决定。插件只能约束后续子代理调用，不能把已经启动的 `Sol / max` 或 `Sol / ultra` 根任务自动改成 `xhigh`。
+
+因此，`Sol / xhigh` 是普通非短任务的新任务默认建议，`max` 用于高风险任务，`ultra` 仅用于极少数超复杂长任务。即使根任务已经使用 `max` 或 `ultra`，仍应按胜任能力下派合适的工作单元。
 
 ## 3. 模型矩阵
 
@@ -72,6 +80,7 @@ Sol 升级: model(gpt-5.6-sol) + reasoning_effort + fork_turns
 - 加载插件内的 Rule 16。
 - 检查全局 `AGENTS.md` 的 Rule 16 是否一致。
 - 检查 Terra、Luna、reviewer 配置是否缺失。
+- 报告全局 `config.toml` 的根代理默认值及建议档位，但不改写它。
 - 发现冲突或缺失时公开报告，不静默修复或回退。
 
 ### PreToolUse
@@ -100,6 +109,7 @@ powershell -NoProfile -ExecutionPolicy Bypass `
 
 codex plugin marketplace add .
 codex plugin add codex-quality-orchestrator@codex-quality-orchestrator --json
+codex plugin list --json
 ```
 
 安装器写入范围中的代理配置只有 `%CODEX_HOME%\agents` 中的三个具名代理；同时会在 `%CODEX_HOME%` 写入安装状态、运行时锁和必要的 Force 备份：
@@ -124,6 +134,21 @@ codex plugin add codex-quality-orchestrator@codex-quality-orchestrator --json
 这样可以避免并发安装依据陈旧状态覆盖备份记录。
 
 安装插件后，在 Codex 中使用 `/hooks` 审核并信任 Hook，再新建任务。已有任务不会热加载新的规则或配置。
+
+运行时验收必须以 `codex plugin list --json` 中的已安装、已启用记录为准。缓存目录可能只是旧安装残留，不能证明插件或 Hook 正在生效。若 CC Switch 或其他配置管理工具覆盖 marketplace/插件注册，必须先恢复注册。
+
+随后运行真实宿主烟雾验证：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass `
+  -File .\plugins\codex-quality-orchestrator\scripts\runtime-smoke.ps1
+```
+
+该脚本通过一次临时、只读的 `Sol / medium` 新会话确认插件已经安装启用，且 `SessionStart` 上下文实际进入模型输入。成功输出中的 `SessionStart` 必须为 `PASS`；全局 Rule 16 不存在时允许插件注入 canonical 规则，规则冲突或缺少具名代理配置时失败。它不同于直接执行 Hook 脚本的单元测试。
+
+如果系统中仍有安装插件前手工配置的全局路由 Hook，应先通过上述运行时烟雾，并在新任务中确认插件 `PreToolUse` 能拒绝非法代理调用；然后备份并移除旧 Hook，避免双重执行和规则漂移。验证失败时保留或恢复旧 Hook，不得静默迁移。
+
+安装器遇到已存在且符合契约的代理配置时会将其视为外部文件，不声明所有权。这种情况下安装状态文件可以不存在，不能仅据此判定安装失败；插件注册、Hook 加载和代理配置应分别核验。
 
 ## 6. 卸载生命周期
 
@@ -155,7 +180,7 @@ powershell -NoProfile -ExecutionPolicy Bypass `
   -File .\plugins\codex-quality-orchestrator\scripts\verify.ps1
 ```
 
-验证包含 JSON、Node 语法、TOML 契约、Rule 16 一致性、9 条允许和 12 条拒绝路由、安装所有权、Force 恢复和锁顺序测试。
+静态验证包含 JSON、Node 与 PowerShell 语法、TOML 契约、Rule 16 一致性、SessionStart 脚本输出契约、9 条允许和 12 条拒绝路由、安装所有权、Force 恢复和锁顺序测试。它不经过宿主插件发现与 Hook 信任链路；安装后的运行时验收使用 `runtime-smoke.ps1`。
 
 打包：
 
@@ -172,16 +197,17 @@ powershell -NoProfile -ExecutionPolicy Bypass `
 4. 解压 ZIP 后直接运行独立验证，确保成品不依赖仓库级 marketplace。
 5. 输出 SHA-256。
 
-## 8. 当前发布物
+## 8. 发布核验
 
 - 仓库：[9holy/codex-quality-orchestrator](https://github.com/9holy/codex-quality-orchestrator)
-- Release：[v0.1.0](https://github.com/9holy/codex-quality-orchestrator/releases/tag/v0.1.0)
-- ZIP SHA-256：`c683961540785157c0370d86d424c1d221d825aded77e8b745dec34df39ea13c`
-- GitHub Actions：Windows 和 Ubuntu 均通过
+- 目标版本：`v0.1.1`
+- Release 资产与 SHA-256 必须以该版本的 GitHub Release 页面为准。
+- 发布完成只以当前提交的 Windows、Ubuntu Actions 均通过为准，不能沿用旧提交结果。
 
 ## 9. 明确边界
 
 - 插件不能替 Sol 判断任务语义。
+- 插件不能改写已经选定的根任务模型或推理档位。
 - Hook 必须被 Codex 信任并启用，否则不会执行机械拦截。
 - `sol_reviewer` 的只读能力最终受宿主权限控制，TOML 不是绝对安全边界。
 - 异常终止后若遗留安装锁，脚本会 fail-closed；确认没有活动安装进程后再清理锁。
