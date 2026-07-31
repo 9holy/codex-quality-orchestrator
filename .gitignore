@@ -1,0 +1,7 @@
+.backups/
+dist/
+.plugin-edit.lock
+.DS_Store
+Thumbs.db
+__pycache__/
+*.pyc

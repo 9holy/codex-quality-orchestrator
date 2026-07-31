@@ -1,0 +1,30 @@
+{
+  "name": "codex-quality-orchestrator",
+  "version": "0.1.0",
+  "description": "Quality-first multi-model routing and review guardrails for Codex.",
+  "author": {
+    "name": "Codex Quality Orchestrator contributors"
+  },
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "multi-agent",
+    "routing",
+    "quality"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Codex Quality Orchestrator",
+    "shortDescription": "Quality-first routing for Codex subagents.",
+    "longDescription": "Coordinate Sol, Terra, and Luna with explicit capability boundaries, mechanical routing checks, and independent review for critical changes.",
+    "developerName": "Codex Quality Orchestrator contributors",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read"
+    ],
+    "defaultPrompt": [
+      "Audit my current model routing configuration.",
+      "Choose the safest agent route for this task."
+    ]
+  }
+}

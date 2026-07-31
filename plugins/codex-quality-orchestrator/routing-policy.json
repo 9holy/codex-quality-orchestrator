@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "0.1.0",
+  "toolNames": [
+    "spawn_agent",
+    "Agent",
+    "collaborationspawn_agent"
+  ],
+  "sol": {
+    "model": "gpt-5.6-sol",
+    "allowedEfforts": [
+      "medium",
+      "high",
+      "xhigh",
+      "max",
+      "ultra"
+    ],
+    "defaultCoordinatorEffort": "xhigh",
+    "highRiskEffort": "max"
+  },
+  "namedAgents": {
+    "terra_worker": {
+      "profileFile": "terra-worker.toml",
+      "model": "gpt-5.6-terra",
+      "effortMode": "required",
+      "allowedEfforts": [
+        "xhigh",
+        "max"
+      ]
+    },
+    "luna_worker": {
+      "profileFile": "luna-worker.toml",
+      "model": "gpt-5.6-luna",
+      "effortMode": "fixed",
+      "fixedEffort": "max"
+    },
+    "sol_reviewer": {
+      "profileFile": "sol-reviewer.toml",
+      "model": "gpt-5.6-sol",
+      "effortMode": "fixed",
+      "fixedEffort": "xhigh",
+      "sandboxMode": "read-only"
+    }
+  },
+  "forkTurns": {
+    "required": true,
+    "allowedLiterals": [
+      "none"
+    ],
+    "allowPositiveIntegerString": true
+  }
+}

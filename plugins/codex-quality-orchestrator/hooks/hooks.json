@@ -1,0 +1,33 @@
+{
+  "description": "Load the quality-first routing policy and enforce its mechanical boundaries.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/inject-routing-policy.cjs\"",
+            "commandWindows": "node \"%PLUGIN_ROOT%\\hooks\\inject-routing-policy.cjs\"",
+            "timeout": 5,
+            "statusMessage": "加载质量路由规则",
+            "additionalContextLimit": 2500
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "^(spawn_agent|Agent|collaborationspawn_agent)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/enforce-agent-routing.cjs\"",
+            "commandWindows": "node \"%PLUGIN_ROOT%\\hooks\\enforce-agent-routing.cjs\"",
+            "timeout": 5,
+            "statusMessage": "检查代理路由"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "codex-quality-orchestrator",
+  "interface": {
+    "displayName": "Codex Quality Orchestrator"
+  },
+  "plugins": [
+    {
+      "name": "codex-quality-orchestrator",
+      "source": {
+        "source": "local",
+        "path": "./plugins/codex-quality-orchestrator"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}
