@@ -78,10 +78,14 @@ codex plugin marketplace remove codex-quality-orchestrator --json
 ## 安全边界
 
 - 不联网、不上传数据、不收集遥测。
-- Hook 只读取插件策略和本地代理配置。
+- Hook 只读取插件策略、本地代理配置和全局 `AGENTS.md` 中的 Rule 16 片段，用于一致性检查；不会上传数据。
 - 安装脚本是唯一写入用户 Codex 配置的组件，必须由用户显式运行。
 - `codex-auto-review / low` 是 Codex 系统权限审查，不属于本插件的工作模型矩阵。
 
 ## 许可证
 
 [MIT](LICENSE)
+
+## 完整操作说明
+
+模型矩阵、调用契约、Hook 边界、安装所有权、卸载恢复、验证和发布流程见 [docs/OPERATING_GUIDE.md](docs/OPERATING_GUIDE.md)。
