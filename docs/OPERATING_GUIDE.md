@@ -22,9 +22,9 @@
 flowchart TD
     A[用户任务] --> B{短任务?}
     B -->|是| C[当前主代理直接完成]
-    B -->|否| D[Sol high 默认主控]
+    B -->|否| D[Sol medium 默认主控]
     D --> E{高风险或关键裁决?}
-    E -->|是| F[Sol max]
+    E -->|是| F[Sol xhigh 或 max]
     E -->|否| I{存在可独立验收的工作单元?}
     F --> I
     I -->|否| H[当前 Sol 兜底]
@@ -53,19 +53,27 @@ flowchart TD
 
 根任务模型和推理档位在插件 Hook 运行前由桌面模型选择器、外部配置管理器或 `config.toml` 决定。插件只能约束后续子代理调用，不能把已经启动的 `Sol / max` 或 `Sol / ultra` 根任务自动改成 `xhigh`。
 
-因此，`Sol / high` 是常规团队开发默认建议，`xhigh` 用于复杂规划和整合，`max` 用于高风险裁决，`ultra` 用于极少数“查清并修复一整类问题”的系统性多波次任务。即使根任务档位较高，仍应把可靠胜任的工作包派给成本更低的 Worker。
+因此，`Sol / medium` 是常规团队开发默认建议；`high` 保留给多步骤逻辑、假设和边界检查，但不作为默认升级节点；复杂规划优先 `xhigh`，最难或高风险裁决再用 `max`，`ultra` 只用于可有效并行的系统性多波次任务。即使根任务档位较高，仍应把可靠胜任的工作包派给成本更低的 Worker。
+
+### 2.2 选择依据
+
+OpenAI 的 Codex 模型指南把 `gpt-5.6-sol / medium` 作为默认 Power 设置，并建议使用能够可靠产出所需结果的最低推理强度；更高强度通常增加耗时和 Token，Max/Ultra 不适合多数任务。Codex Radar 的 DeepSWE 滚动众测用于校准实际质量与成本，但单次快照不是永久能力排序，因此插件只固化“最低可靠档位”和风险升级原则，不固化榜单分数。
+
+- 官方模型指南：<https://learn.chatgpt.com/docs/models.md>
+- Codex Radar：<https://codexradar.com/>
+- 分布式雷达评分口径：<https://deng.codexradar.com/>
 
 ## 3. 模型矩阵
 
 | 角色 | 模型 | 推理档位 | 适用任务 |
 |---|---|---|---|
-| Sol 直接分析 | `gpt-5.6-sol` | `medium` | 边界清晰的直接分析，不负责多模型统筹或关键验收 |
-| Sol 默认主控 | `gpt-5.6-sol` | `high` | 常规团队规划、拆解、整合和验收 |
+| Sol 默认主控 | `gpt-5.6-sol` | `medium` | 常规团队规划、拆解、整合、验收和边界清晰的直接分析 |
+| Sol 细致检查 | `gpt-5.6-sol` | `high` | 多步骤逻辑、假设和边界检查；不作为默认升级节点 |
 | Sol 复杂主控 | `gpt-5.6-sol` | `xhigh` | 复杂规划、跨模块整合和严格验收 |
 | Sol 高风险 | `gpt-5.6-sol` | `max` | 架构、安全、公共接口、生产数据、不可逆迁移、公共数据契约、疑难问题和最终裁决 |
-| Sol 系统性主控 | `gpt-5.6-sol` | `ultra` | 极少数系统性多波次任务，不作为 Worker |
-| Terra | `gpt-5.6-terra` | `xhigh`、`max` 或 `ultra` | XHigh 用于常规判断，Max 用于疑难复杂任务，Ultra 用于边界冻结但需要接近 Sol XHigh 推理强度的执行或关键只读复核 |
-| Luna | `gpt-5.6-luna` | 固定 `max` | 边界冻结、清晰、可独立验收的中大型实现、测试、扫描和批量工作 |
+| Sol 系统性主控 | `gpt-5.6-sol` | `ultra` | 可有效并行的系统性多波次任务，不作为 Worker |
+| Terra | `gpt-5.6-terra` | `xhigh`、`max` 或 `ultra` | XHigh 是判断型工作的默认档，Max 用于疑难复杂任务，Ultra 仅用于最难的冻结执行或关键只读复核 |
+| Luna | `gpt-5.6-luna` | 固定 `max` | 边界冻结、清晰、可独立验收的实现、已定位问题的修复、测试、扫描和批量工作 |
 
 `gpt-5.5`、裸 Terra、裸 Luna 和未登记模型禁止下派。
 

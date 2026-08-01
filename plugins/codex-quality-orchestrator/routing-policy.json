@@ -1,6 +1,6 @@
 {
   "schemaVersion": 5,
-  "policyVersion": "0.3.3",
+  "policyVersion": "0.3.4",
   "toolNames": [
     "spawn_agent",
     "Agent",
@@ -16,7 +16,7 @@
       "max",
       "ultra"
     ],
-    "defaultCoordinatorEffort": "high",
+    "defaultCoordinatorEffort": "medium",
     "complexCoordinatorEffort": "xhigh",
     "highRiskEffort": "max",
     "systemicEffort": "ultra"

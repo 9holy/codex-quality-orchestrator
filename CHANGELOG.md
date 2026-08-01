@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.4 - 2026-08-02
+
+- Make Sol Medium the recommended default coordinator and keep High as an optional careful-checking tier instead of the default escalation step.
+- Prefer the Sol escalation path Medium to XHigh to Max to Ultra, while preserving the user's already selected root effort.
+- Keep Luna Max first for frozen, independently verifiable execution, but require diagnosis to be complete before routing fixes to Luna.
+- Reserve Terra Ultra for the hardest frozen execution or critical read-only review rather than routine work.
+
 ## 0.3.3 - 2026-08-02
 
 - Prefix every Worker task name with its actual route, such as `Terra Max` or `Luna Max`, so the task list shows which model tier is running.

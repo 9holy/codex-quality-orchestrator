@@ -22,7 +22,7 @@ skill = skill_path.read_text(encoding="utf-8")
 
 assert manifest["name"] == "codex-quality-orchestrator"
 base_version, separator, cachebuster = manifest["version"].partition("+codex.")
-assert base_version == policy["policyVersion"] == "0.3.3"
+assert base_version == policy["policyVersion"] == "0.3.4"
 assert not separator or cachebuster
 assert list((PLUGIN_ROOT / "skills").rglob("SKILL.md")) == [skill_path]
 assert manifest["interface"]["defaultPrompt"] == [
@@ -34,7 +34,7 @@ assert "路由预检" in rule
 assert "总算力成本最低" in rule
 assert "完整工作单元最高要求" in rule
 assert "每波默认 2、最多 3 个 Worker" in rule
-assert "Luna 可可靠胜任且可独立验收的单元必须下派" in rule
+assert "Luna 能可靠胜任且可独立验收的单元必须下派" in rule
 assert "CQO_WORK_PACKET_V1" in rule
 assert "selected_effort" in rule
 assert "明文路由键" in rule
@@ -86,7 +86,7 @@ assert hooks["hooks"]["SubagentStop"][0]["hooks"][0]["commandWindows"] == (
 )
 assert policy["sol"]["spawnAllowed"] is False
 assert policy["schemaVersion"] == 5
-assert policy["sol"]["defaultCoordinatorEffort"] == "high"
+assert policy["sol"]["defaultCoordinatorEffort"] == "medium"
 assert policy["sol"]["complexCoordinatorEffort"] == "xhigh"
 assert policy["team"] == {
     "defaultWorkersPerWave": 2,
@@ -166,7 +166,7 @@ luna_instructions = tomllib.loads(
 for forbidden_work in ("重新定义需求", "根因诊断", "跨上下文推断", "不得创建子代理"):
     assert forbidden_work in luna_instructions
 
-assert "中大型实现" in luna_instructions
+assert "已定位问题的修复" in luna_instructions
 assert "局部实现选择与修正" in luna_instructions
 assert "关键只读复核" in tomllib.loads(
     (PLUGIN_ROOT / "templates" / "agents" / "terra-worker.toml").read_text(
