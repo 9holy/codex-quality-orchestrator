@@ -86,7 +86,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\plugins\codex-quality-orch
 powershell -NoProfile -ExecutionPolicy Bypass -File .\plugins\codex-quality-orchestrator\scripts\verify.ps1
 ```
 
-Worker 的 `task_name` 使用 `<单元>__w<波次>__s<槽位>of<波次大小>__a<尝试>` 明文路由键；宿主会在 Hook 前加密 `message`，因此消息里的工作单供 Worker 阅读和 Sol 验收，Hook 不宣称能解析其中的 JSON。静态验证包括 JSON、Node 与 PowerShell 语法、manifest、TOML 代理契约、Rule 16、会话路由账本、生命周期、并发与尝试上限、SessionStart、Worker 路由、一次容量续交和安装迁移。在源码仓库中还会校验 marketplace；静态验证不等于宿主已加载 Hook，安装后仍须完成真实宿主验收。
+Worker 的 `task_name` 使用 `<单元>__w<波次>__s<槽位>of<波次大小>__a<尝试>` 明文路由键；宿主会在 Hook 前加密 `message`，因此消息里的工作单供 Worker 阅读和 Sol 验收，Hook 不宣称能解析其中的 JSON。若启动或认证错误在宿主发出 `SubagentStop` 前终止，主控在观察到终止错误后用 `hooks/release-failed-dispatch.cjs <原 task_name>` 释放当前会话账本。静态验证包括 JSON、Node 与 PowerShell 语法、manifest、TOML 代理契约、Rule 16、会话路由账本、生命周期、并发与尝试上限、SessionStart、Worker 路由、一次容量续交和安装迁移。在源码仓库中还会校验 marketplace；静态验证不等于宿主已加载 Hook，安装后仍须完成真实宿主验收。
 
 ## 打包
 

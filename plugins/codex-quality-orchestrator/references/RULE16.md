@@ -10,6 +10,6 @@ Luna 可可靠胜任且可独立验收的单元必须下派；至少两个互不
 
 每次 Worker 的 `task_name` 使用明文路由键 `<单元>__w<波次>__s<槽位>of<波次大小>__a<尝试>`，如 `unit_name__w1__s1of2__a1`；`message` 用 `[CQO_WORK_PACKET_V1]` 标记并给 Worker 写明目标、范围、写路径、验收、验证、权限、备份、`selected_agent`、`selected_effort` 和预声明 fallback。宿主会在 Hook 前加密 `message`，故 Hook 只校验可见路由键、调用参数、唯一单元、波次槽位、最多 3 个并发、每单元最多 2 次和每根任务最多 8 次调用；语义与消息内容由 Sol 验收。
 
-仅精确消息 `Selected model is at capacity. Please try a different model.` 触发原代理续交“继续”一次，保留上下文和进度，不重做、重拆或重启整项任务；再次失败才按预声明 `Luna→Terra→当前 Sol` 上调。其他错误公开后上调或停止，禁止静默降级。
+仅精确消息 `Selected model is at capacity. Please try a different model.` 触发原代理续交“继续”一次，保留上下文和进度，不重做、重拆或重启整项任务；再次失败才按预声明 `Luna→Terra→当前 Sol` 上调。其他终止错误若未触发 `SubagentStop`，先运行插件 `release-failed-dispatch.cjs <原 task_name>` 释放账本，再公开上调或停止；禁止静默降级。
 
 调用：`luna_worker` 传 `agent_type,fork_turns`；`terra_worker` 另传 `reasoning_effort=xhigh|max`；均不传 `model`。`fork_turns` 仅 `"none"` 或正整数数字字符串。Sol 检查差异并复跑验证，关键变更另派 Terra Max 只读复核。

@@ -24,6 +24,7 @@ $nodeFiles = @(
   'hooks\inject-routing-policy.cjs',
   'hooks\enforce-agent-routing.cjs',
   'hooks\routing-ledger.cjs',
+  'hooks\release-failed-dispatch.cjs',
   'hooks\track-subagent-start.cjs',
   'hooks\continue-capacity-subagent.cjs',
   'tests\inject-routing-policy.test.cjs',

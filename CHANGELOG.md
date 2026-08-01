@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1 - 2026-08-01
+
+- Add an explicit session-bound ledger release command for startup and authentication failures that terminate before the host emits `SubagentStop`.
+- Keep normal long-running Worker TTL unchanged; cleanup requires the lead to have observed a terminal error and the original route task name.
+
 ## 0.3.0 - 2026-08-01
 
 - Prefer Luna Max for any frozen, independently verifiable work unit it can reliably complete, including medium and large implementation, multi-file edits, routine debugging, tests, scans, and batch work.

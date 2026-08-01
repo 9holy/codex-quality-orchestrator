@@ -1,6 +1,6 @@
 {
   "name": "codex-quality-orchestrator",
-  "version": "0.3.0+codex.20260801122944",
+  "version": "0.3.1+codex.20260801130004",
   "description": "Quality-first multi-model routing and review guardrails for Codex.",
   "author": {
     "name": "Codex Quality Orchestrator contributors"

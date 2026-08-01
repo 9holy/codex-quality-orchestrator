@@ -217,8 +217,28 @@ function trackSubagentStop(payload, policy, continuing) {
   });
 }
 
+function releaseFailedDispatch(sessionId, workUnitId, policy) {
+  if (!sessionId || !workUnitId) return '缺少会话或工作单元标识。';
+  return withLedger(policy, (state, now) => {
+    const session = state.sessions[sessionId];
+    if (!session) return `会话 ${sessionId} 没有路由账本。`;
+    pruneSession(session, policy, now);
+    const attempt = [...session.attempts].reverse().find(
+      (item) =>
+        item.workUnitId === workUnitId &&
+        ['pending', 'active'].includes(item.status),
+    );
+    if (!attempt) return `工作单元 ${workUnitId} 没有待释放的调用。`;
+    attempt.status = 'failed';
+    attempt.updatedAt = now;
+    session.updatedAt = now;
+    return null;
+  });
+}
+
 module.exports = {
   registerDispatch,
+  releaseFailedDispatch,
   trackSubagentStart,
   trackSubagentStop,
 };

@@ -22,7 +22,7 @@ skill = skill_path.read_text(encoding="utf-8")
 
 assert manifest["name"] == "codex-quality-orchestrator"
 base_version, separator, cachebuster = manifest["version"].partition("+codex.")
-assert base_version == policy["policyVersion"] == "0.3.0"
+assert base_version == policy["policyVersion"] == "0.3.1"
 assert not separator or cachebuster
 assert list((PLUGIN_ROOT / "skills").rglob("SKILL.md")) == [skill_path]
 assert manifest["interface"]["defaultPrompt"] == [
@@ -127,6 +127,9 @@ start_hook = (PLUGIN_ROOT / "hooks" / "track-subagent-start.cjs").read_text(
 ledger_hook = (PLUGIN_ROOT / "hooks" / "routing-ledger.cjs").read_text(
     encoding="utf-8"
 )
+release_hook = (PLUGIN_ROOT / "hooks" / "release-failed-dispatch.cjs").read_text(
+    encoding="utf-8"
+)
 assert "parseRouteTaskName" in routing_hook
 assert "selected_agent" in routing_hook
 assert "fallback_agent" in routing_hook
@@ -135,6 +138,8 @@ assert "replace(/^\\uFEFF+/, '')" in capacity_hook
 assert "replace(/^\\uFEFF+/, '')" in start_hook
 assert "maxRootWorkerAttempts" in ledger_hook
 assert "attempt=1 尚未结束" in ledger_hook
+assert "releaseFailedDispatch" in ledger_hook
+assert "CODEX_THREAD_ID" in release_hook
 
 for agent_type, config in policy["namedAgents"].items():
     profile_path = PLUGIN_ROOT / "templates" / "agents" / config["profileFile"]

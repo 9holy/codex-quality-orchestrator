@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 
 const pluginRoot = path.resolve(__dirname, '..');
 const policy = JSON.parse(
@@ -16,6 +17,7 @@ const {
 } = require('../hooks/routing-ledger.cjs');
 
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'cqo-ledger-'));
+const releaseScript = path.join(pluginRoot, 'hooks', 'release-failed-dispatch.cjs');
 const previousHome = process.env.CODEX_HOME;
 process.env.CODEX_HOME = tempRoot;
 
@@ -84,6 +86,32 @@ try {
     }), policy),
     /已经使用过 attempt=2/,
   );
+
+  assert.equal(registerDispatch(payload('explicit-release', 1), packet('unit-release'), policy), null);
+  trackSubagentStart({
+    session_id: 'explicit-release',
+    agent_id: 'release-agent-1',
+    agent_type: 'luna_worker',
+  }, policy);
+  const released = spawnSync(
+    process.execPath,
+    [releaseScript, 'unit-release__w1__s1of1__a1'],
+    {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        CODEX_HOME: tempRoot,
+        CODEX_THREAD_ID: 'explicit-release',
+      },
+    },
+  );
+  assert.equal(released.status, 0, released.stderr);
+  assert.equal(registerDispatch(payload('explicit-release', 2), packet('unit-release', {
+    selected_agent: 'terra_worker',
+    selected_effort: 'xhigh',
+    fallback_agent: 'sol_controller',
+    worker_attempt: 2,
+  }), policy), null);
 
   for (let slot = 1; slot <= 3; slot += 1) {
     assert.equal(registerDispatch(payload('parallel', slot), packet(`parallel-${slot}`, {

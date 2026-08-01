@@ -118,6 +118,8 @@ luna_worker: agent_type + fork_turns
 
 仅匹配 `luna_worker` 和 `terra_worker`。首次检测到精确容量消息且 `stop_hook_active=false` 时返回 `decision=block` 与提示“继续”，由 Codex 自动在原子代理上下文创建一次续交；第二次不再拦截，交回主控升级。
 
+启动或认证错误可能在宿主发出 `SubagentStop` 前终止。主控确认代理已终止后，运行插件根目录的 `hooks/release-failed-dispatch.cjs <原 task_name>`；脚本只在当前 `CODEX_THREAD_ID` 中把对应 pending/active 记录标为 failed，随后才允许预声明 fallback。它不缩短正常长任务 TTL，也不能用于仍在运行的 Worker。
+
 `codex-auto-review / low` 是 Codex 系统权限审查，不属于本插件的工作模型矩阵。
 
 ## 5. 安装生命周期
@@ -239,7 +241,7 @@ powershell -NoProfile -ExecutionPolicy Bypass `
 ## 8. 发布核验
 
 - 仓库：[9holy/codex-quality-orchestrator](https://github.com/9holy/codex-quality-orchestrator)
-- 目标版本：`v0.3.0`
+- 目标版本：`v0.3.1`
 - Release 资产与 SHA-256 必须以该版本的 GitHub Release 页面为准。
 - 发布完成只以当前提交的 Windows、Ubuntu Actions 均通过为准，不能沿用旧提交结果。
 - CI 必须把 Windows 生成的发布 ZIP 交给 Ubuntu 解压并复跑独立验证，不能只验证各平台自行生成的产物。
