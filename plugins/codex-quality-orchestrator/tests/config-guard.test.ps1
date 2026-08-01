@@ -38,7 +38,7 @@ $pluginId = 'codex-quality-orchestrator@codex-quality-orchestrator'
 $preId = "$pluginId`:hooks/hooks.json:pre_tool_use:0:0"
 $sessionId = "$pluginId`:hooks/hooks.json:session_start:0:0"
 $watchProcess = $null
-$isWindows = [Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
+$runningOnWindows = [Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
 
 try {
   New-Item -ItemType Directory -Path $guardDir -Force | Out-Null
@@ -149,7 +149,7 @@ throw "Unexpected fake codex call: $($Args -join ' ')"
     ArgumentList = $arguments
     PassThru = $true
   }
-  if ($isWindows) {
+  if ($runningOnWindows) {
     $watchParameters.WindowStyle = 'Hidden'
   }
   $watchProcess = Start-Process @watchParameters
@@ -172,7 +172,7 @@ throw "Unexpected fake codex call: $($Args -join ' ')"
   Assert-True ([long]$pidRecord.startTimeUtcTicks -gt 0) 'Watch PID record did not include process start time'
 
   $startupDir = Join-Path $tempRoot 'startup'
-  if ($isWindows) {
+  if ($runningOnWindows) {
     Assert-True ([long]$pidRecord.startTimeUtcTicks -eq $watchProcess.StartTime.ToUniversalTime().Ticks) 'Watch PID record was not bound to process start time'
     $guardInstall = ((& $guardScript -Mode Install -CodexHome $codexHome -CodexCommand $fakeCodex -StartupDirectory $startupDir -NoStart) -join [Environment]::NewLine) | ConvertFrom-Json
     $watchProcess.WaitForExit(5000) | Out-Null

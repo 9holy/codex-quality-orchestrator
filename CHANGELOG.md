@@ -6,6 +6,7 @@
 - Make delegation mandatory for bounded work that Terra or Luna can reliably complete.
 - Require provider, authentication, and model failures to be reported instead of silently falling back.
 - Stabilize each work-unit route by its highest capability requirement; wording, edit size, and simpler later steps cannot trigger model churn.
+- Minimize compute cost among routes that satisfy quality, capability, and risk constraints, and require bounded reliable delegation.
 - Add a provider-agnostic config guard that restores native plugin registration after external `config.toml` replacement without making model calls.
 - Preserve only previously approved exact Hook hashes and require renewed review when a Hook definition changes.
 

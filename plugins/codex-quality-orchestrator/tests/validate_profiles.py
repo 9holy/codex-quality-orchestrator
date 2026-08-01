@@ -20,15 +20,17 @@ rule = (PLUGIN_ROOT / "references" / "RULE16.md").read_text(encoding="utf-8")
 assert manifest["name"] == "codex-quality-orchestrator"
 assert manifest["version"] == policy["policyVersion"]
 assert "路由预检" in rule
-assert "必须下派" in rule
+assert "Sol 负责理解、路由预检、分配、整合和最终验收" in rule
 assert "提供商和错误" in rule
 assert "完整工作单元的最高要求" in rule
-assert "单文件、少量改动或一个验证步骤只能作为短任务的辅助信号" in rule
-assert "同一工作单元的生产执行者及其最低能力层级一经确定" in rule
-assert "正常交回 Sol 做整合、复核和最终验收不属于改派" in rule
-assert "工作目标、范围或验收边界不清时直接由 Sol" in rule
+assert "文件数、行数和验证步骤只能辅助判断" in rule
+assert "同一工作单元的生产执行者和最低层级保持稳定" in rule
+assert "交回 Sol 验收不算改派" in rule
+assert "目标、范围或验收不清直接由 Sol" in rule
 assert "生产数据、不可逆迁移、公共数据契约" in rule
-assert "不能仅因任务短就使用 Luna" in rule
+assert "Luna 不能仅因任务短使用" in rule
+assert "在所有满足硬约束的方案中，选择算力开支最低的执行组合" in rule
+assert "目标代理可靠胜任的工作单元时必须下派" in rule
 assert hooks["hooks"]["SessionStart"][0]["hooks"][0]["commandWindows"] == (
     'node "$env:PLUGIN_ROOT\\hooks\\inject-routing-policy.cjs"'
 )
