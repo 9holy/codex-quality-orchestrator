@@ -5,4 +5,5 @@
 *.ps1 text eol=lf
 *.py text eol=lf
 *.toml text eol=lf
+*.toml.bak text eol=lf
 *.yml text eol=lf
