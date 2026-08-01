@@ -32,6 +32,18 @@ Sol 是根任务主控和最终兜底，不创建 Sol 子代理。
 - 共享文件坚持单写者；Worker 不得创建更多 Worker。
 - Sol 负责整合、复跑验证和最终验收；关键变更另派 Terra Max 做只读复核。
 
+## 冻结工作单
+
+每次 Worker 调用的 `message` 必须包含且只包含一个标记块：
+
+```text
+[CQO_WORK_PACKET_V1]
+{"work_unit_id":"...","objective":"...","scope":["..."],"write_paths":[],"acceptance":["..."],"verification":["..."],"task_intent":"verify","mutation_authority":"none","backup_required":false,"selected_agent":"luna_worker","selected_effort":"max","fallback_agent":"terra_worker","worker_attempt":1}
+[/CQO_WORK_PACKET_V1]
+```
+
+Sol 判断任务语义并生成工作单；Hook 只验证结构、一致性和路径边界。只读工作单必须没有写入路径且无需备份，写入工作单必须声明路径并要求备份。Luna 只允许首轮且 `selected_effort=max`；Terra 的 `selected_effort` 必须等于调用的 `reasoning_effort`，可作为初始判断型 Worker 或 Luna 失败后的第二轮；兜底链在调用前声明。Hook 不持久化 attempt 历史或并发账本。
+
 ## 容量恢复
 
 当子代理最后消息包含精确文本 `Selected model is at capacity. Please try a different model.`：
@@ -51,4 +63,4 @@ terra_worker: agent_type + reasoning_effort(xhigh|max) + fork_turns
 
 具名代理模型由 TOML 固定，调用时不得传 `model`。`fork_turns` 只能为 `"none"` 或正整数数字字符串。禁止 Sol 子代理、裸 Terra/Luna、`gpt-5.5` 和未登记模型。
 
-具体任务的语义匹配由主控 Sol 根据完整上下文完成；代码和 Hook 只校验确定性参数、容量续交次数、配置完整性与冲突。
+具体任务的语义匹配由主控 Sol 根据完整上下文完成；代码和 Hook 只校验冻结工作单、确定性参数、容量续交次数、配置完整性与冲突。

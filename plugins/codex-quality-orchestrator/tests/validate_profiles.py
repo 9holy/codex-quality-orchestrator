@@ -22,36 +22,37 @@ skill = skill_path.read_text(encoding="utf-8")
 
 assert manifest["name"] == "codex-quality-orchestrator"
 base_version, separator, cachebuster = manifest["version"].partition("+codex.")
-assert base_version == policy["policyVersion"] == "0.2.0"
+assert base_version == policy["policyVersion"] == "0.2.1"
 assert not separator or cachebuster
 assert list((PLUGIN_ROOT / "skills").rglob("SKILL.md")) == [skill_path]
 assert manifest["interface"]["defaultPrompt"] == [
     "Audit my current model routing configuration.",
     "Verify that the orchestrator plugin and hooks are active.",
 ]
-assert "Sol 主控" in rule
+assert "gpt-5.6-sol` 主控" in rule
 assert "路由预检" in rule
-assert "预计总算力成本" in rule
-assert "完整工作单元的最高要求" in rule
+assert "最低成本层级" in rule
+assert "完整工作单元最高要求" in rule
 assert "每波默认 2、最多 3 个 Worker" in rule
-assert "共享文件单写者" in rule
-assert "Worker 不得继续下派" in rule
+assert "CQO_WORK_PACKET_V1" in rule
+assert "selected_effort" in rule
+assert "共享文件只允许一个写者" in rule
+assert "Worker 不得下派" in rule
 assert "当前 Sol 直接接管" in rule
 assert "不创建 Sol 子代理" in rule
 assert "关键变更另派 Terra Max 只读复核" in rule
 assert "gpt-5.6-luna / max" in rule
 assert "gpt-5.6-terra / xhigh|max" in rule
 assert "生产数据、不可逆迁移、公共数据契约" in rule
-assert "插件不改已启动根模型或档位" in rule
+assert "插件不改已启动根档位" in rule
 assert len(rule.strip()) <= 1500
 capacity_message = "Selected model is at capacity. Please try a different model."
 assert capacity_message in rule
 assert rule.count(capacity_message) == 1
-assert "自动同级续交一次" in rule
-assert "向原代理提交“继续”" in rule
+assert "自动续交“继续”一次" in rule
 assert "保留上下文和进度" in rule
-assert "不得重做已完成工作、重新拆分或重启整项任务" in rule
-assert "第二次仍失败才按 Luna→Terra→当前 Sol 升级" in rule
+assert "不得重做、重拆或重启整项任务" in rule
+assert "再次失败才按预声明 `Luna→Terra→当前 Sol` 上调" in rule
 assert len(skill) <= 1600
 assert "唯一语义路由规范" in skill
 assert "不要在 Skill 中复述" in skill
@@ -70,6 +71,7 @@ assert hooks["hooks"]["SubagentStop"][0]["hooks"][0]["commandWindows"] == (
     'node "$env:PLUGIN_ROOT\\hooks\\continue-capacity-subagent.cjs"'
 )
 assert policy["sol"]["spawnAllowed"] is False
+assert policy["schemaVersion"] == 3
 assert policy["sol"]["defaultCoordinatorEffort"] == "high"
 assert policy["sol"]["complexCoordinatorEffort"] == "xhigh"
 assert policy["team"] == {
@@ -80,6 +82,16 @@ assert policy["team"] == {
     "singleWriterForSharedFiles": True,
     "workersMayDelegate": False,
 }
+assert policy["workPacket"] == {
+    "marker": "CQO_WORK_PACKET_V1",
+    "required": True,
+    "allowedTaskIntents": ["mutate", "inspect", "verify"],
+    "allowedMutationAuthorities": ["none", "declared_paths"],
+    "allowedFallbacks": {
+        "luna_worker": ["terra_worker"],
+        "terra_worker": ["sol_controller"],
+    },
+}
 assert policy["capacityRecovery"] == {
     "message": capacity_message,
     "automaticContinuationPrompt": "继续",
@@ -87,6 +99,18 @@ assert policy["capacityRecovery"] == {
     "escalationOrder": ["luna_worker", "terra_worker", "sol_controller"],
 }
 assert set(policy["namedAgents"]) == {"luna_worker", "terra_worker"}
+
+routing_hook = (PLUGIN_ROOT / "hooks" / "enforce-agent-routing.cjs").read_text(
+    encoding="utf-8"
+)
+capacity_hook = (
+    PLUGIN_ROOT / "hooks" / "continue-capacity-subagent.cjs"
+).read_text(encoding="utf-8")
+assert "validateWorkPacket" in routing_hook
+assert "selected_agent" in routing_hook
+assert "fallback_agent" in routing_hook
+assert "replace(/^\\uFEFF+/, '')" in routing_hook
+assert "replace(/^\\uFEFF+/, '')" in capacity_hook
 
 for agent_type, config in policy["namedAgents"].items():
     profile_path = PLUGIN_ROOT / "templates" / "agents" / config["profileFile"]

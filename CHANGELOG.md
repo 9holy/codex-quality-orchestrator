@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1 - 2026-08-01
+
+- Require a compact `CQO_WORK_PACKET_V1` for every Worker dispatch so the Hook can validate frozen scope, permissions, acceptance, verification, selected agent, fallback, attempts, and backup requirements without trying to infer task semantics.
+- Predeclare and mechanically enforce the Luna-to-Terra-to-lead-Sol escalation chain while preserving Sol as the semantic router and final quality owner.
+- Freeze Terra's selected reasoning effort in the work packet so a work unit cannot silently change from XHigh to Max during dispatch.
+- Accept repeated UTF-8 BOM prefixes from Windows PowerShell in both stdin-driven Hooks and cover the real pipeline shape in regression tests.
+
 ## 0.2.0 - 2026-08-01
 
 - Make Sol the root lead and final direct-execution fallback; reject Sol subagent creation.

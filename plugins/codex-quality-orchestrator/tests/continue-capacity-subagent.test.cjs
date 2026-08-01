@@ -13,9 +13,9 @@ const hookPath = path.resolve(
 const capacityMessage =
   'Selected model is at capacity. Please try a different model.';
 
-function invoke(payload) {
+function invoke(payload, prefix = '') {
   return spawnSync(process.execPath, [hookPath], {
-    input: JSON.stringify(payload),
+    input: `${prefix}${JSON.stringify(payload)}`,
     encoding: 'utf8',
   });
 }
@@ -28,6 +28,21 @@ const first = invoke({
 });
 assert.equal(first.status, 0, first.stderr);
 assert.deepEqual(JSON.parse(first.stdout), {
+  decision: 'block',
+  reason: '继续',
+});
+
+const doubleBom = invoke(
+  {
+    hook_event_name: 'SubagentStop',
+    agent_type: 'luna_worker',
+    stop_hook_active: false,
+    last_assistant_message: capacityMessage,
+  },
+  '\uFEFF\uFEFF',
+);
+assert.equal(doubleBom.status, 0, doubleBom.stderr);
+assert.deepEqual(JSON.parse(doubleBom.stdout), {
   decision: 'block',
   reason: '继续',
 });

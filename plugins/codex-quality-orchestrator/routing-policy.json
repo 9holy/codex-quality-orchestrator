@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 2,
-  "policyVersion": "0.2.0",
+  "schemaVersion": 3,
+  "policyVersion": "0.2.1",
   "toolNames": [
     "spawn_agent",
     "Agent",
@@ -28,6 +28,27 @@
     "maxFollowupsPerWorker": 1,
     "singleWriterForSharedFiles": true,
     "workersMayDelegate": false
+  },
+  "workPacket": {
+    "marker": "CQO_WORK_PACKET_V1",
+    "required": true,
+    "allowedTaskIntents": [
+      "mutate",
+      "inspect",
+      "verify"
+    ],
+    "allowedMutationAuthorities": [
+      "none",
+      "declared_paths"
+    ],
+    "allowedFallbacks": {
+      "luna_worker": [
+        "terra_worker"
+      ],
+      "terra_worker": [
+        "sol_controller"
+      ]
+    }
   },
   "capacityRecovery": {
     "message": "Selected model is at capacity. Please try a different model.",

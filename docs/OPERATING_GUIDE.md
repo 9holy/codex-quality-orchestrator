@@ -4,7 +4,7 @@
 
 ## 1. 核心原则
 
-插件不是自动替模型做语义判断的决策树。任务含义、风险、目标模型是否能可靠胜任，由 Sol 根据完整上下文判断；代码只校验已经确定的调用契约。
+插件不是自动替模型做语义判断的决策树。任务含义、风险、目标模型是否能可靠胜任，由 Sol 根据完整上下文判断；代码只校验 Sol 已冻结的工作单和调用契约。
 
 质量、胜任能力和风险边界是硬约束；满足后按预计总算力成本选择最低者，计入重试、返工和复核。只要 Luna Max 能可靠胜任，就优先承担清晰执行量；需要实现判断、诊断、跨上下文推断或疑难调试时直接使用 Terra，不能用 Luna 试错制造返工。
 
@@ -41,7 +41,13 @@ flowchart TD
     H --> N
 ```
 
-只有至少两个工作单元可以安全并行，且收益高于协调成本时才组队。每波默认 2、最多 3 个 Worker；工作包必须明确文件所有权、输入输出、成功标准、验证命令和备份，保证共享文件单写者。Worker 不得继续下派。
+只有至少两个工作单元可以安全并行，且收益高于协调成本时才组队。每波默认 2、最多 3 个 Worker；每次调用都在 `message` 中携带一个冻结的 `CQO_WORK_PACKET_V1` JSON 工作单，由 Sol 负责共享文件单写者。Worker 不得继续下派。
+
+工作单至少固定 `work_unit_id`、目标、范围、写入路径、验收、验证、任务意图、写权限、所选代理、档位、预声明 fallback、当前 attempt 和备份要求。Sol 负责这些字段的语义正确性；Hook 只检查字段完整性、相对路径边界、权限组合、档位一致性和允许的 `Luna → Terra → Sol` 兜底链。Hook 不记录历史 attempt、实际文件写入或并发账本，不能替代 Sol 的整合验收或参考项目的完整 ledger。
+
+### 1.1 与参考项目的取舍
+
+`codex-model-routing-team` 由 Lead 冻结 RoutePlan、候选链、Provider/Surface/模型能力，并用 preflight 和 team ledger 验证线程实体化、唯一任务、并发、重试和关闭状态；它默认 App Thread，以弥补原生接口的模型限制。当前环境稳定暴露的是原生具名 Worker，因此本插件采用轻量兼容方案：Sol 语义路由 + `CQO_WORK_PACKET_V1` + 原生 Hook/配置契约。它保留参考项目的冻结工作单、任务意图/写权限、预声明 fallback、并行上限和一次容量续交，但不虚构当前宿主没有的 Provider/Surface/runtime identity 或 ledger 能力。
 
 ### 2.1 根任务档位边界
 
@@ -97,10 +103,12 @@ luna_worker: agent_type + fork_turns
 - 模型是否被非法覆盖。
 - 推理档位是否在允许范围内。
 - `fork_turns` 是否有效。
+- `CQO_WORK_PACKET_V1` 是否完整且只出现一次。
+- `task_name`、所选代理、档位、fallback、attempt、写权限和备份声明是否相互一致。
 - 本机 TOML 是否存在并符合模型契约。
 - 全局 Rule 16 是否与插件规则冲突。
 
-非法调用直接拒绝并说明原因。Hook 不判断任务语义、不自动改派、不静默降级。
+非法调用直接拒绝并说明原因。Hook 不判断任务语义、不自动改派、不静默降级；Sol 必须修正工作单或公开接管。
 
 ### SubagentStop
 
@@ -207,7 +215,7 @@ powershell -NoProfile -ExecutionPolicy Bypass `
   -File .\plugins\codex-quality-orchestrator\scripts\verify.ps1
 ```
 
-静态验证包含 JSON、Node 与 PowerShell 语法、TOML 契约、Rule 16、团队参数、SessionStart、4 条允许和 17 条拒绝路由、一次容量续交、退役配置迁移、安装所有权、Force 恢复和锁顺序。它不代替宿主 Hook 信任验收。
+静态验证包含 JSON、Node 与 PowerShell 语法、TOML 契约、Rule 16、团队参数、SessionStart、冻结工作单路由矩阵、双 BOM 输入、一次容量续交、退役配置迁移、安装所有权、Force 恢复和锁顺序。它不代替宿主 Hook 信任验收。
 
 打包：
 
@@ -227,7 +235,7 @@ powershell -NoProfile -ExecutionPolicy Bypass `
 ## 8. 发布核验
 
 - 仓库：[9holy/codex-quality-orchestrator](https://github.com/9holy/codex-quality-orchestrator)
-- 目标版本：`v0.2.0`
+- 目标版本：`v0.2.1`
 - Release 资产与 SHA-256 必须以该版本的 GitHub Release 页面为准。
 - 发布完成只以当前提交的 Windows、Ubuntu Actions 均通过为准，不能沿用旧提交结果。
 - CI 必须把 Windows 生成的发布 ZIP 交给 Ubuntu 解压并复跑独立验证，不能只验证各平台自行生成的产物。
@@ -235,6 +243,7 @@ powershell -NoProfile -ExecutionPolicy Bypass `
 ## 9. 明确边界
 
 - 插件不能替 Sol 判断任务语义。
+- 工作单能约束 Sol 已声明的决定，但不能证明该语义决定本身正确；最终质量仍由 Sol 的复跑验证和独立复核保证。
 - 插件不能改写已经选定的根任务模型或推理档位。
 - Hook 必须被 Codex 信任并启用，否则不会执行机械拦截。
 - Terra Max 只读复核的写入限制同时依赖工作包和宿主权限，不能把提示词当作绝对安全边界。

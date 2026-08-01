@@ -6,7 +6,7 @@ const CAPACITY_MESSAGE =
 async function main() {
   const chunks = [];
   for await (const chunk of process.stdin) chunks.push(chunk);
-  const raw = Buffer.concat(chunks).toString('utf8').replace(/^\uFEFF/, '');
+  const raw = Buffer.concat(chunks).toString('utf8').replace(/^\uFEFF+/, '');
   const payload = JSON.parse(raw);
 
   if (payload?.hook_event_name !== 'SubagentStop') return;
