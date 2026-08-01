@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.3 - 2026-08-01
+
+- Require an auditable routing preflight before non-short production work.
+- Make delegation mandatory for bounded work that Terra or Luna can reliably complete.
+- Require provider, authentication, and model failures to be reported instead of silently falling back.
+- Stabilize each work-unit route by its highest capability requirement; wording, edit size, and simpler later steps cannot trigger model churn.
+- Add a provider-agnostic config guard that restores native plugin registration after external `config.toml` replacement without making model calls.
+- Preserve only previously approved exact Hook hashes and require renewed review when a Hook definition changes.
+
 ## 0.1.2 - 2026-07-31
 
 - Replace model self-reporting with a real `codex exec` host probe and a nonce-bound temporary SessionStart proof file.

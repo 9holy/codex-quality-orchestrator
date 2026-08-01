@@ -23,9 +23,9 @@ flowchart LR
 
 质量与胜任能力优先于速度和成本。Hook 不判断任务语义，也不会自动选择模型；它只拒绝违反已确认边界的调用。
 
-对非短任务，Sol 必须先检查是否存在边界清晰、可独立验收的工作单元。目标代理能够可靠胜任且下派不降低质量时，原则上应交给 Terra 或 Luna；不能只因当前 Sol 档位更高就把全部工作保留。任务太短或上下文无法安全隔离时仍由 Sol 直接完成，这不是代理调用配额。
+短任务必须同时无歧义、低风险、无需方案选择或诊断、上下文很少且可直接验证；文件数、改动量和验证步骤数量只能作为辅助信号，高风险事项无论大小都不是短任务。对非短任务，Sol 按完整工作单元的最高能力要求选择有安全余量的最低胜任层级：输入输出与步骤固定且无需判断的机械子任务才使用 Luna；需要实现判断、多步骤上下文、调试、测试或已裁定接口下普通集成的边界清晰工作使用 Terra；目标、范围或验收不清以及架构、安全、生产数据、跨代理最终集成和最终裁决保留给 Sol。仅在边界明确而 Luna 与 Terra 的能力档位难以判断时选择 Terra。同一工作单元的生产执行者和最低能力层级保持稳定，正常交回 Sol 整合与验收不属于改派。
 
-`Sol / xhigh` 是普通非短任务的建议根档位，不是 Hook 能强制改写的设置。根任务模型和档位在插件运行前由桌面模型选择器、CC Switch 或 `config.toml` 决定；高风险任务使用 `max`，`ultra` 只用于极少数超复杂长任务。
+`Sol / xhigh` 是普通非短任务的建议根档位，不是 Hook 能强制改写的设置。根任务模型和档位在插件运行前由桌面模型选择器、外部配置管理器或 `config.toml` 决定；高风险任务使用 `max`，`ultra` 只用于极少数超复杂长任务。
 
 完整矩阵见 [docs/ROUTING_MATRIX.md](docs/ROUTING_MATRIX.md)。
 
@@ -37,14 +37,14 @@ flowchart LR
 - 显式安装、卸载、验证和打包脚本。
 - 静态路由矩阵测试不产生模型调用费用；运行时烟雾验证会启动一次临时只读宿主会话。
 
-## 本地安装
+## 安装
 
-在仓库根目录执行：
+从 GitHub 安装，不依赖当前工作目录或 CC Switch：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\plugins\codex-quality-orchestrator\scripts\install.ps1
-codex plugin marketplace add .
-codex plugin add codex-quality-orchestrator@codex-quality-orchestrator --json
+$install = codex plugin marketplace add 9holy/codex-quality-orchestrator --ref main --json | ConvertFrom-Json
+$plugin = codex plugin add "codex-quality-orchestrator@$($install.marketplaceName)" --json | ConvertFrom-Json
+powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $plugin.installedPath 'scripts\install.ps1')
 codex plugin list --json
 ```
 
@@ -52,7 +52,17 @@ codex plugin list --json
 
 安装插件后，在 Codex CLI 中使用 `/hooks` 审核并信任插件 Hook，然后新建任务。现有任务不会热加载新的 Rule 16 或代理配置。
 
-`codex plugin list --json` 必须显示插件已经安装且启用；仅有 `~/.codex/plugins/cache` 目录不能证明插件或 Hook 正在生效。若 CC Switch 或其他配置管理工具覆盖了 marketplace/插件注册，应先恢复注册再新建任务。
+`codex plugin list --json` 必须显示插件已经安装且启用；仅有 `~/.codex/plugins/cache` 目录不能证明插件或 Hook 正在生效。
+
+如果任何提供商切换器、同步工具或脚本会整体替换 `config.toml`，可在人工信任两项 Hook 后启用通用配置守护器：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $plugin.installedPath 'scripts\config-guard.ps1') -Mode Install
+```
+
+守护器不依赖具体切换工具，也不调用模型。它只在 `config.toml` 变化后检查状态，缺失时通过原生 `codex plugin` 命令恢复 marketplace 和插件启用项，并恢复用户已经批准的精确 Hook 哈希；Hook 定义变化或哈希冲突时会停止恢复并要求重新审核。无需切换配置的用户不必启用它。
+
+自动随登录启动的 `Install` 模式目前仅支持 Windows；`Repair` 单次修复模式可在装有 PowerShell 的其他平台使用。
 
 安装并信任 Hook 后，运行真实宿主烟雾验证。该命令启动一次临时只读 `codex exec`，由 SessionStart Hook 将随机 nonce 写入受限于系统临时目录的证明文件；脚本只校验证明文件，不让模型自报 Hook 状态。成功时返回 `SessionStartHookTrust=PASS` 和 `SessionStart=PASS`，发现全局 Rule 16 冲突或缺少具名代理配置时会失败：
 
@@ -83,18 +93,19 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\plugins\codex-quality-orch
 ## 卸载
 
 ```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $HOME '.codex\.codex-quality-orchestrator-guard\config-guard.ps1') -Mode Uninstall
 codex plugin remove codex-quality-orchestrator@codex-quality-orchestrator --json
 powershell -NoProfile -ExecutionPolicy Bypass -File .\plugins\codex-quality-orchestrator\scripts\uninstall.ps1
 codex plugin marketplace remove codex-quality-orchestrator --json
 ```
 
-卸载脚本依据安装状态只处理插件真正创建或替换的配置。插件创建且未修改的文件会删除；`-Force` 替换且未再修改的文件会恢复安装前版本；用户原有或安装后修改过的配置会保留。
+未启用配置守护器时跳过第一条命令。代理卸载脚本依据安装状态只处理插件真正创建或替换的配置。插件创建且未修改的文件会删除；`-Force` 替换且未再修改的文件会恢复安装前版本；用户原有或安装后修改过的配置会保留。
 
 ## 安全边界
 
-- 不联网、不上传数据、不收集遥测。
-- Hook 只读取插件策略、本地代理配置和全局 `AGENTS.md` 中的 Rule 16 片段，用于一致性检查；不会上传数据。
-- 安装脚本是唯一写入用户 Codex 配置的组件，必须由用户显式运行。
+- 运行时 Hook 不联网、不上传数据、不收集遥测；只读取插件策略、本地代理配置和全局 `AGENTS.md` 中的 Rule 16 片段。
+- 安装脚本会写入具名代理配置；只有用户显式启用的配置守护器会额外写入自身状态、Windows 启动项和带备份的 `config.toml` 注册项。
+- 守护器本身不调用模型；恢复本地 marketplace 不联网，恢复 Git marketplace 时会由原生 `codex plugin marketplace add` 访问已记录的 Git 来源。
 - `codex-auto-review / low` 是 Codex 系统权限审查，不属于本插件的工作模型矩阵。
 
 ## 许可证

@@ -31,15 +31,22 @@ foreach ($relative in $nodeFiles) {
   if ($LASTEXITCODE -ne 0) { throw "Node syntax check failed: $relative" }
 }
 
-$runtimeSmokePath = Join-Path $pluginRoot 'scripts\runtime-smoke.ps1'
-$tokens = $null
-$parseErrors = $null
-[void][System.Management.Automation.Language.Parser]::ParseFile(
-  $runtimeSmokePath,
-  [ref]$tokens,
-  [ref]$parseErrors
+$powerShellFiles = @(
+  Get-ChildItem -LiteralPath (Join-Path $pluginRoot 'scripts') -Filter '*.ps1' -File
+  Get-ChildItem -LiteralPath (Join-Path $pluginRoot 'tests') -Filter '*.ps1' -File
 )
-if ($parseErrors.Count -gt 0) { throw 'Runtime smoke PowerShell syntax check failed' }
+foreach ($file in $powerShellFiles) {
+  $tokens = $null
+  $parseErrors = $null
+  [void][System.Management.Automation.Language.Parser]::ParseFile(
+    $file.FullName,
+    [ref]$tokens,
+    [ref]$parseErrors
+  )
+  if ($parseErrors.Count -gt 0) { throw "PowerShell syntax check failed: $($file.FullName)" }
+}
+
+$runtimeSmokePath = Join-Path $pluginRoot 'scripts\runtime-smoke.ps1'
 
 $runtimeSmokeSource = Get-Content -LiteralPath $runtimeSmokePath -Raw -Encoding UTF8
 if ($runtimeSmokeSource.Contains('--dangerously-bypass-hook-trust')) {
@@ -77,6 +84,9 @@ if ($LASTEXITCODE -ne 0) { throw 'Session hook contract test failed' }
 & (Join-Path $pluginRoot 'tests\install.test.ps1')
 if ($LASTEXITCODE -ne 0) { throw 'Installer isolation test failed' }
 
+& (Join-Path $pluginRoot 'tests\config-guard.test.ps1')
+if ($LASTEXITCODE -ne 0) { throw 'Config guard test failed' }
+
 [pscustomobject]@{
   Plugin = 'codex-quality-orchestrator'
   JSON = 'PASS'
@@ -88,4 +98,5 @@ if ($LASTEXITCODE -ne 0) { throw 'Installer isolation test failed' }
   RoutingMatrix = 'PASS'
   SessionContract = 'PASS'
   Installer = 'PASS'
+  ConfigGuard = 'PASS'
 } | ConvertTo-Json -Compress

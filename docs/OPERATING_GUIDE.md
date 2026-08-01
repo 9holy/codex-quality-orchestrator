@@ -6,9 +6,13 @@
 
 插件不是自动替模型做语义判断的决策树。任务含义、风险、目标模型是否能可靠胜任，由 Sol 根据完整上下文判断；代码只校验已经确定的调用契约。
 
-质量和胜任能力优先于速度和成本。存在疑问时保留任务给 Sol 或向上升级，不静默降级，也不为了使用子代理而拆分短任务。
+质量和胜任能力优先于速度和成本。工作目标、范围或验收边界不清时直接保留给 Sol；仅在边界明确而 Luna 与 Terra 的能力档位难以判断时选择 Terra。不静默降级，也不为了使用子代理而拆分短任务。
 
-对每个非短任务，Sol 必须检查是否存在边界清晰、可独立验收的工作单元。目标代理能够可靠胜任且下派不降低质量时，原则上应下派；不得仅因当前 Sol 档位更高或 Sol 自己也能完成就保留全部工作。这是语义判断，不是代理调用配额。
+短任务必须同时满足目标与验收无歧义、低风险、无需方案选择或诊断、上下文很少且可直接验证；改动大小、文件数量或验证步骤数量只能作为辅助信号。架构、安全、公共接口、生产数据、不可逆操作等高风险事项无论大小都不是短任务。
+
+对每个非短任务，Sol 必须在生产执行前按完整工作单元的最高要求公开一次路由判定。只有输入输出与步骤固定且无需判断的机械子任务才交给 Luna；需要实现判断、多步骤上下文、调试、测试或已裁定接口下普通集成的边界清晰工作交给 Terra；语义消歧、架构、高风险、生产数据、跨代理最终集成与最终裁决保留给 Sol。
+
+同一工作单元的生产执行者及其最低能力层级在执行期间保持稳定，仅在目标、范围或风险实质变化、上下文越界、连续验证失败或选定链路不可用时重新预检，并且只向上升级。代理完成后正常交回 Sol 整合、复核和最终验收不属于改派；新的独立工作单元单独判定。完成语义判定后再检查提供商与认证，不能因目标模型不可用而改派更低层级。这是质量判断，不是代理调用配额。
 
 ## 2. 默认工作流
 
@@ -37,7 +41,7 @@ flowchart TD
 
 ### 2.1 根任务档位边界
 
-根任务模型和推理档位在插件 Hook 运行前由桌面模型选择器、CC Switch 或 `config.toml` 决定。插件只能约束后续子代理调用，不能把已经启动的 `Sol / max` 或 `Sol / ultra` 根任务自动改成 `xhigh`。
+根任务模型和推理档位在插件 Hook 运行前由桌面模型选择器、外部配置管理器或 `config.toml` 决定。插件只能约束后续子代理调用，不能把已经启动的 `Sol / max` 或 `Sol / ultra` 根任务自动改成 `xhigh`。
 
 因此，`Sol / xhigh` 是普通非短任务的新任务默认建议，`max` 用于高风险任务，`ultra` 仅用于极少数超复杂长任务。即使根任务已经使用 `max` 或 `ultra`，仍应按胜任能力下派合适的工作单元。
 
@@ -48,17 +52,17 @@ flowchart TD
 | Sol 直接分析 | `gpt-5.6-sol` | `medium` | 边界清晰的直接分析，不负责多模型统筹或关键验收 |
 | Sol 常规执行 | `gpt-5.6-sol` | `high` | 常规多步骤任务、小范围调试和集成 |
 | Sol 默认统筹 | `gpt-5.6-sol` | `xhigh` | 普通非短任务的理解、规划、整合和常规验收 |
-| Sol 高风险 | `gpt-5.6-sol` | `max` | 架构、安全、公共接口、数据修改、疑难问题和最终裁决 |
+| Sol 高风险 | `gpt-5.6-sol` | `max` | 架构、安全、公共接口、生产数据、不可逆迁移、公共数据契约、疑难问题和最终裁决 |
 | Sol 极复杂 | `gpt-5.6-sol` | `ultra` | 极少数超复杂长任务，不作为日常默认 |
-| Terra | `gpt-5.6-terra` | `xhigh` 或 `max` | 多文件实现、调试、测试、文档分析和代码审查 |
-| Luna | `gpt-5.6-luna` | 固定 `max` | 规则确定、低风险、可机械验证的简单子任务 |
+| Terra | `gpt-5.6-terra` | `xhigh` 或 `max` | 多文件实现、调试、测试、文档分析、代码审查及已裁定接口下的普通集成实现 |
+| Luna | `gpt-5.6-luna` | 固定 `max` | 输入输出与步骤固定、低风险、可机械验证的简单子任务 |
 | 独立审核 | `gpt-5.6-sol` | 固定 `xhigh`、只读 | 关键变更的独立审核 |
 
 `gpt-5.5`、裸 Terra、裸 Luna 和未登记模型禁止下派。
 
 ### 3.1 禁止范围
 
-Luna 不处理模糊需求、架构、安全、公共接口、数据修改或最终裁决。Terra 不做最终质量裁决。`sol_reviewer` 不写入文件，也不能代替统筹 Sol 做最终决定。
+Luna 不处理模糊需求、诊断、架构、安全、公共接口、生产数据或最终裁决。Terra 可以处理测试数据、配置数据和已裁定接口下的普通集成实现，但不处理生产数据、不可逆迁移、公共数据契约或最终质量裁决。`sol_reviewer` 不写入文件，也不能代替统筹 Sol 做最终决定。
 
 ### 3.2 调用契约
 
@@ -101,14 +105,13 @@ Sol 升级: model(gpt-5.6-sol) + reasoning_effort + fork_turns
 
 ## 5. 安装生命周期
 
-从仓库根目录执行：
+从 GitHub 安装，命令与当前工作目录无关：
 
 ```powershell
+$marketplace = codex plugin marketplace add 9holy/codex-quality-orchestrator --ref main --json | ConvertFrom-Json
+$plugin = codex plugin add "codex-quality-orchestrator@$($marketplace.marketplaceName)" --json | ConvertFrom-Json
 powershell -NoProfile -ExecutionPolicy Bypass `
-  -File .\plugins\codex-quality-orchestrator\scripts\install.ps1
-
-codex plugin marketplace add .
-codex plugin add codex-quality-orchestrator@codex-quality-orchestrator --json
+  -File (Join-Path $plugin.installedPath 'scripts\install.ps1')
 codex plugin list --json
 ```
 
@@ -135,7 +138,19 @@ codex plugin list --json
 
 安装插件后，在 Codex 中使用 `/hooks` 审核并信任 Hook，再新建任务。已有任务不会热加载新的规则或配置。
 
-运行时验收必须以 `codex plugin list --json` 中的已安装、已启用记录为准。缓存目录可能只是旧安装残留，不能证明插件或 Hook 正在生效。若 CC Switch 或其他配置管理工具覆盖 marketplace/插件注册，必须先恢复注册。
+运行时验收必须以 `codex plugin list --json` 中的已安装、已启用记录为准。缓存目录可能只是旧安装残留，不能证明插件或 Hook 正在生效。
+
+如果外部提供商切换器、同步工具或脚本会整体替换 `config.toml`，先在 `/hooks` 人工批准当前两项 Hook，再启用通用配置守护器：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass `
+  -File (Join-Path $plugin.installedPath 'scripts\config-guard.ps1') `
+  -Mode Install
+```
+
+守护器与具体配置工具无关，不修改其数据库，也不调用模型。它每秒只比较一次配置文件的时间和大小，只有发生变化才检查插件状态；缺失时使用 `codex plugin marketplace add` 和 `codex plugin add` 恢复原生注册，然后写回用户已经批准的精确 Hook 信任记录。每次写入前都会创建同目录时间戳备份。已存在但不同的 Hook 哈希不会被覆盖，定义变化后必须重新审核。未使用配置切换工具的用户不需要安装守护器。
+
+`Install` 自动登录启动模式目前仅支持 Windows；其他平台可以显式运行 `-Mode Repair` 做单次修复。守护器把信任记录绑定到安装时的 marketplace 来源、插件版本和 Hook 文件摘要，任一身份变化都会停止自动恢复并要求重新审核。
 
 随后运行真实宿主烟雾验证：
 
@@ -155,11 +170,16 @@ SessionStart 与 PreToolUse 是独立 Hook 定义。上述烟雾输出会明确�
 ## 6. 卸载生命周期
 
 ```powershell
+powershell -NoProfile -ExecutionPolicy Bypass `
+  -File (Join-Path $HOME '.codex\.codex-quality-orchestrator-guard\config-guard.ps1') `
+  -Mode Uninstall
 codex plugin remove codex-quality-orchestrator@codex-quality-orchestrator --json
 powershell -NoProfile -ExecutionPolicy Bypass `
   -File .\plugins\codex-quality-orchestrator\scripts\uninstall.ps1
 codex plugin marketplace remove codex-quality-orchestrator --json
 ```
+
+未启用配置守护器时跳过第一条命令。
 
 卸载器依据安装状态处理文件：
 
@@ -202,7 +222,7 @@ powershell -NoProfile -ExecutionPolicy Bypass `
 ## 8. 发布核验
 
 - 仓库：[9holy/codex-quality-orchestrator](https://github.com/9holy/codex-quality-orchestrator)
-- 目标版本：`v0.1.2`
+- 目标版本：`v0.1.3`
 - Release 资产与 SHA-256 必须以该版本的 GitHub Release 页面为准。
 - 发布完成只以当前提交的 Windows、Ubuntu Actions 均通过为准，不能沿用旧提交结果。
 - CI 必须把 Windows 生成的发布 ZIP 交给 Ubuntu 解压并复跑独立验证，不能只验证各平台自行生成的产物。

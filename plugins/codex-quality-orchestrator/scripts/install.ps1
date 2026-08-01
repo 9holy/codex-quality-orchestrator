@@ -196,5 +196,5 @@ try {
   CodexHome = $CodexHome
   Results = $results
   Verified = $true
-  NextStep = 'Install and enable the plugin, review and trust its hooks in /hooks, then start a new task.'
+  NextStep = 'Install and enable the plugin, trust its hooks in /hooks, optionally enable config-guard.ps1 for external config switchers, then start a new task.'
 } | ConvertTo-Json -Depth 5
