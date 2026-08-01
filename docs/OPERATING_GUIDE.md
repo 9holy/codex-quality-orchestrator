@@ -6,7 +6,7 @@
 
 插件不是自动替模型做语义判断的决策树。任务含义、风险、目标模型是否能可靠胜任，由 Sol 根据完整上下文判断；代码只校验 Sol 已冻结的工作单和调用契约。
 
-质量、胜任能力和风险边界是硬约束；满足后按预计总算力成本选择最低者，计入重试、返工和复核。只要 Luna Max 能可靠胜任，就优先承担清晰执行量；需要实现判断、诊断、跨上下文推断或疑难调试时直接使用 Terra，不能用 Luna 试错制造返工。
+质量、胜任能力和风险边界是硬约束；满足后按预计总算力成本选择最低者，计入重试、返工和复核。只要 Luna Max 能可靠胜任，就优先承担清晰执行量，并允许在冻结边界内做局部实现选择与常规修正；需要消歧、根因诊断、跨上下文推断或疑难调试时直接使用 Terra，不能用 Luna 试错制造返工。
 
 短任务必须同时满足目标与验收无歧义、低风险、无需方案选择或诊断、上下文很少且可直接验证；改动大小、文件数量或验证步骤数量只能作为辅助信号。架构、安全、公共接口、生产数据、不可逆操作等高风险事项无论大小都不是短任务。
 
@@ -41,13 +41,13 @@ flowchart TD
     H --> N
 ```
 
-只有至少两个工作单元可以安全并行，且收益高于协调成本时才组队。每波默认 2、最多 3 个 Worker；每次调用都在 `message` 中携带一个冻结的 `CQO_WORK_PACKET_V1` JSON 工作单，由 Sol 负责共享文件单写者。Worker 不得继续下派。
+只有至少两个工作单元可以安全并行，且收益高于协调成本时才组队。每波默认 2、最多 3 个 Worker；每次调用的 `task_name` 使用 `<单元>__w<波次>__s<槽位>of<波次大小>__a<尝试>` 明文路由键，`message` 携带给 Worker 阅读的冻结 `CQO_WORK_PACKET_V1` JSON 工作单，由 Sol 负责共享文件单写者。Worker 不得继续下派。
 
-工作单至少固定 `work_unit_id`、目标、范围、写入路径、验收、验证、任务意图、写权限、所选代理、档位、预声明 fallback、当前 attempt 和备份要求。Sol 负责这些字段的语义正确性；Hook 只检查字段完整性、相对路径边界、权限组合、档位一致性和允许的 `Luna → Terra → Sol` 兜底链。Hook 不记录历史 attempt、实际文件写入或并发账本，不能替代 Sol 的整合验收或参考项目的完整 ledger。
+工作单至少固定 `work_unit_id`、目标、范围、写入路径、验收、验证、任务意图、写权限、所选代理、档位、预声明 fallback、当前 attempt、波次、槽位和备份要求。宿主会在 Hook 前加密 `message`，所以 Sol 负责工作单内容的语义正确性；Hook 只检查明文路由键、调用参数和允许的 `Luna → Terra → Sol` 兜底账本。会话账本记录唯一工作单元、波次槽位、生命周期、并发和尝试次数，但不检查实际文件写入，不能替代 Sol 的整合验收。
 
 ### 1.1 与参考项目的取舍
 
-`codex-model-routing-team` 由 Lead 冻结 RoutePlan、候选链、Provider/Surface/模型能力，并用 preflight 和 team ledger 验证线程实体化、唯一任务、并发、重试和关闭状态；它默认 App Thread，以弥补原生接口的模型限制。当前环境稳定暴露的是原生具名 Worker，因此本插件采用轻量兼容方案：Sol 语义路由 + `CQO_WORK_PACKET_V1` + 原生 Hook/配置契约。它保留参考项目的冻结工作单、任务意图/写权限、预声明 fallback、并行上限和一次容量续交，但不虚构当前宿主没有的 Provider/Surface/runtime identity 或 ledger 能力。
+`codex-model-routing-team` 由 Lead 冻结 RoutePlan、候选链、Provider/Surface/模型能力，并用 preflight 和 team ledger 验证线程实体化、唯一任务、并发、重试和关闭状态；它默认 App Thread，以弥补原生接口的模型限制。当前环境稳定暴露原生具名 Worker，因此本插件采用 Sol 语义路由 + `CQO_WORK_PACKET_V1` + 原生 Hook 会话账本：保留冻结工作单、任务意图/写权限、预声明 fallback、唯一任务、波次、并发上限、尝试预算、生命周期和一次容量续交，不复制本环境不需要的 App Thread、Provider/Surface、Fast 或第三方模型分支。
 
 ### 2.1 根任务档位边界
 
@@ -103,12 +103,16 @@ luna_worker: agent_type + fork_turns
 - 模型是否被非法覆盖。
 - 推理档位是否在允许范围内。
 - `fork_turns` 是否有效。
-- `CQO_WORK_PACKET_V1` 是否完整且只出现一次。
+- `task_name` 是否符合明文路由键格式并能表达波次、槽位和尝试。
 - `task_name`、所选代理、档位、fallback、attempt、写权限和备份声明是否相互一致。
 - 本机 TOML 是否存在并符合模型契约。
 - 全局 Rule 16 是否与插件规则冲突。
 
 非法调用直接拒绝并说明原因。Hook 不判断任务语义、不自动改派、不静默降级；Sol 必须修正工作单或公开接管。
+
+### SubagentStart
+
+仅匹配 `luna_worker` 和 `terra_worker`，把原生 `agent_id` 绑定到已通过 PreToolUse 的 pending 工作单并标为 active。会话账本按宿主 `session_id` 隔离，最多允许 3 个 pending/active Worker、每个工作单元 2 次尝试、每个根任务累计 8 次 Worker 调用；同一波次槽位不可分配给不同工作单元，第二次尝试必须等待第一次结束并使用预声明 fallback。
 
 ### SubagentStop
 
@@ -153,7 +157,7 @@ codex plugin list --json
 
 运行时验收必须以 `codex plugin list --json` 中的已安装、已启用记录为准。缓存目录可能只是旧安装残留，不能证明插件或 Hook 正在生效。
 
-如果外部提供商切换器、同步工具或脚本会整体替换 `config.toml`，先在 `/hooks` 人工批准当前三项 Hook，再启用通用配置守护器：
+如果外部提供商切换器、同步工具或脚本会整体替换 `config.toml`，先在 `/hooks` 人工批准当前四项 Hook，再启用通用配置守护器：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass `
@@ -176,7 +180,7 @@ powershell -NoProfile -ExecutionPolicy Bypass `
 
 脚本禁止使用 `--dangerously-bypass-hook-trust`，也不让模型自报 Hook 是否存在。未通过 `/hooks` 信任当前精确 SessionStart 定义时必须失败；一次性旁路只证明 Hook 在绕过信任检查后可执行，不能作为安装验收证据。
 
-SessionStart、PreToolUse 与 SubagentStop 是三项独立 Hook 定义。烟雾脚本只证明 SessionStart；必须在 `/hooks` 审核三项定义，在新任务中确认 PreToolUse 拒绝非法调用，并用定向宿主探针确认容量消息只续交一次。
+SessionStart、PreToolUse、SubagentStart 与 SubagentStop 是四项独立 Hook 定义。烟雾脚本只证明 SessionStart；必须在 `/hooks` 审核四项定义，在新任务中确认 PreToolUse 拒绝非法调用、SubagentStart 登记生命周期，并用定向宿主探针确认容量消息只续交一次。
 
 安装器遇到已存在且符合契约的代理配置时会将其视为外部文件，不声明所有权。这种情况下安装状态文件可以不存在，不能仅据此判定安装失败；插件注册、Hook 加载和代理配置应分别核验。
 
@@ -215,7 +219,7 @@ powershell -NoProfile -ExecutionPolicy Bypass `
   -File .\plugins\codex-quality-orchestrator\scripts\verify.ps1
 ```
 
-静态验证包含 JSON、Node 与 PowerShell 语法、TOML 契约、Rule 16、团队参数、SessionStart、冻结工作单路由矩阵、双 BOM 输入、一次容量续交、退役配置迁移、安装所有权、Force 恢复和锁顺序。它不代替宿主 Hook 信任验收。
+静态验证包含 JSON、Node 与 PowerShell 语法、TOML 契约、Rule 16、会话账本、唯一工作单元、波次槽位、并发与尝试预算、SessionStart、冻结工作单路由矩阵、双 BOM 输入、一次容量续交、退役配置迁移、安装所有权、Force 恢复和锁顺序。它不代替宿主 Hook 信任验收。
 
 打包：
 
@@ -235,7 +239,7 @@ powershell -NoProfile -ExecutionPolicy Bypass `
 ## 8. 发布核验
 
 - 仓库：[9holy/codex-quality-orchestrator](https://github.com/9holy/codex-quality-orchestrator)
-- 目标版本：`v0.2.1`
+- 目标版本：`v0.3.0`
 - Release 资产与 SHA-256 必须以该版本的 GitHub Release 页面为准。
 - 发布完成只以当前提交的 Windows、Ubuntu Actions 均通过为准，不能沿用旧提交结果。
 - CI 必须把 Windows 生成的发布 ZIP 交给 Ubuntu 解压并复跑独立验证，不能只验证各平台自行生成的产物。
@@ -244,6 +248,7 @@ powershell -NoProfile -ExecutionPolicy Bypass `
 
 - 插件不能替 Sol 判断任务语义。
 - 工作单能约束 Sol 已声明的决定，但不能证明该语义决定本身正确；最终质量仍由 Sol 的复跑验证和独立复核保证。
+- 会话账本使用原生 Hook 字段，不读取不稳定的 transcript；同模型并发启动时按 pending 顺序绑定 `agent_id`，用于并发释放而不判断任务内容。
 - 插件不能改写已经选定的根任务模型或推理档位。
 - Hook 必须被 Codex 信任并启用，否则不会执行机械拦截。
 - Terra Max 只读复核的写入限制同时依赖工作包和宿主权限，不能把提示词当作绝对安全边界。

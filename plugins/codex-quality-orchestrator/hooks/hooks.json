@@ -29,6 +29,20 @@
         ]
       }
     ],
+    "SubagentStart": [
+      {
+        "matcher": "^(luna_worker|terra_worker)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/track-subagent-start.cjs\"",
+            "commandWindows": "node \"$env:PLUGIN_ROOT\\hooks\\track-subagent-start.cjs\"",
+            "timeout": 5,
+            "statusMessage": "登记子代理生命周期"
+          }
+        ]
+      }
+    ],
     "SubagentStop": [
       {
         "matcher": "^(luna_worker|terra_worker)$",

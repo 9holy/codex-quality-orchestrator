@@ -1,6 +1,6 @@
 # Codex Quality Orchestrator
 
-面向 Codex 团队开发的质量优先路由插件。Sol 负责规划、拆解、整合、最终验收和必要兜底；Luna Max 优先并行消化清晰执行量，Terra 处理判断型工作和关键只读复核，Hook 负责机械契约与一次容量续交。
+面向 Codex 团队开发的质量优先路由插件。Sol 负责规划、拆解、整合、最终验收和必要兜底；Luna Max 优先并行消化清晰执行量，Terra 处理判断型工作和关键只读复核，Hook 负责机械契约、会话账本与一次容量续交。
 
 ## 路由原则
 
@@ -25,9 +25,9 @@ flowchart LR
     K --> L
 ```
 
-质量、胜任能力和风险边界是硬约束；满足后按预计总算力成本选择最低者，计入重试、返工和复核。Sol 先做语义判断并冻结 `CQO_WORK_PACKET_V1`；Hook 不猜任务难度，只校验工作单、调用参数和确定性的容量续交。
+质量、胜任能力和风险边界是硬约束；满足后按预计总算力成本选择最低者，计入重试、返工和复核。Sol 先做语义判断并冻结工作单；Hook 不猜任务难度，只校验明文路由键、调用参数、账本和确定性的容量续交。
 
-短任务必须同时无歧义、低风险、无需方案选择或诊断、上下文很少且可直接验证；规模只能辅助判断。对非短任务，Sol 按完整工作单元最高要求匹配：边界冻结、可独立验收且可靠胜任的清晰中大型工作优先交给 Luna Max；需要实现判断、诊断、跨上下文推断或疑难调试时使用 Terra；架构、安全、生产数据、全局集成和最终裁决保留给 Sol。无法安全下派时由当前 Sol 直接接管，不创建 Sol 子代理。
+短任务必须同时无歧义、低风险、无需方案选择或诊断、上下文很少且可直接验证；规模只能辅助判断。对非短任务，Sol 按完整工作单元最高要求匹配：边界冻结、可独立验收且可靠胜任的清晰工作优先交给 Luna Max，包括中大型实现、多文件修改、常规调试、测试、扫描和批量工作；需要消歧、根因诊断、跨上下文推断或疑难调试时使用 Terra；架构、安全、生产数据、全局集成和最终裁决保留给 Sol。无法安全下派时由当前 Sol 直接接管，不创建 Sol 子代理。
 
 `Sol / high` 是常规团队开发的建议根档位，`xhigh` 用于复杂规划与整合，`max` 用于高风险裁决，`ultra` 只用于极少数系统性多波次任务。根任务模型和档位在插件运行前确定，Hook 不能改写已启动任务。
 
@@ -36,7 +36,8 @@ flowchart LR
 ## 包含内容
 
 - `SessionStart` Hook：加载精简 Rule 16，并检测全局规则冲突。
-- `PreToolUse` Hook：校验冻结工作单、具名代理、模型覆盖、推理档位和 `fork_turns`。
+- `PreToolUse` Hook：校验冻结工作单、具名代理、波次、尝试次数、模型覆盖、推理档位和 `fork_turns`。
+- `SubagentStart` Hook：登记原生 Worker 生命周期，维护并发槽位。
 - `SubagentStop` Hook：容量提示首次出现时自动向原子代理提交一次“继续”。
 - 两个代理模板：`terra_worker`、`luna_worker`。
 - 显式安装、卸载、验证和打包脚本。
@@ -59,7 +60,7 @@ codex plugin list --json
 
 `codex plugin list --json` 必须显示插件已经安装且启用；仅有 `~/.codex/plugins/cache` 目录不能证明插件或 Hook 正在生效。
 
-如果任何提供商切换器、同步工具或脚本会整体替换 `config.toml`，可在人工信任三项 Hook 后启用通用配置守护器：
+如果任何提供商切换器、同步工具或脚本会整体替换 `config.toml`，可在人工信任四项 Hook 后启用通用配置守护器：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $plugin.installedPath 'scripts\config-guard.ps1') -Mode Install
@@ -75,7 +76,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $plugin.installed
 powershell -NoProfile -ExecutionPolicy Bypass -File .\plugins\codex-quality-orchestrator\scripts\runtime-smoke.ps1
 ```
 
-烟雾脚本不会使用 `--dangerously-bypass-hook-trust`。当前 SessionStart 定义尚未通过 `/hooks` 持久信任、定义已变化或 Hook 未加载时，验证必须失败。该结果不证明 PreToolUse 或 SubagentStop 已信任；必须在 `/hooks` 审核三项定义，并分别确认非法代理调用被拒绝和容量消息只自动续交一次。
+烟雾脚本不会使用 `--dangerously-bypass-hook-trust`。当前 SessionStart 定义尚未通过 `/hooks` 持久信任、定义已变化或 Hook 未加载时，验证必须失败。该结果不证明 PreToolUse、SubagentStart 或 SubagentStop 已信任；必须在 `/hooks` 审核四项定义，并分别确认非法代理调用被拒绝、生命周期被登记和容量消息只自动续交一次。
 
 插件系统目前不会从插件包原生注册自定义代理，因此显式运行安装脚本是必要步骤；Hook 不会静默写入 `~/.codex`。
 
@@ -85,7 +86,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\plugins\codex-quality-orch
 powershell -NoProfile -ExecutionPolicy Bypass -File .\plugins\codex-quality-orchestrator\scripts\verify.ps1
 ```
 
-静态验证包括 JSON、Node 与 PowerShell 语法、manifest、TOML 代理契约、Rule 16、团队并发策略、SessionStart、Worker 路由、一次容量续交和安装迁移。在源码仓库中还会校验 marketplace；静态验证不等于宿主已加载 Hook，安装后仍须完成真实宿主验收。
+Worker 的 `task_name` 使用 `<单元>__w<波次>__s<槽位>of<波次大小>__a<尝试>` 明文路由键；宿主会在 Hook 前加密 `message`，因此消息里的工作单供 Worker 阅读和 Sol 验收，Hook 不宣称能解析其中的 JSON。静态验证包括 JSON、Node 与 PowerShell 语法、manifest、TOML 代理契约、Rule 16、会话路由账本、生命周期、并发与尝试上限、SessionStart、Worker 路由、一次容量续交和安装迁移。在源码仓库中还会校验 marketplace；静态验证不等于宿主已加载 Hook，安装后仍须完成真实宿主验收。
 
 ## 打包
 

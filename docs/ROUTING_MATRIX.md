@@ -18,7 +18,7 @@ Sol 是根任务主控和最终兜底，不创建 Sol 子代理。
 
 | 代理 | 模型与档位 | 首选工作 | 禁止事项 |
 |---|---|---|---|
-| `luna_worker` | `gpt-5.6-luna / max` | 边界冻结、清晰、可独立验收的中大型实现、多文件修改、测试、扫描和批量工作 | 消歧、诊断、架构、安全、公共接口、生产数据、不可逆迁移和最终裁决 |
+| `luna_worker` | `gpt-5.6-luna / max` | 边界冻结、清晰、可独立验收的中大型实现、多文件修改、常规调试、测试、扫描和批量工作，可在冻结边界内做局部实现选择 | 需求重定义、消歧、根因诊断、跨上下文推断、架构、安全、公共接口、生产数据、不可逆迁移和最终裁决 |
 | `terra_worker` | `gpt-5.6-terra / xhigh` | 需要实现判断、根因诊断、跨上下文推断和常规复杂调试 | 架构与最终质量裁决 |
 | `terra_worker` | `gpt-5.6-terra / max` | 疑难实现、复杂多文件调试和关键只读复核 | 最终质量裁决 |
 
@@ -27,22 +27,30 @@ Sol 是根任务主控和最终兜底，不创建 Sol 子代理。
 ## 团队并行
 
 - 只有至少两个互不冲突的完整工作单元，且并行收益高于协调成本时组队。
-- 每波默认 2、最多 3 个 Worker；不为使用代理拆分短任务。
+- 每波默认 2、最多 3 个 Worker；根任务累计最多 8 次 Worker 调用，不为使用代理拆分短任务。
 - 每个工作包固定目标、范围、文件所有权、输入输出、验收、验证命令和备份状态。
 - 共享文件坚持单写者；Worker 不得创建更多 Worker。
 - Sol 负责整合、复跑验证和最终验收；关键变更另派 Terra Max 做只读复核。
 
 ## 冻结工作单
 
-每次 Worker 调用的 `message` 必须包含且只包含一个标记块：
+每次 Worker 的 `task_name` 必须使用明文路由键，供宿主 Hook 读取：
+
+```text
+unit_name__w1__s1of2__a1
+```
+
+`message` 仍必须包含且只包含一个给 Worker 阅读的工作单标记块：
 
 ```text
 [CQO_WORK_PACKET_V1]
-{"work_unit_id":"...","objective":"...","scope":["..."],"write_paths":[],"acceptance":["..."],"verification":["..."],"task_intent":"verify","mutation_authority":"none","backup_required":false,"selected_agent":"luna_worker","selected_effort":"max","fallback_agent":"terra_worker","worker_attempt":1}
+{"work_unit_id":"...","objective":"...","scope":["..."],"write_paths":[],"acceptance":["..."],"verification":["..."],"task_intent":"verify","mutation_authority":"none","backup_required":false,"selected_agent":"luna_worker","selected_effort":"max","fallback_agent":"terra_worker","worker_attempt":1,"wave_id":"wave_01","wave_size":2,"worker_slot":1}
 [/CQO_WORK_PACKET_V1]
 ```
 
-Sol 判断任务语义并生成工作单；Hook 只验证结构、一致性和路径边界。只读工作单必须没有写入路径且无需备份，写入工作单必须声明路径并要求备份。Luna 只允许首轮且 `selected_effort=max`；Terra 的 `selected_effort` 必须等于调用的 `reasoning_effort`，可作为初始判断型 Worker 或 Luna 失败后的第二轮；兜底链在调用前声明。Hook 不持久化 attempt 历史或并发账本。
+Sol 判断任务语义并生成工作单；由于宿主会在 Hook 前加密 `message`，Hook 只验证明文路由键、调用参数和账本，Sol 必须自己保证工作单内容、权限和备份声明正确。Luna 只允许首轮且 `selected_effort=max`；Terra 的 `selected_effort` 必须等于调用的 `reasoning_effort`，可作为初始判断型 Worker 或 Luna 结束后的第二轮；兜底链在调用前声明。
+
+会话账本以宿主 `session_id` 记录唯一工作单元、波次槽位、pending/active/stopped 生命周期和累计次数：同时 pending/active 最多 3 个，每单元最多 2 次，根任务最多 8 次。`SubagentStart` 绑定原生 `agent_id`，`SubagentStop` 释放槽位；同一单元的第二次尝试必须等待第一次结束并使用预声明 fallback。账本不判断任务语义，也不检查真实文件写入。
 
 ## 容量恢复
 

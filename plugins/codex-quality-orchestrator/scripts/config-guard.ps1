@@ -17,6 +17,7 @@ $pluginId = 'codex-quality-orchestrator@codex-quality-orchestrator'
 $hookIds = @(
   "$pluginId`:hooks/hooks.json:pre_tool_use:0:0",
   "$pluginId`:hooks/hooks.json:session_start:0:0",
+  "$pluginId`:hooks/hooks.json:subagent_start:0:0",
   "$pluginId`:hooks/hooks.json:subagent_stop:0:0"
 )
 
@@ -66,6 +67,8 @@ function Get-HookBundleHash {
     'hooks\hooks.json',
     'hooks\inject-routing-policy.cjs',
     'hooks\enforce-agent-routing.cjs',
+    'hooks\routing-ledger.cjs',
+    'hooks\track-subagent-start.cjs',
     'hooks\continue-capacity-subagent.cjs',
     'routing-policy.json',
     'references\RULE16.md'

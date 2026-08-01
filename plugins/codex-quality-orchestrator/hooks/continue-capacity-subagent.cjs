@@ -1,7 +1,10 @@
 'use strict';
 
-const CAPACITY_MESSAGE =
-  'Selected model is at capacity. Please try a different model.';
+const fs = require('node:fs');
+const path = require('node:path');
+const { trackSubagentStop } = require('./routing-ledger.cjs');
+
+const policyPath = path.resolve(__dirname, '..', 'routing-policy.json');
 
 async function main() {
   const chunks = [];
@@ -10,14 +13,18 @@ async function main() {
   const payload = JSON.parse(raw);
 
   if (payload?.hook_event_name !== 'SubagentStop') return;
-  if (payload.stop_hook_active === true) return;
-  if (typeof payload.last_assistant_message !== 'string') return;
-  if (!payload.last_assistant_message.includes(CAPACITY_MESSAGE)) return;
+  const policy = JSON.parse(fs.readFileSync(policyPath, 'utf8'));
+  const shouldContinue =
+    payload.stop_hook_active !== true &&
+    typeof payload.last_assistant_message === 'string' &&
+    payload.last_assistant_message.includes(policy.capacityRecovery.message);
+  trackSubagentStop(payload, policy, shouldContinue);
+  if (!shouldContinue) return;
 
   process.stdout.write(
     `${JSON.stringify({
       decision: 'block',
-      reason: '继续',
+      reason: policy.capacityRecovery.automaticContinuationPrompt,
     })}\n`,
   );
 }

@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 3,
-  "policyVersion": "0.2.1",
+  "schemaVersion": 4,
+  "policyVersion": "0.3.0",
   "toolNames": [
     "spawn_agent",
     "Agent",
@@ -25,13 +25,19 @@
     "defaultWorkersPerWave": 2,
     "maxWorkersPerWave": 3,
     "maxWorkerAttemptsPerWorkUnit": 2,
+    "maxRootWorkerAttempts": 8,
     "maxFollowupsPerWorker": 1,
     "singleWriterForSharedFiles": true,
-    "workersMayDelegate": false
+    "workersMayDelegate": false,
+    "ledgerFile": ".codex-quality-orchestrator-routing-ledger.json",
+    "pendingDispatchTtlSeconds": 300,
+    "activeDispatchTtlSeconds": 86400
   },
   "workPacket": {
     "marker": "CQO_WORK_PACKET_V1",
     "required": true,
+    "hostVisibleTaskNamePattern": "^([a-z0-9][a-z0-9_-]{2,39})__w([1-9]\\d{0,2})__s([1-3])of([1-3])__a([12])$",
+    "hostVisibleTaskNameExample": "unit_name__w1__s1of2__a1",
     "allowedTaskIntents": [
       "mutate",
       "inspect",

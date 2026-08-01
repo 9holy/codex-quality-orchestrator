@@ -22,7 +22,7 @@ skill = skill_path.read_text(encoding="utf-8")
 
 assert manifest["name"] == "codex-quality-orchestrator"
 base_version, separator, cachebuster = manifest["version"].partition("+codex.")
-assert base_version == policy["policyVersion"] == "0.2.1"
+assert base_version == policy["policyVersion"] == "0.3.0"
 assert not separator or cachebuster
 assert list((PLUGIN_ROOT / "skills").rglob("SKILL.md")) == [skill_path]
 assert manifest["interface"]["defaultPrompt"] == [
@@ -31,14 +31,17 @@ assert manifest["interface"]["defaultPrompt"] == [
 ]
 assert "gpt-5.6-sol` 主控" in rule
 assert "路由预检" in rule
-assert "最低成本层级" in rule
+assert "总算力成本最低" in rule
 assert "完整工作单元最高要求" in rule
 assert "每波默认 2、最多 3 个 Worker" in rule
+assert "Luna 可可靠胜任且可独立验收的单元必须下派" in rule
 assert "CQO_WORK_PACKET_V1" in rule
 assert "selected_effort" in rule
-assert "共享文件只允许一个写者" in rule
+assert "明文路由键" in rule
+assert "每根任务最多 8 次调用" in rule
+assert "共享文件单写者" in rule
 assert "Worker 不得下派" in rule
-assert "当前 Sol 直接接管" in rule
+assert "当前 Sol 接管" in rule
 assert "不创建 Sol 子代理" in rule
 assert "关键变更另派 Terra Max 只读复核" in rule
 assert "gpt-5.6-luna / max" in rule
@@ -49,9 +52,9 @@ assert len(rule.strip()) <= 1500
 capacity_message = "Selected model is at capacity. Please try a different model."
 assert capacity_message in rule
 assert rule.count(capacity_message) == 1
-assert "自动续交“继续”一次" in rule
+assert "触发原代理续交“继续”一次" in rule
 assert "保留上下文和进度" in rule
-assert "不得重做、重拆或重启整项任务" in rule
+assert "不重做、重拆或重启整项任务" in rule
 assert "再次失败才按预声明 `Luna→Terra→当前 Sol` 上调" in rule
 assert len(skill) <= 1600
 assert "唯一语义路由规范" in skill
@@ -64,6 +67,12 @@ assert hooks["hooks"]["SessionStart"][0]["hooks"][0]["commandWindows"] == (
 assert hooks["hooks"]["PreToolUse"][0]["hooks"][0]["commandWindows"] == (
     'node "$env:PLUGIN_ROOT\\hooks\\enforce-agent-routing.cjs"'
 )
+assert hooks["hooks"]["SubagentStart"][0]["matcher"] == (
+    "^(luna_worker|terra_worker)$"
+)
+assert hooks["hooks"]["SubagentStart"][0]["hooks"][0]["commandWindows"] == (
+    'node "$env:PLUGIN_ROOT\\hooks\\track-subagent-start.cjs"'
+)
 assert hooks["hooks"]["SubagentStop"][0]["matcher"] == (
     "^(luna_worker|terra_worker)$"
 )
@@ -71,20 +80,26 @@ assert hooks["hooks"]["SubagentStop"][0]["hooks"][0]["commandWindows"] == (
     'node "$env:PLUGIN_ROOT\\hooks\\continue-capacity-subagent.cjs"'
 )
 assert policy["sol"]["spawnAllowed"] is False
-assert policy["schemaVersion"] == 3
+assert policy["schemaVersion"] == 4
 assert policy["sol"]["defaultCoordinatorEffort"] == "high"
 assert policy["sol"]["complexCoordinatorEffort"] == "xhigh"
 assert policy["team"] == {
     "defaultWorkersPerWave": 2,
     "maxWorkersPerWave": 3,
     "maxWorkerAttemptsPerWorkUnit": 2,
+    "maxRootWorkerAttempts": 8,
     "maxFollowupsPerWorker": 1,
     "singleWriterForSharedFiles": True,
     "workersMayDelegate": False,
+    "ledgerFile": ".codex-quality-orchestrator-routing-ledger.json",
+    "pendingDispatchTtlSeconds": 300,
+    "activeDispatchTtlSeconds": 86400,
 }
 assert policy["workPacket"] == {
     "marker": "CQO_WORK_PACKET_V1",
     "required": True,
+    "hostVisibleTaskNamePattern": "^([a-z0-9][a-z0-9_-]{2,39})__w([1-9]\\d{0,2})__s([1-3])of([1-3])__a([12])$",
+    "hostVisibleTaskNameExample": "unit_name__w1__s1of2__a1",
     "allowedTaskIntents": ["mutate", "inspect", "verify"],
     "allowedMutationAuthorities": ["none", "declared_paths"],
     "allowedFallbacks": {
@@ -106,11 +121,20 @@ routing_hook = (PLUGIN_ROOT / "hooks" / "enforce-agent-routing.cjs").read_text(
 capacity_hook = (
     PLUGIN_ROOT / "hooks" / "continue-capacity-subagent.cjs"
 ).read_text(encoding="utf-8")
-assert "validateWorkPacket" in routing_hook
+start_hook = (PLUGIN_ROOT / "hooks" / "track-subagent-start.cjs").read_text(
+    encoding="utf-8"
+)
+ledger_hook = (PLUGIN_ROOT / "hooks" / "routing-ledger.cjs").read_text(
+    encoding="utf-8"
+)
+assert "parseRouteTaskName" in routing_hook
 assert "selected_agent" in routing_hook
 assert "fallback_agent" in routing_hook
 assert "replace(/^\\uFEFF+/, '')" in routing_hook
 assert "replace(/^\\uFEFF+/, '')" in capacity_hook
+assert "replace(/^\\uFEFF+/, '')" in start_hook
+assert "maxRootWorkerAttempts" in ledger_hook
+assert "attempt=1 尚未结束" in ledger_hook
 
 for agent_type, config in policy["namedAgents"].items():
     profile_path = PLUGIN_ROOT / "templates" / "agents" / config["profileFile"]
@@ -129,10 +153,11 @@ luna_instructions = tomllib.loads(
         encoding="utf-8"
     )
 )["developer_instructions"]
-for forbidden_work in ("方案选择", "问题诊断", "跨上下文推断", "不得创建子代理"):
+for forbidden_work in ("重新定义需求", "根因诊断", "跨上下文推断", "不得创建子代理"):
     assert forbidden_work in luna_instructions
 
 assert "中大型实现" in luna_instructions
+assert "局部实现选择与修正" in luna_instructions
 assert "关键只读复核" in tomllib.loads(
     (PLUGIN_ROOT / "templates" / "agents" / "terra-worker.toml").read_text(
         encoding="utf-8"

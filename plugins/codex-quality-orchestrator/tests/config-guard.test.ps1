@@ -12,6 +12,8 @@ function Get-HookBundleHash {
     'hooks\hooks.json',
     'hooks\inject-routing-policy.cjs',
     'hooks\enforce-agent-routing.cjs',
+    'hooks\routing-ledger.cjs',
+    'hooks\track-subagent-start.cjs',
     'hooks\continue-capacity-subagent.cjs',
     'routing-policy.json',
     'references\RULE16.md'
@@ -38,6 +40,7 @@ $fakeCodex = Join-Path $tempRoot 'fake-codex.ps1'
 $pluginId = 'codex-quality-orchestrator@codex-quality-orchestrator'
 $preId = "$pluginId`:hooks/hooks.json:pre_tool_use:0:0"
 $sessionId = "$pluginId`:hooks/hooks.json:session_start:0:0"
+$subagentStartId = "$pluginId`:hooks/hooks.json:subagent_start:0:0"
 $subagentId = "$pluginId`:hooks/hooks.json:subagent_stop:0:0"
 $watchProcess = $null
 $runningOnWindows = [Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
@@ -58,6 +61,7 @@ try {
     trustedHooks = @(
       [ordered]@{ id=$preId; trustedHash=('sha256:' + ('a' * 64)) },
       [ordered]@{ id=$sessionId; trustedHash=('sha256:' + ('b' * 64)) },
+      [ordered]@{ id=$subagentStartId; trustedHash=('sha256:' + ('d' * 64)) },
       [ordered]@{ id=$subagentId; trustedHash=('sha256:' + ('c' * 64)) }
     )
   } | ConvertTo-Json -Depth 6
@@ -102,6 +106,7 @@ throw "Unexpected fake codex call: $($Args -join ' ')"
   $config = Get-Content -LiteralPath $configPath -Raw
   Assert-True $config.Contains($preId) 'PreToolUse trust was not restored'
   Assert-True $config.Contains($sessionId) 'SessionStart trust was not restored'
+  Assert-True $config.Contains($subagentStartId) 'SubagentStart trust was not restored'
   Assert-True $config.Contains($subagentId) 'SubagentStop trust was not restored'
   Assert-True $config.Contains('model = "gpt-5.6-sol"') 'Append-only trust restoration replaced existing config'
 

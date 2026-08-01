@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { registerDispatch } = require('./routing-ledger.cjs');
 
 const pluginRoot = path.resolve(__dirname, '..');
 const policyPath = path.join(pluginRoot, 'routing-policy.json');
@@ -90,131 +91,41 @@ function nonemptyString(value) {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
-function nonemptyStringArray(value) {
-  return (
-    Array.isArray(value) &&
-    value.length > 0 &&
-    value.every((item) => nonemptyString(item))
-  );
-}
+function parseRouteTaskName(value, agentType, selectedEffort, policy) {
+  const match = nonemptyString(value)
+    ? value.match(new RegExp(policy.workPacket.hostVisibleTaskNamePattern))
+    : null;
+  if (!match) {
+    return {
+      error: `task_name 必须使用 ${policy.workPacket.hostVisibleTaskNameExample} 格式。`,
+    };
+  }
 
-function validDeclaredPath(value) {
-  if (!nonemptyString(value)) return false;
-  const normalized = value.replaceAll('\\', '/');
-  return !(
-    normalized.startsWith('/') ||
-    /^[A-Za-z]:/.test(normalized) ||
-    normalized.startsWith('//') ||
-    normalized.split('/').includes('..')
-  );
-}
-
-function extractWorkPacket(message, config) {
-  if (!nonemptyString(message)) return { error: '代理调用缺少 message。' };
-
-  const open = `[${config.marker}]`;
-  const close = `[/${config.marker}]`;
-  const start = message.indexOf(open);
-  const end = start < 0 ? -1 : message.indexOf(close, start + open.length);
-  if (start < 0 || end < 0) {
-    return { error: `message 必须包含完整的 ${config.marker}。` };
+  const waveSize = Number(match[4]);
+  const workerSlot = Number(match[3]);
+  const workerAttempt = Number(match[5]);
+  if (waveSize > policy.team.maxWorkersPerWave || workerSlot > waveSize) {
+    return { error: 'task_name 的波次槽位超出允许范围。' };
   }
   if (
-    message.indexOf(open, start + open.length) >= 0 ||
-    message.indexOf(close, end + close.length) >= 0
+    workerAttempt > policy.team.maxWorkerAttemptsPerWorkUnit ||
+    (agentType === 'luna_worker' && workerAttempt !== 1)
   ) {
-    return { error: `${config.marker} 只能出现一次。` };
+    return { error: 'task_name 的 Worker 尝试次数无效。' };
   }
 
-  try {
-    const packet = JSON.parse(message.slice(start + open.length, end).trim());
-    if (!packet || typeof packet !== 'object' || Array.isArray(packet)) {
-      return { error: `${config.marker} 必须是 JSON 对象。` };
-    }
-    return { packet };
-  } catch (error) {
-    return { error: `${config.marker} 不是有效 JSON：${error.message}` };
-  }
-}
-
-function validateWorkPacket(input, agentType, policy) {
-  const config = policy.workPacket;
-  const extracted = extractWorkPacket(input.message, config);
-  if (extracted.error) return extracted.error;
-  const packet = extracted.packet;
-
-  if (
-    !nonemptyString(packet.work_unit_id) ||
-    !/^[a-z0-9][a-z0-9_-]{2,63}$/.test(packet.work_unit_id)
-  ) {
-    return `${config.marker} 的 work_unit_id 格式无效。`;
-  }
-  if (input.task_name !== packet.work_unit_id) {
-    return 'task_name 必须与工作包 work_unit_id 完全一致。';
-  }
-  if (!nonemptyString(packet.objective)) {
-    return `${config.marker} 缺少 objective。`;
-  }
-  for (const field of ['scope', 'acceptance', 'verification']) {
-    if (!nonemptyStringArray(packet[field])) {
-      return `${config.marker} 的 ${field} 必须是非空字符串数组。`;
-    }
-  }
-  if (
-    !Array.isArray(packet.write_paths) ||
-    !packet.write_paths.every((item) => validDeclaredPath(item))
-  ) {
-    return `${config.marker} 的 write_paths 必须是工作区内相对路径，不能含绝对路径或 ..。`;
-  }
-  if (!config.allowedTaskIntents.includes(packet.task_intent)) {
-    return `${config.marker} 的 task_intent 无效。`;
-  }
-  if (!config.allowedMutationAuthorities.includes(packet.mutation_authority)) {
-    return `${config.marker} 的 mutation_authority 无效。`;
-  }
-  if (packet.mutation_authority === 'none') {
-    if (packet.write_paths.length !== 0 || packet.backup_required !== false) {
-      return '无写入权限的工作包不得声明写入路径或备份操作。';
-    }
-    if (!['inspect', 'verify'].includes(packet.task_intent)) {
-      return 'mutation_authority=none 只允许 inspect 或 verify。';
-    }
-  } else if (
-    packet.task_intent !== 'mutate' ||
-    packet.write_paths.length === 0 ||
-    packet.backup_required !== true
-  ) {
-    return '写入工作包必须声明 mutate、非空 write_paths 和 backup_required=true。';
-  }
-  if (packet.selected_agent !== agentType) {
-    return '工作包 selected_agent 必须与 agent_type 一致。';
-  }
-  const agentConfig = policy.namedAgents[agentType];
-  const allowedEfforts =
-    agentConfig.effortMode === 'fixed'
-      ? [agentConfig.fixedEffort]
-      : agentConfig.allowedEfforts;
-  if (!allowedEfforts.includes(packet.selected_effort)) {
-    return `${config.marker} 的 selected_effort 不适用于 ${agentType}。`;
-  }
-  if (
-    agentConfig.effortMode === 'required' &&
-    input.reasoning_effort !== packet.selected_effort
-  ) {
-    return '工作包 selected_effort 必须与 Terra reasoning_effort 一致。';
-  }
-  if (!config.allowedFallbacks[agentType]?.includes(packet.fallback_agent)) {
-    return `${agentType} 的 fallback_agent 不在预声明链中。`;
-  }
-  if (
-    !Number.isInteger(packet.worker_attempt) ||
-    packet.worker_attempt < 1 ||
-    packet.worker_attempt > policy.team.maxWorkerAttemptsPerWorkUnit ||
-    (agentType === 'luna_worker' && packet.worker_attempt !== 1)
-  ) {
-    return `${config.marker} 的 worker_attempt 无效。`;
-  }
-  return null;
+  return {
+    packet: {
+      work_unit_id: match[1],
+      wave_id: `wave-${match[2]}`,
+      wave_size: waveSize,
+      worker_slot: workerSlot,
+      worker_attempt: workerAttempt,
+      selected_agent: agentType,
+      selected_effort: selectedEffort,
+      fallback_agent: policy.workPacket.allowedFallbacks[agentType][0],
+    },
+  };
 }
 
 function validate(payload, policy, canonical) {
@@ -246,10 +157,8 @@ function validate(payload, policy, canonical) {
       deny(`${input.agent_type} 已由代理配置固定模型，不得在调用中覆盖。`);
       return;
     }
-
-    const packetError = validateWorkPacket(input, input.agent_type, policy);
-    if (packetError) {
-      deny(packetError);
+    if (!nonemptyString(input.message)) {
+      deny('代理调用缺少 message。');
       return;
     }
 
@@ -259,6 +168,7 @@ function validate(payload, policy, canonical) {
       return;
     }
 
+    let selectedEffort;
     if (config.effortMode === 'required') {
       if (
         typeof input.reasoning_effort !== 'string' ||
@@ -268,13 +178,28 @@ function validate(payload, policy, canonical) {
           `${input.agent_type} 只允许 reasoning_effort=` +
             `${config.allowedEfforts.join(' 或 ')}。`,
         );
+        return;
       }
+      selectedEffort = input.reasoning_effort;
+    } else if (hasOwn(input, 'reasoning_effort')) {
+      deny(`${input.agent_type} 已由代理配置固定推理档位，不得在调用中覆盖。`);
       return;
+    } else {
+      selectedEffort = config.fixedEffort;
     }
 
-    if (hasOwn(input, 'reasoning_effort')) {
-      deny(`${input.agent_type} 已由代理配置固定推理档位，不得在调用中覆盖。`);
+    const route = parseRouteTaskName(
+      input.task_name,
+      input.agent_type,
+      selectedEffort,
+      policy,
+    );
+    if (route.error) {
+      deny(route.error);
+      return;
     }
+    const ledgerError = registerDispatch(payload, route.packet, policy);
+    if (ledgerError) deny(ledgerError);
     return;
   }
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 - 2026-08-01
+
+- Prefer Luna Max for any frozen, independently verifiable work unit it can reliably complete, including medium and large implementation, multi-file edits, routine debugging, tests, scans, and batch work.
+- Add a session-scoped native routing ledger that enforces unique work units, frozen wave slots, at most three pending or active workers, two attempts per work unit, and eight worker calls per root task.
+- Track native worker lifecycle through `SubagentStart` and `SubagentStop`, preventing a fallback attempt from starting before the first attempt has ended.
+- Extend the config guard to preserve the separately approved `SubagentStart` trust record and bind recovery to the new ledger Hook files.
+- Keep Sol as the semantic router and final quality owner; the Hook validates frozen decisions and deterministic runtime limits without keyword-based task classification.
+
 ## 0.2.1 - 2026-08-01
 
 - Require a compact `CQO_WORK_PACKET_V1` for every Worker dispatch so the Hook can validate frozen scope, permissions, acceptance, verification, selected agent, fallback, attempts, and backup requirements without trying to infer task semantics.
