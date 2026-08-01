@@ -118,9 +118,9 @@ codex plugin list --json
 安装器写入范围中的代理配置只有 `%CODEX_HOME%\agents` 中的三个具名代理；同时会在 `%CODEX_HOME%` 写入安装状态、运行时锁和必要的 Force 备份：
 
 - 缺少文件时创建，并记录为插件所有。
-- 文件符合契约时保留，不声明所有权。
-- 文件冲突时默认停止，不修改任何文件。
-- 使用 `-Force` 时先建立带时间戳和 `SHA256SUMS` 的备份，再替换。
+- 内容与模板相同的外部文件默认保留，不声明所有权；插件自有文件的模板内容变化会先备份再刷新。
+- 内容不同但契约兼容的外部文件默认保留；其他冲突默认停止，不修改任何文件。
+- 使用 `-Force` 时先建立带时间戳和 `SHA256SUMS` 的备份，再替换或接管兼容外部文件。
 
 安装状态保存在：
 
@@ -188,7 +188,7 @@ codex plugin marketplace remove codex-quality-orchestrator --json
 | 插件创建且未修改 | 删除 |
 | `-Force` 替换且未再修改 | 恢复安装前版本 |
 | 用户原本已有 | 保留 |
-| 安装后被用户修改 | 保留 |
+| 安装后被用户修改 | 保留并移除 ownership 状态，后续普通安装仍按外部文件保留 |
 | 所有权状态缺失 | 默认保留 |
 
 恢复路径必须位于 `agents` 目录内，不能通过状态文件跳出目录。
@@ -222,7 +222,7 @@ powershell -NoProfile -ExecutionPolicy Bypass `
 ## 8. 发布核验
 
 - 仓库：[9holy/codex-quality-orchestrator](https://github.com/9holy/codex-quality-orchestrator)
-- 目标版本：`v0.1.4`
+- 目标版本：`v0.1.5`
 - Release 资产与 SHA-256 必须以该版本的 GitHub Release 页面为准。
 - 发布完成只以当前提交的 Windows、Ubuntu Actions 均通过为准，不能沿用旧提交结果。
 - CI 必须把 Windows 生成的发布 ZIP 交给 Ubuntu 解压并复跑独立验证，不能只验证各平台自行生成的产物。

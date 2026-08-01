@@ -118,6 +118,7 @@ try {
     $config = $property.Value
     $source = Join-Path $templateDir $config.profileFile
     $target = Join-Path $agentsDir $config.profileFile
+    $fileName = [string]$config.profileFile
     if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
       throw "Agent template does not exist: $source"
     }
@@ -128,11 +129,24 @@ try {
     }
 
     $reason = Test-ProfileContract $target $config $agentType
-    if ($null -eq $reason) {
+    $contentMatches =
+      (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash -ceq
+      (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash
+    if ($null -eq $reason -and $contentMatches -and
+        (-not $Force -or $stateProfiles.ContainsKey($fileName))) {
       $actions += [pscustomobject]@{ Agent=$agentType; Source=$source; Target=$target; Action='keep'; Reason=$null }
-    } else {
-      $actions += [pscustomobject]@{ Agent=$agentType; Source=$source; Target=$target; Action='replace'; Reason=$reason }
+      continue
     }
+    if ($null -eq $reason -and $stateProfiles.ContainsKey($fileName)) {
+      $actions += [pscustomobject]@{ Agent=$agentType; Source=$source; Target=$target; Action='refresh'; Reason='plugin-owned profile content changed' }
+      continue
+    }
+    if ($null -eq $reason -and -not $Force) {
+      $actions += [pscustomobject]@{ Agent=$agentType; Source=$source; Target=$target; Action='keep'; Reason='compatible external profile' }
+      continue
+    }
+    $replaceReason = if ($null -eq $reason) { 'forced adoption of compatible external profile' } else { $reason }
+    $actions += [pscustomobject]@{ Agent=$agentType; Source=$source; Target=$target; Action='replace'; Reason=$replaceReason }
   }
 
   $conflicts = @($actions | Where-Object { $_.Action -eq 'replace' })
@@ -150,7 +164,7 @@ try {
     }
 
     $backup = $null
-    if ($action.Action -eq 'replace') {
+    if ($action.Action -in @('replace', 'refresh')) {
       $stamp = Get-Date -Format 'yyyyMMdd-HHmmssfff'
       $backup = Join-Path $agentsDir ((Split-Path -Leaf $action.Target) + '-' + $stamp)
       New-Item -ItemType Directory -Path $backup -ErrorAction Stop | Out-Null

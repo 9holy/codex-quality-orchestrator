@@ -159,6 +159,8 @@ try {
     $templateHash = (Get-FileHash -LiteralPath $template.FullName -Algorithm SHA256).Hash
     $targetHash = (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash
     if ($templateHash -cne $targetHash) {
+      $remainingProfiles.Remove($template.Name)
+      Write-InstallState $statePath $remainingProfiles
       $results += [pscustomobject]@{
         File=$template.Name
         Status='preserved-modified'

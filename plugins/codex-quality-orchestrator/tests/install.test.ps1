@@ -30,6 +30,21 @@ try {
   $second = ((& $installScript -CodexHome $freshHome) -join [Environment]::NewLine) | ConvertFrom-Json
   Assert-True (@($second.Results | Where-Object { $_.Status -eq 'kept' -and $_.Ownership -eq 'created' }).Count -eq 3) 'Second install did not retain ownership'
 
+  $freshLuna = Join-Path $freshHome 'agents\luna-worker.toml'
+  $localEdit = [IO.File]::ReadAllText($freshLuna, [Text.UTF8Encoding]::new($false)) + "`n# local managed edit`n"
+  [IO.File]::WriteAllText($freshLuna, $localEdit, [Text.UTF8Encoding]::new($false))
+  $localEditHash = (Get-FileHash -LiteralPath $freshLuna -Algorithm SHA256).Hash
+  $refreshedInstall = ((& $installScript -CodexHome $freshHome) -join [Environment]::NewLine) | ConvertFrom-Json
+  $refreshedProfile = @($refreshedInstall.Results | Where-Object { $_.Agent -ceq 'luna_worker' })
+  $refreshEvidence = $refreshedInstall.Results | ConvertTo-Json -Compress
+  Assert-True ($refreshedProfile.Count -eq 1) "Profile refresh returned an unexpected result set: $refreshEvidence"
+  Assert-True ($refreshedProfile[0].Status -ceq 'refresh') "Plugin-owned profile content was not refreshed: $refreshEvidence"
+  Assert-True ($refreshedProfile[0].Ownership -ceq 'created') "Profile refresh changed ownership: $refreshEvidence"
+  Assert-True (-not [string]::IsNullOrWhiteSpace($refreshedProfile[0].Backup)) 'Profile refresh did not create a backup'
+  $refreshBackupFile = Join-Path $refreshedProfile[0].Backup 'luna-worker.toml'
+  Assert-True ((Get-FileHash -LiteralPath $refreshBackupFile -Algorithm SHA256).Hash -ceq $localEditHash) 'Profile refresh backup did not preserve prior content'
+  Assert-True ((Get-FileHash -LiteralPath $freshLuna -Algorithm SHA256).Hash -ceq (Get-FileHash -LiteralPath $lunaTemplate -Algorithm SHA256).Hash) 'Profile refresh did not install the current template'
+
   $freshRemoved = ((& $uninstallScript -CodexHome $freshHome) -join [Environment]::NewLine) | ConvertFrom-Json
   Assert-True (@($freshRemoved.Results | Where-Object { $_.Status -eq 'removed' }).Count -eq 3) 'Fresh uninstall did not remove three owned profiles'
   Assert-True (@(Get-ChildItem -LiteralPath (Join-Path $freshHome 'agents') -Filter '*.toml' -File).Count -eq 0) 'Fresh uninstall left owned profiles'
@@ -41,12 +56,28 @@ try {
   foreach ($template in Get-ChildItem -LiteralPath $templateDir -Filter '*.toml' -File) {
     Copy-Item -LiteralPath $template.FullName -Destination (Join-Path $externalAgents $template.Name)
   }
+  $externalLuna = Join-Path $externalAgents 'luna-worker.toml'
+  $externalEdit = [IO.File]::ReadAllText($externalLuna, [Text.UTF8Encoding]::new($false)) + "`n# external custom edit`n"
+  [IO.File]::WriteAllText($externalLuna, $externalEdit, [Text.UTF8Encoding]::new($false))
+  $externalHashes = @{}
+  foreach ($profile in Get-ChildItem -LiteralPath $externalAgents -Filter '*.toml' -File) {
+    $externalHashes[$profile.Name] = (Get-FileHash -LiteralPath $profile.FullName -Algorithm SHA256).Hash
+  }
   $externalInstall = ((& $installScript -CodexHome $externalHome) -join [Environment]::NewLine) | ConvertFrom-Json
   Assert-True (@($externalInstall.Results | Where-Object { $_.Status -eq 'kept' -and $_.Ownership -eq 'external' }).Count -eq 3) 'Compatible external profiles were incorrectly claimed'
+  Assert-True ((Get-FileHash -LiteralPath $externalLuna -Algorithm SHA256).Hash -ceq $externalHashes['luna-worker.toml']) 'Compatible external profile was overwritten'
   Assert-True (-not (Test-Path -LiteralPath (Join-Path $externalHome '.codex-quality-orchestrator.install-state.json'))) 'Compatible external profiles created ownership state'
   $externalUninstall = ((& $uninstallScript -CodexHome $externalHome) -join [Environment]::NewLine) | ConvertFrom-Json
   Assert-True (@($externalUninstall.Results | Where-Object { $_.Status -eq 'preserved-not-owned' }).Count -eq 3) 'Uninstall did not preserve external profiles'
   Assert-True (@(Get-ChildItem -LiteralPath $externalAgents -Filter '*.toml' -File).Count -eq 3) 'Uninstall removed an external profile'
+
+  $adoptedInstall = ((& $installScript -CodexHome $externalHome -Force) -join [Environment]::NewLine) | ConvertFrom-Json
+  Assert-True (@($adoptedInstall.Results | Where-Object { $_.Status -eq 'replace' -and $_.Ownership -eq 'replaced' }).Count -eq 3) 'Force install did not adopt three compatible external profiles'
+  $adoptedUninstall = ((& $uninstallScript -CodexHome $externalHome) -join [Environment]::NewLine) | ConvertFrom-Json
+  Assert-True (@($adoptedUninstall.Results | Where-Object { $_.Status -eq 'restored-original' }).Count -eq 3) 'Force uninstall did not restore adopted profiles'
+  foreach ($profile in Get-ChildItem -LiteralPath $externalAgents -Filter '*.toml' -File) {
+    Assert-True ((Get-FileHash -LiteralPath $profile.FullName -Algorithm SHA256).Hash -ceq $externalHashes[$profile.Name]) "Force uninstall restored the wrong external profile: $($profile.Name)"
+  }
 
   $forceHome = Join-Path $tempRoot 'force\.codex'
   $forceAgents = Join-Path $forceHome 'agents'
@@ -77,12 +108,16 @@ try {
   $modifiedHome = Join-Path $tempRoot 'modified\.codex'
   & $installScript -CodexHome $modifiedHome | Out-Null
   $modifiedLuna = Join-Path $modifiedHome 'agents\luna-worker.toml'
-  Set-ConflictingLunaProfile $lunaTemplate $modifiedLuna
+  $modifiedText = [IO.File]::ReadAllText($modifiedLuna, [Text.UTF8Encoding]::new($false)) + "`n# user modified but contract compatible`n"
+  [IO.File]::WriteAllText($modifiedLuna, $modifiedText, [Text.UTF8Encoding]::new($false))
   $modifiedHash = (Get-FileHash -LiteralPath $modifiedLuna -Algorithm SHA256).Hash
   $modifiedUninstall = ((& $uninstallScript -CodexHome $modifiedHome) -join [Environment]::NewLine) | ConvertFrom-Json
   Assert-True (@($modifiedUninstall.Results | Where-Object { $_.Status -eq 'preserved-modified' }).Count -eq 1) 'Uninstall did not preserve a modified owned profile'
   Assert-True ((Get-FileHash -LiteralPath $modifiedLuna -Algorithm SHA256).Hash -ceq $modifiedHash) 'Uninstall changed a modified owned profile'
-  Assert-True (Test-Path -LiteralPath (Join-Path $modifiedHome '.codex-quality-orchestrator.install-state.json')) 'Modified ownership state was discarded'
+  Assert-True (-not (Test-Path -LiteralPath (Join-Path $modifiedHome '.codex-quality-orchestrator.install-state.json'))) 'Modified ownership state was not discarded'
+  $modifiedReinstall = ((& $installScript -CodexHome $modifiedHome) -join [Environment]::NewLine) | ConvertFrom-Json
+  Assert-True (@($modifiedReinstall.Results | Where-Object { $_.Agent -eq 'luna_worker' -and $_.Status -eq 'kept' -and $_.Ownership -eq 'external' }).Count -eq 1) 'Reinstall did not treat the preserved custom profile as external'
+  Assert-True ((Get-FileHash -LiteralPath $modifiedLuna -Algorithm SHA256).Hash -ceq $modifiedHash) 'Reinstall overwrote a preserved custom profile'
 
   $lockedHome = Join-Path $tempRoot 'locked\.codex'
   New-Item -ItemType Directory -Path $lockedHome -Force | Out-Null
@@ -100,7 +135,7 @@ try {
   }
   Assert-True ($lockErrorType -ceq 'System.IO.IOException') 'Installer read state or targets before acquiring the install lock'
 
-  Write-Output 'PASS ownership-aware install, lock ordering, idempotency, conflict rejection, force restore, and guarded uninstall'
+  Write-Output 'PASS ownership-aware install, owned refresh, force adoption, lock ordering, conflict rejection, and guarded uninstall'
 } finally {
   if (Test-Path -LiteralPath $tempRoot) {
     $resolved = [IO.Path]::GetFullPath($tempRoot)

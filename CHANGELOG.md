@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.5 - 2026-08-01
+
+- Refresh plugin-owned agent profiles when template instructions change.
+- Preserve compatible external profiles by default; `-Force` backs them up and adopts them for managed updates.
+- Remove ownership state when uninstall preserves a user-modified profile, preventing a later install from overwriting it.
+
 ## 0.1.4 - 2026-08-01
 
 - Reduce healthy SessionStart model context to `[CQO_ACTIVE]` and remove the stale-prone root-default advisory.
