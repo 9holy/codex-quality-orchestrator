@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import pathlib
 import tomllib
 
@@ -16,48 +17,41 @@ policy = load_json(PLUGIN_ROOT / "routing-policy.json")
 manifest = load_json(PLUGIN_ROOT / ".codex-plugin" / "plugin.json")
 hooks = load_json(PLUGIN_ROOT / "hooks" / "hooks.json")
 rule = (PLUGIN_ROOT / "references" / "RULE16.md").read_text(encoding="utf-8")
-skill = (
-    PLUGIN_ROOT / "skills" / "codex-quality-orchestrator" / "SKILL.md"
-).read_text(encoding="utf-8")
+skill_path = PLUGIN_ROOT / "skills" / "codex-quality-orchestrator" / "SKILL.md"
+skill = skill_path.read_text(encoding="utf-8")
 
 assert manifest["name"] == "codex-quality-orchestrator"
-assert manifest["version"] == policy["policyVersion"]
-assert manifest["version"] == "0.1.6"
+base_version, separator, cachebuster = manifest["version"].partition("+codex.")
+assert base_version == policy["policyVersion"] == "0.2.0"
+assert not separator or cachebuster
+assert list((PLUGIN_ROOT / "skills").rglob("SKILL.md")) == [skill_path]
 assert manifest["interface"]["defaultPrompt"] == [
     "Audit my current model routing configuration.",
     "Verify that the orchestrator plugin and hooks are active.",
 ]
+assert "Sol 主控" in rule
 assert "路由预检" in rule
-assert "Sol 负责理解、路由预检、分配、整合和最终验收" in rule
-assert "提供商和错误" in rule
-assert "按完整工作单元最高要求" in rule
-assert "文件数、行数和验证步骤仅作辅助判断" in rule
-assert "同单元生产执行者和最低层级稳定" in rule
-assert "交回 Sol 验收不算改派" in rule
-assert "目标、范围或验收不清由 Sol" in rule
-assert "边界清楚但 Luna/Terra 难判选 Terra" in rule
+assert "预计总算力成本" in rule
+assert "完整工作单元的最高要求" in rule
+assert "每波默认 2、最多 3 个 Worker" in rule
+assert "共享文件单写者" in rule
+assert "Worker 不得继续下派" in rule
+assert "当前 Sol 直接接管" in rule
+assert "不创建 Sol 子代理" in rule
+assert "关键变更另派 Terra Max 只读复核" in rule
+assert "gpt-5.6-luna / max" in rule
+assert "gpt-5.6-terra / xhigh|max" in rule
 assert "生产数据、不可逆迁移、公共数据契约" in rule
-assert "需求模糊、重复失败或其他高风险用 `gpt-5.6-sol / max`" in rule
-assert "Luna 不因短而用" in rule
-assert "无需判断、诊断或跨上下文推断" in rule
-assert "中等生产默认下派者" in rule
-assert "合格方案中算力开支最低者优先" in rule
-assert "可独立验收且可靠胜任的单元必须下派" in rule
-assert "不能因 Sol 也能完成而保留" in rule
-assert "插件不改已启动根模型/档位" in rule
+assert "插件不改已启动根模型或档位" in rule
 assert len(rule.strip()) <= 1500
 capacity_message = "Selected model is at capacity. Please try a different model."
 assert capacity_message in rule
 assert rule.count(capacity_message) == 1
-assert "仅错误包含精确消息" in rule
-assert "保留已完成结果、上下文和计数" in rule
-assert "相同 `agent_type`、模型、`reasoning_effort`、`fork_turns` 和输入原样重试一次" in rule
-assert "只重试失败的同一次代理调用" in rule
-assert "不重做已完成工作、不重新拆分或重启整个任务" in rule
-assert "第二次仍包含该消息才 Luna→Terra→Sol 上调" in rule
-assert "Sol 两次即停" in rule
-assert "每层仅一次，改提示词不重置" in rule
-assert "除该消息外，所有错误均公开模型、提供商和错误并上调或停止" in rule
+assert "自动同级续交一次" in rule
+assert "向原代理提交“继续”" in rule
+assert "保留上下文和进度" in rule
+assert "不得重做已完成工作、重新拆分或重启整项任务" in rule
+assert "第二次仍失败才按 Luna→Terra→当前 Sol 升级" in rule
 assert len(skill) <= 1600
 assert "唯一语义路由规范" in skill
 assert "不要在 Skill 中复述" in skill
@@ -69,6 +63,30 @@ assert hooks["hooks"]["SessionStart"][0]["hooks"][0]["commandWindows"] == (
 assert hooks["hooks"]["PreToolUse"][0]["hooks"][0]["commandWindows"] == (
     'node "$env:PLUGIN_ROOT\\hooks\\enforce-agent-routing.cjs"'
 )
+assert hooks["hooks"]["SubagentStop"][0]["matcher"] == (
+    "^(luna_worker|terra_worker)$"
+)
+assert hooks["hooks"]["SubagentStop"][0]["hooks"][0]["commandWindows"] == (
+    'node "$env:PLUGIN_ROOT\\hooks\\continue-capacity-subagent.cjs"'
+)
+assert policy["sol"]["spawnAllowed"] is False
+assert policy["sol"]["defaultCoordinatorEffort"] == "high"
+assert policy["sol"]["complexCoordinatorEffort"] == "xhigh"
+assert policy["team"] == {
+    "defaultWorkersPerWave": 2,
+    "maxWorkersPerWave": 3,
+    "maxWorkerAttemptsPerWorkUnit": 2,
+    "maxFollowupsPerWorker": 1,
+    "singleWriterForSharedFiles": True,
+    "workersMayDelegate": False,
+}
+assert policy["capacityRecovery"] == {
+    "message": capacity_message,
+    "automaticContinuationPrompt": "继续",
+    "maxAutomaticContinuationsPerSubagent": 1,
+    "escalationOrder": ["luna_worker", "terra_worker", "sol_controller"],
+}
+assert set(policy["namedAgents"]) == {"luna_worker", "terra_worker"}
 
 for agent_type, config in policy["namedAgents"].items():
     profile_path = PLUGIN_ROOT / "templates" / "agents" / config["profileFile"]
@@ -87,8 +105,28 @@ luna_instructions = tomllib.loads(
         encoding="utf-8"
     )
 )["developer_instructions"]
-for forbidden_work in ("方案选择", "问题诊断", "跨上下文推断"):
+for forbidden_work in ("方案选择", "问题诊断", "跨上下文推断", "不得创建子代理"):
     assert forbidden_work in luna_instructions
+
+assert "中大型实现" in luna_instructions
+assert "关键只读复核" in tomllib.loads(
+    (PLUGIN_ROOT / "templates" / "agents" / "terra-worker.toml").read_text(
+        encoding="utf-8"
+    )
+)["developer_instructions"]
+
+retired = policy["retiredProfiles"]
+assert retired == [
+    {
+        "agentType": "sol_reviewer",
+        "profileFile": "sol-reviewer.toml",
+        "templateSha256": "55c19086f24511a0a4ac88c4860c4c14e67cfacfb8e48eb45dcb3d1204895c11",
+    }
+]
+retired_archive = PLUGIN_ROOT / "templates" / "retired" / "sol-reviewer.toml.bak"
+assert retired_archive.is_file()
+assert hashlib.sha256(retired_archive.read_bytes()).hexdigest() == retired[0]["templateSha256"]
+assert not (PLUGIN_ROOT / "templates" / "agents" / "sol-reviewer.toml").exists()
 
 for effort in policy["sol"]["allowedEfforts"]:
     assert f"`{effort}`" in rule
@@ -100,4 +138,4 @@ for path in PLUGIN_ROOT.rglob("*"):
     if path.is_file() and path.suffix.lower() in {".md", ".json", ".toml", ".cjs", ".ps1"}:
         assert "[TODO:" not in path.read_text(encoding="utf-8"), path
 
-print("PASS manifest, Rule 16 capacity retry policy, and agent profiles")
+print("PASS team routing, capacity continuation, retired profile, and agent contracts")

@@ -6,15 +6,15 @@
 
 插件不是自动替模型做语义判断的决策树。任务含义、风险、目标模型是否能可靠胜任，由 Sol 根据完整上下文判断；代码只校验已经确定的调用契约。
 
-质量、胜任能力和风险边界是硬约束；满足这些约束后选择算力开支最低的执行组合，速度最后考虑。工作目标、范围或验收边界不清时直接保留给 Sol；仅在边界明确而 Luna 与 Terra 的能力档位难以判断时选择 Terra。不静默降级，也不为了使用子代理而拆分短任务。
+质量、胜任能力和风险边界是硬约束；满足后按预计总算力成本选择最低者，计入重试、返工和复核。只要 Luna Max 能可靠胜任，就优先承担清晰执行量；需要实现判断、诊断、跨上下文推断或疑难调试时直接使用 Terra，不能用 Luna 试错制造返工。
 
 短任务必须同时满足目标与验收无歧义、低风险、无需方案选择或诊断、上下文很少且可直接验证；改动大小、文件数量或验证步骤数量只能作为辅助信号。架构、安全、公共接口、生产数据、不可逆操作等高风险事项无论大小都不是短任务。
 
-对每个非短任务，Sol 必须在生产执行前按完整工作单元的最高要求公开一次路由判定。只有输入输出与步骤固定且无需判断的机械子任务才交给 Luna；需要实现判断、多步骤上下文、调试、测试或已裁定接口下普通集成的边界清晰工作交给 Terra；语义消歧、架构、高风险、生产数据、跨代理最终集成与最终裁决保留给 Sol。
+对每个非短任务，Sol 必须在生产执行前按完整工作单元的最高要求公开一次路由判定。边界冻结、清晰、可独立验收的中大型实现、测试、扫描和批量工作优先交给 Luna Max；判断型工作交给 Terra；语义消歧、架构、高风险、生产数据、跨代理最终集成与最终裁决保留给 Sol。
 
-同一工作单元的生产执行者及其最低能力层级在执行期间保持稳定，仅在目标、范围或风险实质变化、上下文越界、连续验证失败或选定链路不可用时重新预检，并且只向上升级。代理完成后正常交回 Sol 整合、复核和最终验收不属于改派；新的独立工作单元单独判定。完成语义判定后再检查提供商与认证，不能因目标模型不可用而改派更低层级。这是质量判断，不是代理调用配额。
+同一工作单元的执行者和最低能力层级保持稳定，只在实质边界变化、上下文越界、有限修正失败或链路不可用时向上升级。无法安全拆分、Luna/Terra 不能可靠胜任、有限修正仍失败或全局集成必须由主控处理时，当前 Sol 直接接管该工作单元或整项任务，不创建 Sol 子代理。
 
-容量错误是唯一的同级重试例外：错误包含精确消息 `Selected model is at capacity. Please try a different model.` 时，只重试失败的同一次代理调用，保留已完成结果、上下文和计数，不重做已完成工作、不重新拆分或重启整个任务；保留同一工作单元的 `agent_type`、模型、`reasoning_effort`、`fork_turns` 和输入原样重试一次。第二次仍包含该消息才按 Luna→Terra→Sol 上调，Sol 第二次失败则停止。每个层级仅重试一次，改变提示词不能重置次数。认证、余额、越界、模型不可用和其他错误仍立即公开并上调或停止。以 [Rule 16](../plugins/codex-quality-orchestrator/references/RULE16.md) 为唯一模型语义规范。
+容量错误是唯一同级续交例外：子代理最后消息包含精确文本 `Selected model is at capacity. Please try a different model.` 时，`SubagentStop` 首次自动向原子代理提交“继续”，保留原上下文与进度；`stop_hook_active` 防止第二次续交。未创建成功时才以原参数重试同一工作包一次。第二次仍失败才按 Luna→Terra→当前 Sol 升级，不重做已完成工作、不重新拆分或重启整项任务。
 
 ## 2. 默认工作流
 
@@ -22,62 +22,61 @@
 flowchart TD
     A[用户任务] --> B{短任务?}
     B -->|是| C[当前主代理直接完成]
-    B -->|否| D[Sol xhigh 理解需求和风险]
+    B -->|否| D[Sol high 默认主控]
     D --> E{高风险或关键裁决?}
     E -->|是| F[Sol max]
     E -->|否| I{存在可独立验收的工作单元?}
     F --> I
-    I -->|否| H[Sol 执行]
-    I -->|是| G{目标代理能可靠胜任且不降低质量?}
-    G -->|否| H
-    G -->|是| J[Terra 或 Luna 执行]
+    I -->|否| H[当前 Sol 兜底]
+    I -->|是| G{清晰且 Luna Max 可胜任?}
+    G -->|是| J[2–3 个 Luna/Terra Worker 分波执行]
+    G -->|否| O{Terra 可胜任?}
+    O -->|是| J
+    O -->|否| H
     J --> K[Sol 检查实际差异并复跑验证]
     K --> L{关键变更?}
-    L -->|是| M[sol_reviewer 独立只读审核]
+    L -->|是| M[Terra Max 独立只读复核]
     L -->|否| N[Sol 最终验收]
     M --> N
     H --> N
 ```
 
-只有至少两个工作单元可以安全并行，且并行确实提升质量或节省明显时间时才并行。写入型子任务必须明确文件范围、成功标准、验证命令和备份状态。
+只有至少两个工作单元可以安全并行，且收益高于协调成本时才组队。每波默认 2、最多 3 个 Worker；工作包必须明确文件所有权、输入输出、成功标准、验证命令和备份，保证共享文件单写者。Worker 不得继续下派。
 
 ### 2.1 根任务档位边界
 
 根任务模型和推理档位在插件 Hook 运行前由桌面模型选择器、外部配置管理器或 `config.toml` 决定。插件只能约束后续子代理调用，不能把已经启动的 `Sol / max` 或 `Sol / ultra` 根任务自动改成 `xhigh`。
 
-因此，`Sol / xhigh` 是普通非短任务的新任务默认建议，`max` 用于高风险任务，`ultra` 仅用于极少数超复杂长任务。即使根任务已经使用 `max` 或 `ultra`，仍应按胜任能力下派合适的工作单元。
+因此，`Sol / high` 是常规团队开发默认建议，`xhigh` 用于复杂规划和整合，`max` 用于高风险裁决，`ultra` 用于极少数“查清并修复一整类问题”的系统性多波次任务。即使根任务档位较高，仍应把可靠胜任的工作包派给成本更低的 Worker。
 
 ## 3. 模型矩阵
 
 | 角色 | 模型 | 推理档位 | 适用任务 |
 |---|---|---|---|
 | Sol 直接分析 | `gpt-5.6-sol` | `medium` | 边界清晰的直接分析，不负责多模型统筹或关键验收 |
-| Sol 常规执行 | `gpt-5.6-sol` | `high` | 常规多步骤任务、小范围调试和集成 |
-| Sol 默认统筹 | `gpt-5.6-sol` | `xhigh` | 普通非短任务的理解、规划、整合和常规验收 |
+| Sol 默认主控 | `gpt-5.6-sol` | `high` | 常规团队规划、拆解、整合和验收 |
+| Sol 复杂主控 | `gpt-5.6-sol` | `xhigh` | 复杂规划、跨模块整合和严格验收 |
 | Sol 高风险 | `gpt-5.6-sol` | `max` | 架构、安全、公共接口、生产数据、不可逆迁移、公共数据契约、疑难问题和最终裁决 |
-| Sol 极复杂 | `gpt-5.6-sol` | `ultra` | 极少数超复杂长任务，不作为日常默认 |
-| Terra | `gpt-5.6-terra` | `xhigh` 或 `max` | 多文件实现、调试、测试、文档分析、代码审查及已裁定接口下的普通集成实现 |
-| Luna | `gpt-5.6-luna` | 固定 `max` | 输入输出与步骤固定、低风险、可机械验证的简单子任务 |
-| 独立审核 | `gpt-5.6-sol` | 固定 `xhigh`、只读 | 关键变更的独立审核 |
+| Sol 系统性主控 | `gpt-5.6-sol` | `ultra` | 极少数系统性多波次任务，不作为 Worker |
+| Terra | `gpt-5.6-terra` | `xhigh` 或 `max` | 判断型实现、诊断、疑难调试、跨上下文推断和关键只读复核 |
+| Luna | `gpt-5.6-luna` | 固定 `max` | 边界冻结、清晰、可独立验收的中大型实现、测试、扫描和批量工作 |
 
 `gpt-5.5`、裸 Terra、裸 Luna 和未登记模型禁止下派。
 
 ### 3.1 禁止范围
 
-Luna 不处理模糊需求、诊断、架构、安全、公共接口、生产数据或最终裁决。Terra 可以处理测试数据、配置数据和已裁定接口下的普通集成实现，但不处理生产数据、不可逆迁移、公共数据契约或最终质量裁决。`sol_reviewer` 不写入文件，也不能代替统筹 Sol 做最终决定。
+Luna 不处理消歧、诊断、架构、安全、公共接口、生产数据或最终裁决。Terra 不处理生产数据、不可逆迁移、公共数据契约或最终质量裁决；收到关键只读复核工作包时不得写入文件。Sol 子代理一律禁止。
 
 ### 3.2 调用契约
 
-具名代理的模型由 TOML 固定，调用时不能用 `model` 覆盖。Terra 的档位在允许的 `xhigh/max` 中由 Sol 按任务选择；Luna 和 reviewer 的档位由 TOML 固定：
+具名代理的模型由 TOML 固定，调用时不能用 `model` 覆盖。Terra 档位由 Sol 在 `xhigh/max` 中选择，Luna 固定 `max`：
 
 ```text
 terra_worker: agent_type + reasoning_effort(xhigh|max) + fork_turns
 luna_worker: agent_type + fork_turns
-sol_reviewer: agent_type + fork_turns
-Sol 升级: model(gpt-5.6-sol) + reasoning_effort + fork_turns
 ```
 
-`fork_turns` 只能是 `"none"` 或正整数数字字符串。Luna 和 reviewer 不得在调用参数中覆盖固定推理档位；Terra 必须显式传入允许的 `xhigh` 或 `max`。
+`fork_turns` 只能是 `"none"` 或正整数数字字符串。Luna 不得覆盖固定推理档位；Terra 必须显式传入 `xhigh` 或 `max`。
 
 ## 4. Hook 的职责
 
@@ -85,7 +84,7 @@ Sol 升级: model(gpt-5.6-sol) + reasoning_effort + fork_turns
 
 - 加载插件内的 Rule 16。
 - 检查全局 `AGENTS.md` 的 Rule 16 是否一致。
-- 检查 Terra、Luna、reviewer 配置是否缺失。
+- 检查 Terra 和 Luna 配置是否缺失。
 - 规则匹配且代理配置完整时只输出 `[CQO_ACTIVE]`；不重复注入 Rule 16，也不报告可能被任务选择器覆盖的根默认值。
 - 发现冲突或缺失时公开报告，不静默修复或回退。
 
@@ -103,6 +102,10 @@ Sol 升级: model(gpt-5.6-sol) + reasoning_effort + fork_turns
 
 非法调用直接拒绝并说明原因。Hook 不判断任务语义、不自动改派、不静默降级。
 
+### SubagentStop
+
+仅匹配 `luna_worker` 和 `terra_worker`。首次检测到精确容量消息且 `stop_hook_active=false` 时返回 `decision=block` 与提示“继续”，由 Codex 自动在原子代理上下文创建一次续交；第二次不再拦截，交回主控升级。
+
 `codex-auto-review / low` 是 Codex 系统权限审查，不属于本插件的工作模型矩阵。
 
 ## 5. 安装生命周期
@@ -117,7 +120,7 @@ powershell -NoProfile -ExecutionPolicy Bypass `
 codex plugin list --json
 ```
 
-安装器写入范围中的代理配置只有 `%CODEX_HOME%\agents` 中的三个具名代理；同时会在 `%CODEX_HOME%` 写入安装状态、运行时锁和必要的 Force 备份：
+安装器写入范围中的代理配置只有 `%CODEX_HOME%\agents` 中的两个 Worker；升级时安全退役插件管理的 `sol_reviewer`，并把插件状态引用的旧 `.toml` 备份迁移为不可加载的 `.toml.bak`：
 
 - 缺少文件时创建，并记录为插件所有。
 - 内容与模板相同的外部文件默认保留，不声明所有权；插件自有文件的模板内容变化会先备份再刷新。
@@ -142,7 +145,7 @@ codex plugin list --json
 
 运行时验收必须以 `codex plugin list --json` 中的已安装、已启用记录为准。缓存目录可能只是旧安装残留，不能证明插件或 Hook 正在生效。
 
-如果外部提供商切换器、同步工具或脚本会整体替换 `config.toml`，先在 `/hooks` 人工批准当前两项 Hook，再启用通用配置守护器：
+如果外部提供商切换器、同步工具或脚本会整体替换 `config.toml`，先在 `/hooks` 人工批准当前三项 Hook，再启用通用配置守护器：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass `
@@ -165,7 +168,7 @@ powershell -NoProfile -ExecutionPolicy Bypass `
 
 脚本禁止使用 `--dangerously-bypass-hook-trust`，也不让模型自报 Hook 是否存在。未通过 `/hooks` 信任当前精确 SessionStart 定义时必须失败；一次性旁路只证明 Hook 在绕过信任检查后可执行，不能作为安装验收证据。
 
-SessionStart 与 PreToolUse 是独立 Hook 定义。上述烟雾输出会明确把 `PreToolUseHookTrust` 标为 `NOT_VERIFIED`；必须在 `/hooks` 审核两项定义，并在新任务中确认插件 PreToolUse 能拒绝非法代理调用。如果系统中仍有安装插件前手工配置的全局路由 Hook，完成这两项验证后才能备份并移除，避免双重执行和规则漂移。验证失败时保留或恢复旧 Hook，不得静默迁移。
+SessionStart、PreToolUse 与 SubagentStop 是三项独立 Hook 定义。烟雾脚本只证明 SessionStart；必须在 `/hooks` 审核三项定义，在新任务中确认 PreToolUse 拒绝非法调用，并用定向宿主探针确认容量消息只续交一次。
 
 安装器遇到已存在且符合契约的代理配置时会将其视为外部文件，不声明所有权。这种情况下安装状态文件可以不存在，不能仅据此判定安装失败；插件注册、Hook 加载和代理配置应分别核验。
 
@@ -204,7 +207,7 @@ powershell -NoProfile -ExecutionPolicy Bypass `
   -File .\plugins\codex-quality-orchestrator\scripts\verify.ps1
 ```
 
-静态验证包含 JSON、Node 与 PowerShell 语法、TOML 契约、Rule 16 一致性、SessionStart 脚本输出契约、9 条允许和 12 条拒绝路由、安装所有权、Force 恢复和锁顺序测试。它不经过宿主插件发现与 Hook 信任链路；安装后的运行时验收使用 `runtime-smoke.ps1`。
+静态验证包含 JSON、Node 与 PowerShell 语法、TOML 契约、Rule 16、团队参数、SessionStart、4 条允许和 17 条拒绝路由、一次容量续交、退役配置迁移、安装所有权、Force 恢复和锁顺序。它不代替宿主 Hook 信任验收。
 
 打包：
 
@@ -224,7 +227,7 @@ powershell -NoProfile -ExecutionPolicy Bypass `
 ## 8. 发布核验
 
 - 仓库：[9holy/codex-quality-orchestrator](https://github.com/9holy/codex-quality-orchestrator)
-- 目标版本：`v0.1.6`
+- 目标版本：`v0.2.0`
 - Release 资产与 SHA-256 必须以该版本的 GitHub Release 页面为准。
 - 发布完成只以当前提交的 Windows、Ubuntu Actions 均通过为准，不能沿用旧提交结果。
 - CI 必须把 Windows 生成的发布 ZIP 交给 Ubuntu 解压并复跑独立验证，不能只验证各平台自行生成的产物。
@@ -234,5 +237,5 @@ powershell -NoProfile -ExecutionPolicy Bypass `
 - 插件不能替 Sol 判断任务语义。
 - 插件不能改写已经选定的根任务模型或推理档位。
 - Hook 必须被 Codex 信任并启用，否则不会执行机械拦截。
-- `sol_reviewer` 的只读能力最终受宿主权限控制，TOML 不是绝对安全边界。
+- Terra Max 只读复核的写入限制同时依赖工作包和宿主权限，不能把提示词当作绝对安全边界。
 - 异常终止后若遗留安装锁，脚本会 fail-closed；确认没有活动安装进程后再清理锁。

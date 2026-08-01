@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0 - 2026-08-01
+
+- Make Sol the root lead and final direct-execution fallback; reject Sol subagent creation.
+- Prefer parallel Luna Max workers for clear, frozen, independently verifiable medium and large work packages; reserve Terra XHigh/Max for judgment, diagnosis, difficult debugging, and critical read-only review.
+- Add governed team waves with two workers by default, three at most, explicit work packets, no recursive delegation, and one writer for shared files.
+- Add a `SubagentStop` hook that automatically submits one in-place `继续` after the exact selected-model-capacity message, then returns control for Luna to Terra to lead-Sol escalation.
+- Bind config-guard recovery to all three Hook trust records and the full Hook bundle, accept official Codex cachebuster build metadata, and reject loadable backup copies that would duplicate the plugin Skill.
+- Retire the managed `sol_reviewer` profile safely and migrate state-owned agent backups from loadable `.toml` files to `.toml.bak`.
+
 ## 0.1.6 - 2026-08-01
 
 - Retry only the failed unchanged work-unit call once when it reports the exact selected-model-capacity message; preserve completed work and counters, never restart the whole task, and escalate only after a second matching failure.

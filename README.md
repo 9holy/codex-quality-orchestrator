@@ -1,6 +1,6 @@
 # Codex Quality Orchestrator
 
-面向 Codex 子代理的质量优先路由插件。它让 Sol 负责语义判断与最终验收，使用 Hook 机械限制模型、推理档位和 `fork_turns`，并为关键变更提供独立只读审核。
+面向 Codex 团队开发的质量优先路由插件。Sol 负责规划、拆解、整合、最终验收和必要兜底；Luna Max 优先并行消化清晰执行量，Terra 处理判断型工作和关键只读复核，Hook 负责机械契约与一次容量续交。
 
 ## 路由原则
 
@@ -8,24 +8,28 @@
 flowchart LR
     A[用户任务] --> B{短任务?}
     B -->|是| C[当前主代理直接完成]
-    B -->|否| D[Sol xhigh 默认统筹]
+    B -->|否| D[Sol high 默认主控]
     D --> E{高风险或关键裁决?}
     E -->|是| F[Sol max]
-    E -->|否| G{目标模型能可靠胜任?}
-    G -->|否| D
-    G -->|是| H[Terra 或 Luna 执行]
+    E -->|否| G{工作包清晰且 Luna 可胜任?}
+    G -->|是| H[Luna Max 并行执行]
+    G -->|否| M{Terra 可胜任?}
+    M -->|是| N[Terra xhigh 或 max 执行]
+    M -->|否| O[当前 Sol 直接兜底]
     H --> I[Sol 检查差异并复跑验证]
+    N --> I
+    O --> I
     I --> J{关键变更?}
-    J -->|是| K[sol_reviewer 只读审核]
+    J -->|是| K[Terra Max 只读复核]
     J -->|否| L[Sol 最终验收]
     K --> L
 ```
 
-质量、胜任能力和风险边界是硬约束；满足这些约束后，选择算力开支最低的执行组合，速度最后考虑。Hook 不判断任务语义，也不会自动选择模型；它只拒绝违反已确认边界的调用。
+质量、胜任能力和风险边界是硬约束；满足后按预计总算力成本选择最低者，计入重试、返工和复核。Hook 不替 Sol 判断任务语义，只拒绝违反契约的调用并处理确定性的容量续交。
 
-短任务必须同时无歧义、低风险、无需方案选择或诊断、上下文很少且可直接验证；文件数、改动量和验证步骤数量只能作为辅助信号，高风险事项无论大小都不是短任务。对非短任务，Sol 按完整工作单元的最高能力要求选择有安全余量的最低胜任层级：输入输出与步骤固定且无需判断的机械子任务才使用 Luna；需要实现判断、多步骤上下文、调试、测试或已裁定接口下普通集成的边界清晰工作使用 Terra；目标、范围或验收不清以及架构、安全、生产数据、跨代理最终集成和最终裁决保留给 Sol。仅在边界明确而 Luna 与 Terra 的能力档位难以判断时选择 Terra。同一工作单元的生产执行者和最低能力层级保持稳定，正常交回 Sol 整合与验收不属于改派。
+短任务必须同时无歧义、低风险、无需方案选择或诊断、上下文很少且可直接验证；规模只能辅助判断。对非短任务，Sol 按完整工作单元最高要求匹配：边界冻结、可独立验收且可靠胜任的清晰中大型工作优先交给 Luna Max；需要实现判断、诊断、跨上下文推断或疑难调试时使用 Terra；架构、安全、生产数据、全局集成和最终裁决保留给 Sol。无法安全下派时由当前 Sol 直接接管，不创建 Sol 子代理。
 
-`Sol / xhigh` 是普通非短任务的建议根档位，不是 Hook 能强制改写的设置。根任务模型和档位在插件运行前由桌面模型选择器、外部配置管理器或 `config.toml` 决定；高风险任务使用 `max`，`ultra` 只用于极少数超复杂长任务。
+`Sol / high` 是常规团队开发的建议根档位，`xhigh` 用于复杂规划与整合，`max` 用于高风险裁决，`ultra` 只用于极少数系统性多波次任务。根任务模型和档位在插件运行前确定，Hook 不能改写已启动任务。
 
 完整矩阵见 [docs/ROUTING_MATRIX.md](docs/ROUTING_MATRIX.md)。
 
@@ -33,7 +37,8 @@ flowchart LR
 
 - `SessionStart` Hook：加载精简 Rule 16，并检测全局规则冲突。
 - `PreToolUse` Hook：校验具名代理、模型覆盖、推理档位和 `fork_turns`。
-- 三个代理模板：`terra_worker`、`luna_worker`、`sol_reviewer`。
+- `SubagentStop` Hook：容量提示首次出现时自动向原子代理提交一次“继续”。
+- 两个代理模板：`terra_worker`、`luna_worker`。
 - 显式安装、卸载、验证和打包脚本。
 - 静态路由矩阵测试不产生模型调用费用；运行时烟雾验证会启动一次临时只读宿主会话。
 
@@ -54,7 +59,7 @@ codex plugin list --json
 
 `codex plugin list --json` 必须显示插件已经安装且启用；仅有 `~/.codex/plugins/cache` 目录不能证明插件或 Hook 正在生效。
 
-如果任何提供商切换器、同步工具或脚本会整体替换 `config.toml`，可在人工信任两项 Hook 后启用通用配置守护器：
+如果任何提供商切换器、同步工具或脚本会整体替换 `config.toml`，可在人工信任三项 Hook 后启用通用配置守护器：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $plugin.installedPath 'scripts\config-guard.ps1') -Mode Install
@@ -70,7 +75,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $plugin.installed
 powershell -NoProfile -ExecutionPolicy Bypass -File .\plugins\codex-quality-orchestrator\scripts\runtime-smoke.ps1
 ```
 
-烟雾脚本不会使用 `--dangerously-bypass-hook-trust`。当前 SessionStart 定义尚未通过 `/hooks` 持久信任、定义已变化或 Hook 未加载时，验证必须失败，不能把一次性信任旁路当作通过证据。该结果不证明独立的 PreToolUse 定义已信任；在 `/hooks` 审核两项定义并实际确认非法代理调用被拒绝前，不得移除旧全局路由 Hook。
+烟雾脚本不会使用 `--dangerously-bypass-hook-trust`。当前 SessionStart 定义尚未通过 `/hooks` 持久信任、定义已变化或 Hook 未加载时，验证必须失败。该结果不证明 PreToolUse 或 SubagentStop 已信任；必须在 `/hooks` 审核三项定义，并分别确认非法代理调用被拒绝和容量消息只自动续交一次。
 
 插件系统目前不会从插件包原生注册自定义代理，因此显式运行安装脚本是必要步骤；Hook 不会静默写入 `~/.codex`。
 
@@ -80,7 +85,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\plugins\codex-quality-orch
 powershell -NoProfile -ExecutionPolicy Bypass -File .\plugins\codex-quality-orchestrator\scripts\verify.ps1
 ```
 
-静态验证包括 JSON、Node 与 PowerShell 语法、manifest、TOML 代理契约、Rule 16 一致性、SessionStart 脚本输出契约，以及完整允许/拒绝路由矩阵。在源码仓库中还会校验 marketplace；在独立插件目录中不依赖仓库外文件。静态验证不等于宿主已加载 Hook，安装后的实际链路以 `runtime-smoke.ps1` 为准。
+静态验证包括 JSON、Node 与 PowerShell 语法、manifest、TOML 代理契约、Rule 16、团队并发策略、SessionStart、Worker 路由、一次容量续交和安装迁移。在源码仓库中还会校验 marketplace；静态验证不等于宿主已加载 Hook，安装后仍须完成真实宿主验收。
 
 ## 打包
 

@@ -58,12 +58,12 @@ function New-ProfileBackup {
   $stamp = Get-Date -Format 'yyyyMMdd-HHmmssfff'
   $backup = Join-Path $AgentsDir ($fileName + '-' + $stamp)
   New-Item -ItemType Directory -Path $backup -ErrorAction Stop | Out-Null
-  $backupFile = Join-Path $backup $fileName
+  $backupFile = Join-Path $backup ($fileName + '.bak')
   Copy-Item -LiteralPath $Target -Destination $backupFile -ErrorAction Stop
   $hash = (Get-FileHash -LiteralPath $backupFile -Algorithm SHA256).Hash.ToLowerInvariant()
   [IO.File]::WriteAllText(
     (Join-Path $backup 'SHA256SUMS'),
-    ($hash + ' *' + $fileName + [Environment]::NewLine),
+    ($hash + ' *' + (Split-Path -Leaf $backupFile) + [Environment]::NewLine),
     [Text.UTF8Encoding]::new($false)
   )
   return $backup
@@ -79,7 +79,7 @@ function Resolve-RestorePath {
   if (-not $resolved.StartsWith($agentsPrefix, [StringComparison]::OrdinalIgnoreCase)) {
     throw "Restore path escapes the agents directory: $RelativePath"
   }
-  if ((Split-Path -Leaf $resolved) -cne $FileName) {
+  if ((Split-Path -Leaf $resolved) -cnotin @($FileName, ($FileName + '.bak'))) {
     throw "Restore file name does not match $FileName"
   }
   return $resolved
@@ -95,6 +95,7 @@ if ([string]::IsNullOrWhiteSpace($CodexHome)) {
 $CodexHome = [IO.Path]::GetFullPath($CodexHome)
 $pluginRoot = Split-Path -Parent $PSScriptRoot
 $templateDir = Join-Path $pluginRoot 'templates\agents'
+$policy = Get-Content -LiteralPath (Join-Path $pluginRoot 'routing-policy.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 $agentsDir = Join-Path $CodexHome 'agents'
 $statePath = Join-Path $CodexHome '.codex-quality-orchestrator.install-state.json'
 $lock = Join-Path $CodexHome '.codex-quality-orchestrator.install.lock'
@@ -115,57 +116,64 @@ try {
   $remainingProfiles = @{}
   foreach ($name in $stateProfiles.Keys) { $remainingProfiles[$name] = $stateProfiles[$name] }
   $templates = @(Get-ChildItem -LiteralPath $templateDir -Filter '*.toml' -File)
+  $expectedHashes = @{}
+  foreach ($template in $templates) {
+    $expectedHashes[$template.Name] = (Get-FileHash -LiteralPath $template.FullName -Algorithm SHA256).Hash
+  }
+  foreach ($retired in @($policy.retiredProfiles)) {
+    $expectedHashes[[string]$retired.profileFile] = ([string]$retired.templateSha256).ToUpperInvariant()
+  }
+  $profileNames = @($templates.Name + $stateProfiles.Keys | Sort-Object -Unique)
   $restorePaths = @{}
 
-  foreach ($template in $templates) {
-    if (-not $stateProfiles.ContainsKey($template.Name)) { continue }
-    $entry = $stateProfiles[$template.Name]
+  foreach ($fileName in $profileNames) {
+    if (-not $stateProfiles.ContainsKey($fileName)) { continue }
+    $entry = $stateProfiles[$fileName]
     if ($entry.ownership -eq 'replaced') {
-      $restorePath = Resolve-RestorePath $CodexHome $agentsDir $entry.backupFile $template.Name
+      $restorePath = Resolve-RestorePath $CodexHome $agentsDir $entry.backupFile $fileName
       if (-not (Test-Path -LiteralPath $restorePath -PathType Leaf)) {
         throw "Original profile backup is missing: $restorePath"
       }
-      $restorePaths[$template.Name] = $restorePath
+      $restorePaths[$fileName] = $restorePath
     }
   }
 
-  foreach ($template in $templates) {
-    $target = Join-Path $agentsDir $template.Name
-    if (-not $stateProfiles.ContainsKey($template.Name)) {
+  foreach ($fileName in $profileNames) {
+    $target = Join-Path $agentsDir $fileName
+    if (-not $stateProfiles.ContainsKey($fileName)) {
       $status = if (Test-Path -LiteralPath $target -PathType Leaf) { 'preserved-not-owned' } else { 'missing-not-owned' }
-      $results += [pscustomobject]@{ File=$template.Name; Status=$status; Backup=$null; RestoredFrom=$null }
+      $results += [pscustomobject]@{ File=$fileName; Status=$status; Backup=$null; RestoredFrom=$null }
       continue
     }
 
-    $entry = $stateProfiles[$template.Name]
+    $entry = $stateProfiles[$fileName]
     if (-not (Test-Path -LiteralPath $target -PathType Leaf)) {
       if ($entry.ownership -eq 'replaced') {
-        Copy-Item -LiteralPath $restorePaths[$template.Name] -Destination $target -Force -ErrorAction Stop
+        Copy-Item -LiteralPath $restorePaths[$fileName] -Destination $target -Force -ErrorAction Stop
         $status = 'restored-original'
       } else {
         $status = 'missing'
       }
-      $remainingProfiles.Remove($template.Name)
+      $remainingProfiles.Remove($fileName)
       Write-InstallState $statePath $remainingProfiles
       $results += [pscustomobject]@{
-        File=$template.Name
+        File=$fileName
         Status=$status
         Backup=$null
-        RestoredFrom=$restorePaths[$template.Name]
+        RestoredFrom=$restorePaths[$fileName]
       }
       continue
     }
 
-    $templateHash = (Get-FileHash -LiteralPath $template.FullName -Algorithm SHA256).Hash
     $targetHash = (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash
-    if ($templateHash -cne $targetHash) {
-      $remainingProfiles.Remove($template.Name)
+    if (-not $expectedHashes.ContainsKey($fileName) -or $expectedHashes[$fileName] -cne $targetHash) {
+      $remainingProfiles.Remove($fileName)
       Write-InstallState $statePath $remainingProfiles
       $results += [pscustomobject]@{
-        File=$template.Name
+        File=$fileName
         Status='preserved-modified'
         Backup=$null
-        RestoredFrom=$restorePaths[$template.Name]
+        RestoredFrom=$restorePaths[$fileName]
       }
       continue
     }
@@ -176,14 +184,14 @@ try {
       $status = 'removed'
       $restoredFrom = $null
     } else {
-      Copy-Item -LiteralPath $restorePaths[$template.Name] -Destination $target -Force -ErrorAction Stop
+      Copy-Item -LiteralPath $restorePaths[$fileName] -Destination $target -Force -ErrorAction Stop
       $status = 'restored-original'
-      $restoredFrom = $restorePaths[$template.Name]
+      $restoredFrom = $restorePaths[$fileName]
     }
-    $remainingProfiles.Remove($template.Name)
+    $remainingProfiles.Remove($fileName)
     Write-InstallState $statePath $remainingProfiles
     $results += [pscustomobject]@{
-      File=$template.Name
+      File=$fileName
       Status=$status
       Backup=$backup
       RestoredFrom=$restoredFrom

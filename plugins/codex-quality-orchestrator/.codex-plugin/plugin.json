@@ -1,6 +1,6 @@
 {
   "name": "codex-quality-orchestrator",
-  "version": "0.1.6",
+  "version": "0.2.0+codex.20260801100846",
   "description": "Quality-first multi-model routing and review guardrails for Codex.",
   "author": {
     "name": "Codex Quality Orchestrator contributors"
@@ -16,7 +16,7 @@
   "interface": {
     "displayName": "Codex Quality Orchestrator",
     "shortDescription": "Quality-first routing for Codex subagents.",
-    "longDescription": "Coordinate Sol, Terra, and Luna with explicit capability boundaries, mechanical routing checks, and independent review for critical changes.",
+    "longDescription": "Use Sol as lead and final fallback while bounded Luna and Terra workers execute parallel work under explicit capability, ownership, retry, and verification contracts.",
     "developerName": "Codex Quality Orchestrator contributors",
     "category": "Developer Tools",
     "capabilities": [

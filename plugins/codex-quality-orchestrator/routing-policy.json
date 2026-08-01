@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 1,
-  "policyVersion": "0.1.6",
+  "schemaVersion": 2,
+  "policyVersion": "0.2.0",
   "toolNames": [
     "spawn_agent",
     "Agent",
@@ -8,6 +8,7 @@
   ],
   "sol": {
     "model": "gpt-5.6-sol",
+    "spawnAllowed": false,
     "allowedEfforts": [
       "medium",
       "high",
@@ -15,8 +16,28 @@
       "max",
       "ultra"
     ],
-    "defaultCoordinatorEffort": "xhigh",
-    "highRiskEffort": "max"
+    "defaultCoordinatorEffort": "high",
+    "complexCoordinatorEffort": "xhigh",
+    "highRiskEffort": "max",
+    "systemicEffort": "ultra"
+  },
+  "team": {
+    "defaultWorkersPerWave": 2,
+    "maxWorkersPerWave": 3,
+    "maxWorkerAttemptsPerWorkUnit": 2,
+    "maxFollowupsPerWorker": 1,
+    "singleWriterForSharedFiles": true,
+    "workersMayDelegate": false
+  },
+  "capacityRecovery": {
+    "message": "Selected model is at capacity. Please try a different model.",
+    "automaticContinuationPrompt": "继续",
+    "maxAutomaticContinuationsPerSubagent": 1,
+    "escalationOrder": [
+      "luna_worker",
+      "terra_worker",
+      "sol_controller"
+    ]
   },
   "namedAgents": {
     "terra_worker": {
@@ -33,15 +54,15 @@
       "model": "gpt-5.6-luna",
       "effortMode": "fixed",
       "fixedEffort": "max"
-    },
-    "sol_reviewer": {
-      "profileFile": "sol-reviewer.toml",
-      "model": "gpt-5.6-sol",
-      "effortMode": "fixed",
-      "fixedEffort": "xhigh",
-      "sandboxMode": "read-only"
     }
   },
+  "retiredProfiles": [
+    {
+      "agentType": "sol_reviewer",
+      "profileFile": "sol-reviewer.toml",
+      "templateSha256": "55c19086f24511a0a4ac88c4860c4c14e67cfacfb8e48eb45dcb3d1204895c11"
+    }
+  ],
   "forkTurns": {
     "required": true,
     "allowedLiterals": [

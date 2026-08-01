@@ -12,6 +12,7 @@ function Get-HookBundleHash {
     'hooks\hooks.json',
     'hooks\inject-routing-policy.cjs',
     'hooks\enforce-agent-routing.cjs',
+    'hooks\continue-capacity-subagent.cjs',
     'routing-policy.json',
     'references\RULE16.md'
   )) {
@@ -37,6 +38,7 @@ $fakeCodex = Join-Path $tempRoot 'fake-codex.ps1'
 $pluginId = 'codex-quality-orchestrator@codex-quality-orchestrator'
 $preId = "$pluginId`:hooks/hooks.json:pre_tool_use:0:0"
 $sessionId = "$pluginId`:hooks/hooks.json:session_start:0:0"
+$subagentId = "$pluginId`:hooks/hooks.json:subagent_stop:0:0"
 $watchProcess = $null
 $runningOnWindows = [Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
 
@@ -49,13 +51,14 @@ try {
     marketplaceSource = 'owner/repo'
     marketplaceSourceType = 'local'
     marketplaceRef = 'main'
-    pluginVersion = '0.1.6'
+    pluginVersion = '0.2.0'
     installedPath = $pluginRoot
     codexCommand = $fakeCodex
     hookBundleHash = Get-HookBundleHash $pluginRoot
     trustedHooks = @(
       [ordered]@{ id=$preId; trustedHash=('sha256:' + ('a' * 64)) },
-      [ordered]@{ id=$sessionId; trustedHash=('sha256:' + ('b' * 64)) }
+      [ordered]@{ id=$sessionId; trustedHash=('sha256:' + ('b' * 64)) },
+      [ordered]@{ id=$subagentId; trustedHash=('sha256:' + ('c' * 64)) }
     )
   } | ConvertTo-Json -Depth 6
   [IO.File]::WriteAllText((Join-Path $guardDir 'state.json'), $state, [Text.UTF8Encoding]::new($false))
@@ -66,7 +69,7 @@ $config = Join-Path $env:CODEX_HOME 'config.toml'
 $text = if (Test-Path -LiteralPath $config) { Get-Content -LiteralPath $config -Raw } else { '' }
 if (($Args -join ' ') -ceq 'plugin list --json') {
   if ($text.Contains('[plugins."codex-quality-orchestrator@codex-quality-orchestrator"]')) {
-    '{"installed":[{"pluginId":"codex-quality-orchestrator@codex-quality-orchestrator","installed":true,"enabled":true,"version":"0.1.6","marketplaceName":"cqo-test","marketplaceSource":{"sourceType":"local","source":"owner/repo"}}]}'
+    '{"installed":[{"pluginId":"codex-quality-orchestrator@codex-quality-orchestrator","installed":true,"enabled":true,"version":"0.2.0","marketplaceName":"cqo-test","marketplaceSource":{"sourceType":"local","source":"owner/repo"}}]}'
   } else {
     '{"installed":[]}'
   }
@@ -83,7 +86,7 @@ if ($Args[0] -ceq 'plugin' -and $Args[1] -ceq 'marketplace') {
 }
 if ($Args[0] -ceq 'plugin' -and $Args[1] -ceq 'add') {
   Add-Content -LiteralPath $config -Encoding UTF8 -Value "`n[plugins.`"codex-quality-orchestrator@codex-quality-orchestrator`"]`nenabled = true"
-  [pscustomobject]@{ pluginId='codex-quality-orchestrator@codex-quality-orchestrator'; version='0.1.6'; installedPath=$env:CQO_TEST_PLUGIN_ROOT } | ConvertTo-Json -Compress
+  [pscustomobject]@{ pluginId='codex-quality-orchestrator@codex-quality-orchestrator'; version='0.2.0'; installedPath=$env:CQO_TEST_PLUGIN_ROOT } | ConvertTo-Json -Compress
   exit 0
 }
 throw "Unexpected fake codex call: $($Args -join ' ')"
@@ -99,6 +102,7 @@ throw "Unexpected fake codex call: $($Args -join ' ')"
   $config = Get-Content -LiteralPath $configPath -Raw
   Assert-True $config.Contains($preId) 'PreToolUse trust was not restored'
   Assert-True $config.Contains($sessionId) 'SessionStart trust was not restored'
+  Assert-True $config.Contains($subagentId) 'SubagentStop trust was not restored'
   Assert-True $config.Contains('model = "gpt-5.6-sol"') 'Append-only trust restoration replaced existing config'
 
   $config = $config.Replace("[hooks.state.`"$preId`"]", "[hooks.state.'$preId']")
@@ -159,7 +163,7 @@ throw "Unexpected fake codex call: $($Args -join ' ')"
     Start-Sleep -Seconds 1
     if (-not (Test-Path -LiteralPath $failMarker)) { continue }
     $watchText = Get-Content -LiteralPath $configPath -Raw
-    if ($watchText.Contains($pluginId) -and $watchText.Contains($preId) -and $watchText.Contains($sessionId)) {
+    if ($watchText.Contains($pluginId) -and $watchText.Contains($preId) -and $watchText.Contains($sessionId) -and $watchText.Contains($subagentId)) {
       $watchRecovered = $true
       break
     }

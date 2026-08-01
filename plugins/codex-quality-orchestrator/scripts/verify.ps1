@@ -23,8 +23,10 @@ foreach ($relative in $jsonFiles) {
 $nodeFiles = @(
   'hooks\inject-routing-policy.cjs',
   'hooks\enforce-agent-routing.cjs',
+  'hooks\continue-capacity-subagent.cjs',
   'tests\inject-routing-policy.test.cjs',
-  'tests\enforce-agent-routing.test.cjs'
+  'tests\enforce-agent-routing.test.cjs',
+  'tests\continue-capacity-subagent.test.cjs'
 )
 foreach ($relative in $nodeFiles) {
   & $node --check (Join-Path $pluginRoot $relative)
@@ -81,6 +83,9 @@ if ($LASTEXITCODE -ne 0) { throw 'Routing hook matrix test failed' }
 & $node (Join-Path $pluginRoot 'tests\inject-routing-policy.test.cjs')
 if ($LASTEXITCODE -ne 0) { throw 'Session hook contract test failed' }
 
+& $node (Join-Path $pluginRoot 'tests\continue-capacity-subagent.test.cjs')
+if ($LASTEXITCODE -ne 0) { throw 'Capacity continuation hook test failed' }
+
 & (Join-Path $pluginRoot 'tests\install.test.ps1')
 if ($LASTEXITCODE -ne 0) { throw 'Installer isolation test failed' }
 
@@ -97,6 +102,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Config guard test failed' }
   Marketplace = $marketplaceStatus
   RoutingMatrix = 'PASS'
   SessionContract = 'PASS'
+  CapacityContinuation = 'PASS'
   Installer = 'PASS'
   ConfigGuard = 'PASS'
 } | ConvertTo-Json -Compress

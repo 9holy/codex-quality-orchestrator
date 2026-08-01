@@ -52,7 +52,7 @@ try {
   installProfiles();
 
   for (const effort of ['medium', 'high', 'xhigh', 'max', 'ultra']) {
-    expectAllow(`sol-${effort}`, {
+    expectDeny(`sol-child-${effort}`, {
       model: 'gpt-5.6-sol',
       reasoning_effort: effort,
       fork_turns: '1',
@@ -66,7 +66,6 @@ try {
     });
   }
   expectAllow('luna-profile', { agent_type: 'luna_worker', fork_turns: '1' });
-  expectAllow('reviewer-profile', { agent_type: 'sol_reviewer', fork_turns: '1' });
 
   expectDeny('gpt-5.5', {
     model: 'gpt-5.5',
@@ -93,9 +92,8 @@ try {
     reasoning_effort: 'high',
     fork_turns: '1',
   });
-  expectDeny('reviewer-model-override', {
+  expectDeny('retired-reviewer', {
     agent_type: 'sol_reviewer',
-    model: 'gpt-5.6-sol',
     fork_turns: '1',
   });
   expectDeny('default-agent', { agent_type: 'default', fork_turns: '1' });
@@ -131,12 +129,11 @@ try {
     'utf8',
   );
   expectAllow('canonical-global-rule', {
-    model: 'gpt-5.6-sol',
-    reasoning_effort: 'xhigh',
+    agent_type: 'luna_worker',
     fork_turns: '1',
   });
 
-  process.stdout.write('PASS routing hook matrix (9 allow, 12 deny)\n');
+  process.stdout.write('PASS worker-only routing hook matrix (4 allow, 17 deny)\n');
 } finally {
   fs.rmSync(tempRoot, { recursive: true, force: true });
 }

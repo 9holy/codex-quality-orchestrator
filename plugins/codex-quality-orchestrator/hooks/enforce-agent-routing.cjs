@@ -141,19 +141,10 @@ function validate(payload, policy, canonical) {
     return;
   }
 
-  if (input.model !== policy.sol.model) {
-    deny(`省略 agent_type 时只允许向上升级到 ${policy.sol.model}。`);
-    return;
-  }
-  if (
-    typeof input.reasoning_effort !== 'string' ||
-    !policy.sol.allowedEfforts.includes(input.reasoning_effort)
-  ) {
-    deny(
-      `${policy.sol.model} 不允许使用 reasoning_effort=` +
-        `${input.reasoning_effort ?? '缺失'}。`,
-    );
-  }
+  deny(
+    `${policy.sol.model} 只允许作为当前主控直接执行和兜底，` +
+      '不得创建 Sol 子代理；请使用已登记的 Luna/Terra Worker。',
+  );
 }
 
 (async () => {
