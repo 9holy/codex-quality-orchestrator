@@ -143,7 +143,15 @@ throw "Unexpected fake codex call: $($Args -join ' ')"
   $failMarker = Join-Path $tempRoot 'transient-failure-observed'
   $env:CQO_TEST_FAIL_ONCE = $failMarker
   $arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$guardScript`" -Mode Watch -CodexHome `"$codexHome`" -CodexCommand `"$fakeCodex`""
-  $watchProcess = Start-Process powershell.exe -ArgumentList $arguments -WindowStyle Hidden -PassThru
+  $watchParameters = @{
+    FilePath = (Get-Process -Id $PID).Path
+    ArgumentList = $arguments
+    PassThru = $true
+  }
+  if ([Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT) {
+    $watchParameters.WindowStyle = 'Hidden'
+  }
+  $watchProcess = Start-Process @watchParameters
   $deadline = [DateTime]::UtcNow.AddSeconds(35)
   $watchRecovered = $false
   while ([DateTime]::UtcNow -lt $deadline) {
@@ -163,7 +171,17 @@ throw "Unexpected fake codex call: $($Args -join ' ')"
   Assert-True ([long]$pidRecord.startTimeUtcTicks -eq $watchProcess.StartTime.ToUniversalTime().Ticks) 'Watch PID record was not bound to process start time'
 
   $startupDir = Join-Path $tempRoot 'startup'
-  $guardInstall = ((& $guardScript -Mode Install -CodexHome $codexHome -CodexCommand $fakeCodex -StartupDirectory $startupDir -NoStart) -join [Environment]::NewLine) | ConvertFrom-Json
+  $originalOs = $env:OS
+  try {
+    $env:OS = 'Windows_NT'
+    $guardInstall = ((& $guardScript -Mode Install -CodexHome $codexHome -CodexCommand $fakeCodex -StartupDirectory $startupDir -NoStart) -join [Environment]::NewLine) | ConvertFrom-Json
+  } finally {
+    if ($null -eq $originalOs) {
+      Remove-Item Env:OS -ErrorAction SilentlyContinue
+    } else {
+      $env:OS = $originalOs
+    }
+  }
   $watchProcess.WaitForExit(5000) | Out-Null
   Assert-True $watchProcess.HasExited 'Guard upgrade did not stop the previous Watch process'
   Assert-True (-not $guardInstall.Started) 'NoStart guard upgrade started a watcher'
