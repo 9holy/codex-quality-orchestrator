@@ -22,7 +22,7 @@ skill = skill_path.read_text(encoding="utf-8")
 
 assert manifest["name"] == "codex-quality-orchestrator"
 base_version, separator, cachebuster = manifest["version"].partition("+codex.")
-assert base_version == policy["policyVersion"] == "0.3.1"
+assert base_version == policy["policyVersion"] == "0.3.2"
 assert not separator or cachebuster
 assert list((PLUGIN_ROOT / "skills").rglob("SKILL.md")) == [skill_path]
 assert manifest["interface"]["defaultPrompt"] == [
@@ -43,9 +43,14 @@ assert "共享文件单写者" in rule
 assert "Worker 不得下派" in rule
 assert "当前 Sol 接管" in rule
 assert "不创建 Sol 子代理" in rule
-assert "关键变更另派 Terra Max 只读复核" in rule
+assert "关键变更另派 Terra Ultra 只读复核" in rule
 assert "gpt-5.6-luna / max" in rule
-assert "gpt-5.6-terra / xhigh|max" in rule
+assert "gpt-5.6-terra / xhigh|max|ultra" in rule
+assert policy["namedAgents"]["terra_worker"]["allowedEfforts"] == [
+    "xhigh",
+    "max",
+    "ultra",
+]
 assert "生产数据、不可逆迁移、公共数据契约" in rule
 assert "插件不改已启动根档位" in rule
 assert len(rule.strip()) <= 1500

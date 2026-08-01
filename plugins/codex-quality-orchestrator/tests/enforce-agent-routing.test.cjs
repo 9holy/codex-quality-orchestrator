@@ -88,7 +88,7 @@ try {
       fork_turns: '1',
     });
   }
-  for (const effort of ['xhigh', 'max']) {
+  for (const effort of ['xhigh', 'max', 'ultra']) {
     expectAllow(`terra-${effort}`, workerInput('terra_worker', {
       reasoning_effort: effort,
       fork_turns: 'none',

@@ -35,7 +35,7 @@ flowchart TD
     O -->|否| H
     J --> K[Sol 检查实际差异并复跑验证]
     K --> L{关键变更?}
-    L -->|是| M[Terra Max 独立只读复核]
+    L -->|是| M[Terra Ultra 独立只读复核]
     L -->|否| N[Sol 最终验收]
     M --> N
     H --> N
@@ -64,7 +64,7 @@ flowchart TD
 | Sol 复杂主控 | `gpt-5.6-sol` | `xhigh` | 复杂规划、跨模块整合和严格验收 |
 | Sol 高风险 | `gpt-5.6-sol` | `max` | 架构、安全、公共接口、生产数据、不可逆迁移、公共数据契约、疑难问题和最终裁决 |
 | Sol 系统性主控 | `gpt-5.6-sol` | `ultra` | 极少数系统性多波次任务，不作为 Worker |
-| Terra | `gpt-5.6-terra` | `xhigh` 或 `max` | 判断型实现、诊断、疑难调试、跨上下文推断和关键只读复核 |
+| Terra | `gpt-5.6-terra` | `xhigh`、`max` 或 `ultra` | XHigh 用于常规判断，Max 用于疑难复杂任务，Ultra 用于边界冻结但需要接近 Sol XHigh 推理强度的执行或关键只读复核 |
 | Luna | `gpt-5.6-luna` | 固定 `max` | 边界冻结、清晰、可独立验收的中大型实现、测试、扫描和批量工作 |
 
 `gpt-5.5`、裸 Terra、裸 Luna 和未登记模型禁止下派。
@@ -75,14 +75,14 @@ Luna 不处理消歧、诊断、架构、安全、公共接口、生产数据或
 
 ### 3.2 调用契约
 
-具名代理的模型由 TOML 固定，调用时不能用 `model` 覆盖。Terra 档位由 Sol 在 `xhigh/max` 中选择，Luna 固定 `max`：
+具名代理的模型由 TOML 固定，调用时不能用 `model` 覆盖。Terra 档位由 Sol 在 `xhigh/max/ultra` 中选择，Luna 固定 `max`：
 
 ```text
-terra_worker: agent_type + reasoning_effort(xhigh|max) + fork_turns
+terra_worker: agent_type + reasoning_effort(xhigh|max|ultra) + fork_turns
 luna_worker: agent_type + fork_turns
 ```
 
-`fork_turns` 只能是 `"none"` 或正整数数字字符串。Luna 不得覆盖固定推理档位；Terra 必须显式传入 `xhigh` 或 `max`。
+`fork_turns` 只能是 `"none"` 或正整数数字字符串。Luna 不得覆盖固定推理档位；Terra 必须显式传入 `xhigh`、`max` 或 `ultra`。
 
 ## 4. Hook 的职责
 
@@ -241,7 +241,7 @@ powershell -NoProfile -ExecutionPolicy Bypass `
 ## 8. 发布核验
 
 - 仓库：[9holy/codex-quality-orchestrator](https://github.com/9holy/codex-quality-orchestrator)
-- 目标版本：`v0.3.1`
+- 目标版本：`v0.3.2`
 - Release 资产与 SHA-256 必须以该版本的 GitHub Release 页面为准。
 - 发布完成只以当前提交的 Windows、Ubuntu Actions 均通过为准，不能沿用旧提交结果。
 - CI 必须把 Windows 生成的发布 ZIP 交给 Ubuntu 解压并复跑独立验证，不能只验证各平台自行生成的产物。
@@ -253,5 +253,5 @@ powershell -NoProfile -ExecutionPolicy Bypass `
 - 会话账本使用原生 Hook 字段，不读取不稳定的 transcript；同模型并发启动时按 pending 顺序绑定 `agent_id`，用于并发释放而不判断任务内容。
 - 插件不能改写已经选定的根任务模型或推理档位。
 - Hook 必须被 Codex 信任并启用，否则不会执行机械拦截。
-- Terra Max 只读复核的写入限制同时依赖工作包和宿主权限，不能把提示词当作绝对安全边界。
+- Terra Ultra 只读复核的写入限制同时依赖工作包和宿主权限，不能把提示词当作绝对安全边界。
 - 异常终止后若遗留安装锁，脚本会 fail-closed；确认没有活动安装进程后再清理锁。

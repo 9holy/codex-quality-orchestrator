@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.2 - 2026-08-02
+
+- Allow `gpt-5.6-terra` to run at `ultra` for frozen work units that need near-Sol-XHigh reasoning without transferring lead responsibilities.
+- Use Terra Ultra for the highest-tier independent read-only review while keeping architecture, integration, and final quality decisions with Sol.
+
 ## 0.3.1 - 2026-08-01
 
 - Add an explicit session-bound ledger release command for startup and authentication failures that terminate before the host emits `SubagentStop`.

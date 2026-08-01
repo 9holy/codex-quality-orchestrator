@@ -20,7 +20,8 @@ Sol 是根任务主控和最终兜底，不创建 Sol 子代理。
 |---|---|---|---|
 | `luna_worker` | `gpt-5.6-luna / max` | 边界冻结、清晰、可独立验收的中大型实现、多文件修改、常规调试、测试、扫描和批量工作，可在冻结边界内做局部实现选择 | 需求重定义、消歧、根因诊断、跨上下文推断、架构、安全、公共接口、生产数据、不可逆迁移和最终裁决 |
 | `terra_worker` | `gpt-5.6-terra / xhigh` | 需要实现判断、根因诊断、跨上下文推断和常规复杂调试 | 架构与最终质量裁决 |
-| `terra_worker` | `gpt-5.6-terra / max` | 疑难实现、复杂多文件调试和关键只读复核 | 最终质量裁决 |
+| `terra_worker` | `gpt-5.6-terra / max` | 疑难实现和复杂多文件调试 | 架构与最终质量裁决 |
+| `terra_worker` | `gpt-5.6-terra / ultra` | 边界已冻结但需要接近 Sol XHigh 推理强度的执行或关键只读复核 | 主控职责、架构与最终质量裁决 |
 
 在质量、胜任能力和风险边界全部满足后，按预计总算力成本选择最低者，计入重试、返工和复核。只要 Luna Max 能可靠完成，就优先承担执行量；不能安全胜任时直接选择 Terra，不能用 Luna 试错来制造返工。
 
@@ -30,7 +31,7 @@ Sol 是根任务主控和最终兜底，不创建 Sol 子代理。
 - 每波默认 2、最多 3 个 Worker；根任务累计最多 8 次 Worker 调用，不为使用代理拆分短任务。
 - 每个工作包固定目标、范围、文件所有权、输入输出、验收、验证命令和备份状态。
 - 共享文件坚持单写者；Worker 不得创建更多 Worker。
-- Sol 负责整合、复跑验证和最终验收；关键变更另派 Terra Max 做只读复核。
+- Sol 负责整合、复跑验证和最终验收；关键变更另派 Terra Ultra 做只读复核。
 
 ## 冻结工作单
 
@@ -67,7 +68,7 @@ Sol 判断任务语义并生成工作单；由于宿主会在 Hook 前加密 `me
 
 ```text
 luna_worker: agent_type + fork_turns
-terra_worker: agent_type + reasoning_effort(xhigh|max) + fork_turns
+terra_worker: agent_type + reasoning_effort(xhigh|max|ultra) + fork_turns
 ```
 
 具名代理模型由 TOML 固定，调用时不得传 `model`。`fork_turns` 只能为 `"none"` 或正整数数字字符串。禁止 Sol 子代理、裸 Terra/Luna、`gpt-5.5` 和未登记模型。

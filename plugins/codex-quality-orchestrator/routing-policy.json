@@ -1,6 +1,6 @@
 {
   "schemaVersion": 4,
-  "policyVersion": "0.3.1",
+  "policyVersion": "0.3.2",
   "toolNames": [
     "spawn_agent",
     "Agent",
@@ -73,7 +73,8 @@
       "effortMode": "required",
       "allowedEfforts": [
         "xhigh",
-        "max"
+        "max",
+        "ultra"
       ]
     },
     "luna_worker": {
