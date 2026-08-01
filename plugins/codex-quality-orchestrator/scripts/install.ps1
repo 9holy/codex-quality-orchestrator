@@ -116,6 +116,59 @@ function New-ProfileBackup {
   return $backup
 }
 
+function New-FileBackup {
+  param([string]$Target)
+  $fileName = Split-Path -Leaf $Target
+  $directory = Split-Path -Parent $Target
+  $stamp = Get-Date -Format 'yyyyMMdd-HHmmssfff'
+  $backup = Join-Path $directory ($fileName + '-' + $stamp)
+  New-Item -ItemType Directory -Path $backup -ErrorAction Stop | Out-Null
+  Copy-Item -LiteralPath $Target -Destination (Join-Path $backup $fileName) -ErrorAction Stop
+  return $backup
+}
+
+function Sync-CanonicalRule16 {
+  param([string]$CodexHome, [string]$PluginRoot)
+  $source = Join-Path $PluginRoot 'references\RULE16.md'
+  $target = Join-Path $CodexHome 'AGENTS.md'
+  $canonical = [IO.File]::ReadAllText($source, [Text.UTF8Encoding]::new($false)).Trim()
+  $backup = $null
+
+  if (Test-Path -LiteralPath $target -PathType Leaf) {
+    $text = [IO.File]::ReadAllText($target, [Text.UTF8Encoding]::new($false))
+    $match = [regex]::Match($text, '(?ms)^## Rule 16\b.*?(?=^## Rule \d+\b|\z)')
+    if ($match.Success -and $match.Value.Trim() -ceq $canonical) {
+      return [pscustomobject]@{ Status='kept'; Backup=$null }
+    }
+
+    $backup = New-FileBackup $target
+    if ($match.Success) {
+      $prefix = $text.Substring(0, $match.Index).TrimEnd()
+      $suffix = $text.Substring($match.Index + $match.Length).TrimStart()
+      $updated = $prefix + [Environment]::NewLine + [Environment]::NewLine + $canonical
+      if (-not [string]::IsNullOrWhiteSpace($suffix)) {
+        $updated += [Environment]::NewLine + [Environment]::NewLine + $suffix
+      }
+      $status = 'replaced'
+    } else {
+      $updated = $text.TrimEnd() + [Environment]::NewLine + [Environment]::NewLine + $canonical
+      $status = 'appended'
+    }
+  } else {
+    $updated = $canonical
+    $status = 'created'
+  }
+
+  $temp = $target + '.tmp-' + [guid]::NewGuid().ToString('N')
+  try {
+    [IO.File]::WriteAllText($temp, $updated.TrimEnd() + [Environment]::NewLine, [Text.UTF8Encoding]::new($false))
+    Move-Item -LiteralPath $temp -Destination $target -Force -ErrorAction Stop
+  } finally {
+    if (Test-Path -LiteralPath $temp) { Remove-Item -LiteralPath $temp -Force }
+  }
+  return [pscustomobject]@{ Status=$status; Backup=$backup }
+}
+
 function Convert-StateBackupsToNonLoadable {
   param([string]$CodexHome, [string]$AgentsDir, [string]$StatePath, [hashtable]$Profiles)
   $changed = $false
@@ -304,6 +357,7 @@ try {
     $reason = Test-ProfileContract $target $property.Value $property.Name
     if ($null -ne $reason) { throw "Post-install verification failed: $target`: $reason" }
   }
+  $rule16Result = Sync-CanonicalRule16 $CodexHome $pluginRoot
 } finally {
   if (Test-Path -LiteralPath $lock) { Remove-Item -LiteralPath $lock -Force }
 }
@@ -311,6 +365,7 @@ try {
 [pscustomobject]@{
   CodexHome = $CodexHome
   Results = $results
+  Rule16 = $rule16Result
   Verified = $true
   NextStep = 'Install and enable the plugin, trust its hooks in /hooks, optionally enable config-guard.ps1 for external config switchers, then start a new task.'
 } | ConvertTo-Json -Depth 5

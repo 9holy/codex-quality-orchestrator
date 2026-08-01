@@ -1,6 +1,6 @@
 {
   "schemaVersion": 5,
-  "policyVersion": "0.3.4",
+  "policyVersion": "0.3.5",
   "toolNames": [
     "spawn_agent",
     "Agent",
@@ -22,7 +22,7 @@
     "systemicEffort": "ultra"
   },
   "team": {
-    "defaultWorkersPerWave": 2,
+    "defaultWorkersPerWave": 1,
     "maxWorkersPerWave": 3,
     "maxWorkerAttemptsPerWorkUnit": 2,
     "maxRootWorkerAttempts": 8,

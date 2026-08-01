@@ -35,13 +35,13 @@ flowchart TD
     O -->|否| H
     J --> K[Sol 检查实际差异并复跑验证]
     K --> L{关键变更?}
-    L -->|是| M[Terra Ultra 独立只读复核]
+    L -->|是| M[按风险选择 Terra 档位复核]
     L -->|否| N[Sol 最终验收]
     M --> N
     H --> N
 ```
 
-只有至少两个工作单元可以安全并行，且收益高于协调成本时才组队。每波默认 2、最多 3 个 Worker；每次调用的 `task_name` 使用 `<单元>__w<波次>__s<槽位>of<波次大小>__a<尝试>` 明文路由键，`message` 携带给 Worker 阅读的冻结 `CQO_WORK_PACKET_V1` JSON 工作单，由 Sol 负责共享文件单写者。Worker 不得继续下派。
+通常每波只使用 1 个 Worker。只有至少两个工作单元可以安全并行，且收益高于额外算力和协调成本时才使用 2–3 个，最多 3 个；Luna 可以在三个互不冲突的清晰执行单元上占满并发。每次调用的 `task_name` 使用 `<单元>__w<波次>__s<槽位>of<波次大小>__a<尝试>` 明文路由键，`message` 携带给 Worker 阅读的冻结 `CQO_WORK_PACKET_V1` JSON 工作单，由 Sol 负责共享文件单写者。Worker 不得继续下派。
 
 工作单至少固定 `work_unit_id`、目标、范围、写入路径、验收、验证、任务意图、写权限、所选代理、档位、预声明 fallback、当前 attempt、波次、槽位和备份要求。宿主会在 Hook 前加密 `message`，所以 Sol 负责工作单内容的语义正确性；Hook 只检查明文路由键、调用参数和允许的 `Luna → Terra → Sol` 兜底账本。会话账本记录唯一工作单元、波次槽位、生命周期、并发和尝试次数，但不检查实际文件写入，不能替代 Sol 的整合验收。
 
@@ -72,7 +72,7 @@ OpenAI 的 Codex 模型指南把 `gpt-5.6-sol / medium` 作为默认 Power 设�
 | Sol 复杂主控 | `gpt-5.6-sol` | `xhigh` | 复杂规划、跨模块整合和严格验收 |
 | Sol 高风险 | `gpt-5.6-sol` | `max` | 架构、安全、公共接口、生产数据、不可逆迁移、公共数据契约、疑难问题和最终裁决 |
 | Sol 系统性主控 | `gpt-5.6-sol` | `ultra` | 可有效并行的系统性多波次任务，不作为 Worker |
-| Terra | `gpt-5.6-terra` | `xhigh`、`max` 或 `ultra` | XHigh 是判断型工作的默认档，Max 用于疑难复杂任务，Ultra 仅用于最难的冻结执行或关键只读复核 |
+| Terra | `gpt-5.6-terra` | `xhigh`、`max` 或 `ultra` | XHigh 用于常规判断，Max 用于高难度工作，Ultra 用于需要最深推理的工作 |
 | Luna | `gpt-5.6-luna` | 固定 `max` | 边界冻结、清晰、可独立验收的实现、已定位问题的修复、测试、扫描和批量工作 |
 
 `gpt-5.5`、裸 Terra、裸 Luna 和未登记模型禁止下派。
@@ -261,5 +261,5 @@ powershell -NoProfile -ExecutionPolicy Bypass `
 - 会话账本使用原生 Hook 字段，不读取不稳定的 transcript；同模型并发启动时按 pending 顺序绑定 `agent_id`，用于并发释放而不判断任务内容。
 - 插件不能改写已经选定的根任务模型或推理档位。
 - Hook 必须被 Codex 信任并启用，否则不会执行机械拦截。
-- Terra Ultra 只读复核的写入限制同时依赖工作包和宿主权限，不能把提示词当作绝对安全边界。
+- Terra 只读复核的写入限制同时依赖工作包和宿主权限，不能把提示词当作绝对安全边界。
 - 异常终止后若遗留安装锁，脚本会 fail-closed；确认没有活动安装进程后再清理锁。

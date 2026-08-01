@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.5 - 2026-08-02
+
+- Use one Worker normally and expand to two or three only when independent parallel work saves more than it costs; keep three as the mechanical concurrency cap.
+- Treat Terra XHigh, Max, and Ultra as a normal increasing reasoning ladder instead of reserving Ultra for a special task category.
+- Synchronize the canonical global Rule 16 during installation, with a full `AGENTS.md` backup before replacement.
+
 ## 0.3.4 - 2026-08-02
 
 - Make Sol Medium the recommended default coordinator and keep High as an optional careful-checking tier instead of the default escalation step.

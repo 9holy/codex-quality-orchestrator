@@ -22,7 +22,7 @@ skill = skill_path.read_text(encoding="utf-8")
 
 assert manifest["name"] == "codex-quality-orchestrator"
 base_version, separator, cachebuster = manifest["version"].partition("+codex.")
-assert base_version == policy["policyVersion"] == "0.3.4"
+assert base_version == policy["policyVersion"] == "0.3.5"
 assert not separator or cachebuster
 assert list((PLUGIN_ROOT / "skills").rglob("SKILL.md")) == [skill_path]
 assert manifest["interface"]["defaultPrompt"] == [
@@ -33,7 +33,8 @@ assert "gpt-5.6-sol` 主控" in rule
 assert "路由预检" in rule
 assert "总算力成本最低" in rule
 assert "完整工作单元最高要求" in rule
-assert "每波默认 2、最多 3 个 Worker" in rule
+assert "通常使用 1 个 Worker" in rule
+assert "最多 3 个" in rule
 assert "Luna 能可靠胜任且可独立验收的单元必须下派" in rule
 assert "CQO_WORK_PACKET_V1" in rule
 assert "selected_effort" in rule
@@ -43,7 +44,7 @@ assert "共享文件单写者" in rule
 assert "Worker 不得下派" in rule
 assert "当前 Sol 接管" in rule
 assert "不创建 Sol 子代理" in rule
-assert "关键变更另派 Terra Ultra 只读复核" in rule
+assert "按风险决定是否另派 Terra 独立复核" in rule
 assert "gpt-5.6-luna / max" in rule
 assert "gpt-5.6-terra / xhigh|max|ultra" in rule
 assert policy["namedAgents"]["terra_worker"]["allowedEfforts"] == [
@@ -89,7 +90,7 @@ assert policy["schemaVersion"] == 5
 assert policy["sol"]["defaultCoordinatorEffort"] == "medium"
 assert policy["sol"]["complexCoordinatorEffort"] == "xhigh"
 assert policy["team"] == {
-    "defaultWorkersPerWave": 2,
+    "defaultWorkersPerWave": 1,
     "maxWorkersPerWave": 3,
     "maxWorkerAttemptsPerWorkUnit": 2,
     "maxRootWorkerAttempts": 8,
@@ -168,7 +169,7 @@ for forbidden_work in ("重新定义需求", "根因诊断", "跨上下文推断
 
 assert "已定位问题的修复" in luna_instructions
 assert "局部实现选择与修正" in luna_instructions
-assert "关键只读复核" in tomllib.loads(
+assert "独立复核" in tomllib.loads(
     (PLUGIN_ROOT / "templates" / "agents" / "terra-worker.toml").read_text(
         encoding="utf-8"
     )
