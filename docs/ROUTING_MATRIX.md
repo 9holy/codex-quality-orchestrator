@@ -40,6 +40,8 @@ Sol 升级: model(gpt-5.6-sol) + reasoning_effort + fork_turns
 
 同一工作单元的生产执行者及其最低能力层级一经确定就保持稳定；仅当目标、范围或风险实质变化、上下文越界、连续验证失败或选定链路不可用时重新判定，并且只向上升级。代理完成后正常交回 Sol 整合、复核和最终验收不属于改派。新的独立工作单元单独判定。完成语义判定后再检查当前提供商、认证和模型链路；调用失败时必须公开模型、提供商和错误，再向上升级或停止，不得静默降级。这不是代理调用配额。
 
+若错误包含精确消息 `Selected model is at capacity. Please try a different model.`，只重试失败的同一次代理调用，保留已完成结果、上下文和计数，不重做已完成工作、不重新拆分或重启整个任务；同一工作单元再以相同 `agent_type`、模型、`reasoning_effort`、`fork_turns` 和输入原样重试一次。仅第二次仍包含该消息时按 Luna→Terra→Sol 上调，Sol 第二次失败即停止。每层仅此一次，改提示词不重置；其他错误立即公开并上调或停止。详细且唯一的模型语义以 [Rule 16](../plugins/codex-quality-orchestrator/references/RULE16.md) 为准。
+
 ## 决策顺序
 
 1. 确定完整工作单元，而不是按当前一步或改动大小判断。

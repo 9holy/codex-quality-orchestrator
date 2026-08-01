@@ -49,7 +49,7 @@ try {
     marketplaceSource = 'owner/repo'
     marketplaceSourceType = 'local'
     marketplaceRef = 'main'
-    pluginVersion = '0.1.5'
+    pluginVersion = '0.1.6'
     installedPath = $pluginRoot
     codexCommand = $fakeCodex
     hookBundleHash = Get-HookBundleHash $pluginRoot
@@ -66,7 +66,7 @@ $config = Join-Path $env:CODEX_HOME 'config.toml'
 $text = if (Test-Path -LiteralPath $config) { Get-Content -LiteralPath $config -Raw } else { '' }
 if (($Args -join ' ') -ceq 'plugin list --json') {
   if ($text.Contains('[plugins."codex-quality-orchestrator@codex-quality-orchestrator"]')) {
-    '{"installed":[{"pluginId":"codex-quality-orchestrator@codex-quality-orchestrator","installed":true,"enabled":true,"version":"0.1.5","marketplaceName":"cqo-test","marketplaceSource":{"sourceType":"local","source":"owner/repo"}}]}'
+    '{"installed":[{"pluginId":"codex-quality-orchestrator@codex-quality-orchestrator","installed":true,"enabled":true,"version":"0.1.6","marketplaceName":"cqo-test","marketplaceSource":{"sourceType":"local","source":"owner/repo"}}]}'
   } else {
     '{"installed":[]}'
   }
@@ -83,7 +83,7 @@ if ($Args[0] -ceq 'plugin' -and $Args[1] -ceq 'marketplace') {
 }
 if ($Args[0] -ceq 'plugin' -and $Args[1] -ceq 'add') {
   Add-Content -LiteralPath $config -Encoding UTF8 -Value "`n[plugins.`"codex-quality-orchestrator@codex-quality-orchestrator`"]`nenabled = true"
-  [pscustomobject]@{ pluginId='codex-quality-orchestrator@codex-quality-orchestrator'; version='0.1.5'; installedPath=$env:CQO_TEST_PLUGIN_ROOT } | ConvertTo-Json -Compress
+  [pscustomobject]@{ pluginId='codex-quality-orchestrator@codex-quality-orchestrator'; version='0.1.6'; installedPath=$env:CQO_TEST_PLUGIN_ROOT } | ConvertTo-Json -Compress
   exit 0
 }
 throw "Unexpected fake codex call: $($Args -join ' ')"

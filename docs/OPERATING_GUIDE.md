@@ -14,6 +14,8 @@
 
 同一工作单元的生产执行者及其最低能力层级在执行期间保持稳定，仅在目标、范围或风险实质变化、上下文越界、连续验证失败或选定链路不可用时重新预检，并且只向上升级。代理完成后正常交回 Sol 整合、复核和最终验收不属于改派；新的独立工作单元单独判定。完成语义判定后再检查提供商与认证，不能因目标模型不可用而改派更低层级。这是质量判断，不是代理调用配额。
 
+容量错误是唯一的同级重试例外：错误包含精确消息 `Selected model is at capacity. Please try a different model.` 时，只重试失败的同一次代理调用，保留已完成结果、上下文和计数，不重做已完成工作、不重新拆分或重启整个任务；保留同一工作单元的 `agent_type`、模型、`reasoning_effort`、`fork_turns` 和输入原样重试一次。第二次仍包含该消息才按 Luna→Terra→Sol 上调，Sol 第二次失败则停止。每个层级仅重试一次，改变提示词不能重置次数。认证、余额、越界、模型不可用和其他错误仍立即公开并上调或停止。以 [Rule 16](../plugins/codex-quality-orchestrator/references/RULE16.md) 为唯一模型语义规范。
+
 ## 2. 默认工作流
 
 ```mermaid
@@ -222,7 +224,7 @@ powershell -NoProfile -ExecutionPolicy Bypass `
 ## 8. 发布核验
 
 - 仓库：[9holy/codex-quality-orchestrator](https://github.com/9holy/codex-quality-orchestrator)
-- 目标版本：`v0.1.5`
+- 目标版本：`v0.1.6`
 - Release 资产与 SHA-256 必须以该版本的 GitHub Release 页面为准。
 - 发布完成只以当前提交的 Windows、Ubuntu Actions 均通过为准，不能沿用旧提交结果。
 - CI 必须把 Windows 生成的发布 ZIP 交给 Ubuntu 解压并复跑独立验证，不能只验证各平台自行生成的产物。

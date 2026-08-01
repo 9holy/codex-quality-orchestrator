@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.6 - 2026-08-01
+
+- Retry only the failed unchanged work-unit call once when it reports the exact selected-model-capacity message; preserve completed work and counters, never restart the whole task, and escalate only after a second matching failure.
+
 ## 0.1.5 - 2026-08-01
 
 - Refresh plugin-owned agent profiles when template instructions change.
