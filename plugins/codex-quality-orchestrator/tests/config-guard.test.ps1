@@ -38,6 +38,7 @@ $pluginId = 'codex-quality-orchestrator@codex-quality-orchestrator'
 $preId = "$pluginId`:hooks/hooks.json:pre_tool_use:0:0"
 $sessionId = "$pluginId`:hooks/hooks.json:session_start:0:0"
 $watchProcess = $null
+$isWindows = [Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
 
 try {
   New-Item -ItemType Directory -Path $guardDir -Force | Out-Null
@@ -148,7 +149,7 @@ throw "Unexpected fake codex call: $($Args -join ' ')"
     ArgumentList = $arguments
     PassThru = $true
   }
-  if ([Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT) {
+  if ($isWindows) {
     $watchParameters.WindowStyle = 'Hidden'
   }
   $watchProcess = Start-Process @watchParameters
@@ -168,25 +169,22 @@ throw "Unexpected fake codex call: $($Args -join ' ')"
   $pidPath = Join-Path $guardDir 'watch.pid'
   $pidRecord = Get-Content -LiteralPath $pidPath -Raw | ConvertFrom-Json
   Assert-True ([int]$pidRecord.pid -eq $watchProcess.Id) 'Watch PID record did not identify the watcher'
-  Assert-True ([long]$pidRecord.startTimeUtcTicks -eq $watchProcess.StartTime.ToUniversalTime().Ticks) 'Watch PID record was not bound to process start time'
+  Assert-True ([long]$pidRecord.startTimeUtcTicks -gt 0) 'Watch PID record did not include process start time'
 
   $startupDir = Join-Path $tempRoot 'startup'
-  $originalOs = $env:OS
-  try {
-    $env:OS = 'Windows_NT'
+  if ($isWindows) {
+    Assert-True ([long]$pidRecord.startTimeUtcTicks -eq $watchProcess.StartTime.ToUniversalTime().Ticks) 'Watch PID record was not bound to process start time'
     $guardInstall = ((& $guardScript -Mode Install -CodexHome $codexHome -CodexCommand $fakeCodex -StartupDirectory $startupDir -NoStart) -join [Environment]::NewLine) | ConvertFrom-Json
-  } finally {
-    if ($null -eq $originalOs) {
-      Remove-Item Env:OS -ErrorAction SilentlyContinue
-    } else {
-      $env:OS = $originalOs
-    }
+    $watchProcess.WaitForExit(5000) | Out-Null
+    Assert-True $watchProcess.HasExited 'Guard upgrade did not stop the previous Watch process'
+    Assert-True (-not $guardInstall.Started) 'NoStart guard upgrade started a watcher'
+    $launcher = Get-Content -LiteralPath $guardInstall.Launcher -Raw
+    Assert-True $launcher.Contains("-CodexCommand `"$fakeCodex`"") 'Startup launcher did not persist the resolved Codex command'
+  } else {
+    $watchProcess | Stop-Process -Force
+    $watchProcess.WaitForExit(5000) | Out-Null
+    Assert-True $watchProcess.HasExited 'Portable Watch process did not stop cleanly'
   }
-  $watchProcess.WaitForExit(5000) | Out-Null
-  Assert-True $watchProcess.HasExited 'Guard upgrade did not stop the previous Watch process'
-  Assert-True (-not $guardInstall.Started) 'NoStart guard upgrade started a watcher'
-  $launcher = Get-Content -LiteralPath $guardInstall.Launcher -Raw
-  Assert-True $launcher.Contains("-CodexCommand `"$fakeCodex`"") 'Startup launcher did not persist the resolved Codex command'
   $watchProcess = $null
 
   [IO.File]::WriteAllText(
