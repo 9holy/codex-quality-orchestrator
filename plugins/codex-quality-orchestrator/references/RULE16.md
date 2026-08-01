@@ -10,6 +10,6 @@
 
 最终质量、目标模型胜任能力和风险边界是硬约束；在所有满足硬约束的方案中，选择算力开支最低的执行组合，速度最后考虑。存在边界清晰、可独立验收且目标代理可靠胜任的工作单元时必须下派，不能因 Sol 也能完成而保留；不为调用代理而拆分任务。语义判断后再检查模型、提供商和认证；调用失败、越界、认证失败、余额不足或模型不可用时公开模型、提供商和错误，只能向上升级或停止，禁止静默降级。
 
-Sol 档位：`medium` 直接分析，`high` 常规多步骤，`xhigh` 默认统筹和验收，`max` 高风险与关键裁决，`ultra` 极少数超复杂长任务。调用契约：`terra_worker` 传 `agent_type`、`reasoning_effort=xhigh|max`、`fork_turns`，不得传 `model`；`luna_worker`、`sol_reviewer` 只传 `agent_type`、`fork_turns`；升级 Sol 时省略 `agent_type`，传 `model="gpt-5.6-sol"`、档位、`fork_turns`。`fork_turns` 只能为 `"none"` 或正整数数字字符串，禁止裸 Terra、裸 Luna、`gpt-5.5` 和未登记模型。
+Sol 档位：`medium` 直接分析，`high` 常规多步骤，`xhigh` 默认统筹和验收，`max` 高风险与关键裁决，`ultra` 极少数超复杂长任务；插件不改已启动根模型/档位。调用契约：`terra_worker` 传 `agent_type`、`reasoning_effort=xhigh|max`、`fork_turns`，不得传 `model`；`luna_worker`、`sol_reviewer` 只传 `agent_type`、`fork_turns`；升级 Sol 时省略 `agent_type`，传 `model="gpt-5.6-sol"`、档位、`fork_turns`。`fork_turns` 只能为 `"none"` 或正整数数字字符串，禁止裸 Terra、裸 Luna、`gpt-5.5` 和未登记模型。
 
 Sol 必须检查子代理实际差异并复跑验证；关键变更再由 `sol_reviewer` 独立审核。只有并行确实提升质量或效率时才并行，写入型下派须明确范围、验收、验证命令和备份。`PreToolUse` Hook 只机械校验调用参数，不判断语义、不改写调用、不代替 Sol 路由。

@@ -16,9 +16,16 @@ policy = load_json(PLUGIN_ROOT / "routing-policy.json")
 manifest = load_json(PLUGIN_ROOT / ".codex-plugin" / "plugin.json")
 hooks = load_json(PLUGIN_ROOT / "hooks" / "hooks.json")
 rule = (PLUGIN_ROOT / "references" / "RULE16.md").read_text(encoding="utf-8")
+skill = (
+    PLUGIN_ROOT / "skills" / "codex-quality-orchestrator" / "SKILL.md"
+).read_text(encoding="utf-8")
 
 assert manifest["name"] == "codex-quality-orchestrator"
 assert manifest["version"] == policy["policyVersion"]
+assert manifest["interface"]["defaultPrompt"] == [
+    "Audit my current model routing configuration.",
+    "Verify that the orchestrator plugin and hooks are active.",
+]
 assert "路由预检" in rule
 assert "Sol 负责理解、路由预检、分配、整合和最终验收" in rule
 assert "提供商和错误" in rule
@@ -31,6 +38,13 @@ assert "生产数据、不可逆迁移、公共数据契约" in rule
 assert "Luna 不能仅因任务短使用" in rule
 assert "在所有满足硬约束的方案中，选择算力开支最低的执行组合" in rule
 assert "目标代理可靠胜任的工作单元时必须下派" in rule
+assert "插件不改已启动根模型/档位" in rule
+assert len(rule.strip()) <= 1500
+assert len(skill) <= 1600
+assert "唯一语义路由规范" in skill
+assert "不要在 Skill 中复述" in skill
+assert "在所有满足硬约束的方案中" not in skill
+assert hooks["hooks"]["SessionStart"][0]["hooks"][0]["additionalContextLimit"] <= 2500
 assert hooks["hooks"]["SessionStart"][0]["hooks"][0]["commandWindows"] == (
     'node "$env:PLUGIN_ROOT\\hooks\\inject-routing-policy.cjs"'
 )
@@ -49,6 +63,14 @@ for agent_type, config in policy["namedAgents"].items():
         assert profile["model_reasoning_effort"] == config["fixedEffort"]
     if "sandboxMode" in config:
         assert profile["sandbox_mode"] == config["sandboxMode"]
+
+luna_instructions = tomllib.loads(
+    (PLUGIN_ROOT / "templates" / "agents" / "luna-worker.toml").read_text(
+        encoding="utf-8"
+    )
+)["developer_instructions"]
+for forbidden_work in ("方案选择", "问题诊断", "跨上下文推断"):
+    assert forbidden_work in luna_instructions
 
 for effort in policy["sol"]["allowedEfforts"]:
     assert f"`{effort}`" in rule

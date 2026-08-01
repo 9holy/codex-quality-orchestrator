@@ -1,6 +1,6 @@
 {
   "name": "codex-quality-orchestrator",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Quality-first multi-model routing and review guardrails for Codex.",
   "author": {
     "name": "Codex Quality Orchestrator contributors"
@@ -24,7 +24,7 @@
     ],
     "defaultPrompt": [
       "Audit my current model routing configuration.",
-      "Choose the safest agent route for this task."
+      "Verify that the orchestrator plugin and hooks are active."
     ]
   }
 }

@@ -1,23 +1,17 @@
 ---
 name: codex-quality-orchestrator
-description: Audit, install, or troubleshoot the Codex quality-first Sol, Terra, and Luna routing policy, agent profiles, and enforcement hooks.
+description: 维护、安装、验证或排查 Sol、Terra、Luna 的质量优先路由插件。
 ---
 
 # Codex Quality Orchestrator
 
-Use this skill when the user asks to inspect, install, change, or diagnose this plugin's model routing.
+仅在用户要求维护、安装、验证或排查本插件时使用。
 
-1. Read `../../references/RULE16.md` for the model-facing semantic policy.
-2. Read `../../routing-policy.json` for mechanically enforced names, models, efforts, and `fork_turns` values.
-3. Read only the relevant agent template under `../../templates/agents/` when checking a named role.
-4. Treat Sol as the semantic router. A short task must be unambiguous, low-risk, need no design choice or diagnosis, use little context, and be directly verifiable; file count and change size are only supporting signals, and high-risk work is never short. Route the whole work unit by its highest requirement, choose the lowest tier with safety margin, and keep the production executor and minimum capability tier stable. Among routes that satisfy quality, capability, and risk constraints, choose the lowest-compute-cost execution; delegate bounded, independently verifiable work when the target agent is reliable. Do not switch models because one step becomes simpler or the wording changes; re-evaluate only after a material boundary change, repeated capability failure, or route unavailability, and only upgrade within the same work unit. Normal handoff to Sol for integration and final acceptance is not rerouting.
-5. Use Luna only for deterministic low-risk subtasks with fixed inputs, outputs, procedure, and mechanical verification. Use Terra as the default delegated producer when implementation judgment, multi-step context, debugging, testing, review, multi-file work, test or configuration data, or ordinary integration under decided interfaces is required. Keep unclear goals, scope or acceptance directly with Sol; if only the Luna-versus-Terra capability tier is uncertain for a clear work unit, choose Terra. Keep architecture, security, public interfaces, production data, irreversible migrations, public data contracts, cross-agent final integration, and final acceptance with Sol.
-6. Separate the root task from subagent routing. The desktop selector, a configuration manager, or `config.toml` chooses the root model and effort before plugin hooks run; this plugin cannot rewrite that selection.
-7. When auditing runtime state, run `codex plugin list --json` and require an installed, enabled entry. A cache directory alone is not evidence that the plugin or its hooks are active.
-8. After installation and Hook trust, run `../../scripts/runtime-smoke.ps1`; it proves only that the host loaded `SessionStart`. Verify the separate `PreToolUse` Hook before removing any legacy routing protection.
-9. Treat Hook rejection as a visible configuration or call-contract failure; never silently downgrade.
-10. Before changing an existing file, create the required timestamped backup and preserve unrelated content.
-11. Run `../../scripts/verify.ps1` after any plugin change. Do not claim success from a subagent report alone.
-12. If another program replaces `config.toml`, use `../../scripts/config-guard.ps1`. It restores only the native marketplace registration, plugin enablement, and exact Hook trust hashes that the user already approved; it must reject changed Hook trust instead of approving it automatically.
-
-The plugin cannot register custom agents directly. Use `../../scripts/install.ps1` for explicit profile installation, and require a new task after installation or policy changes.
+1. `../../references/RULE16.md` 是唯一语义路由规范；读取并执行，不要在 Skill 中复述。
+2. `../../routing-policy.json` 是代理名称、模型、档位和 `fork_turns` 的机械契约；只读取当前任务需要的代理模板。
+3. 运行时状态以 `codex plugin list --json` 的已安装且已启用记录为准，缓存目录不是生效证据。
+4. Hook 拒绝是显式配置或调用契约失败，不得静默降级。
+5. 修改现有文件前按项目规则备份；修改插件后运行 `../../scripts/verify.ps1`，不能把子代理声明当作完成证据。
+6. 安装并信任 Hook 后运行 `../../scripts/runtime-smoke.ps1`；它只证明 SessionStart，PreToolUse 必须单独验收。
+7. 外部程序会替换 `config.toml` 时使用 `../../scripts/config-guard.ps1`；它只恢复原生插件注册和用户已批准的精确 Hook 哈希，定义变化时必须重新审核。
+8. 自定义代理不能由插件原生注册；用 `../../scripts/install.ps1` 显式安装，规则或代理配置变化后新建任务。

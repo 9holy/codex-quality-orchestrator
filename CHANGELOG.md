@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.4 - 2026-08-01
+
+- Reduce healthy SessionStart model context to `[CQO_ACTIVE]` and remove the stale-prone root-default advisory.
+- Make the maintenance skill reference canonical Rule 16 instead of duplicating its routing semantics.
+- Add prompt-size and conditional-injection contracts to prevent future model-context growth.
+- Align Terra and Luna agent instructions with their canonical capability boundaries.
+
 ## 0.1.3 - 2026-08-01
 
 - Require an auditable routing preflight before non-short production work.

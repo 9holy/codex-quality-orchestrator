@@ -17,7 +17,9 @@ const agentsDir = path.join(codexHome, 'agents');
 function installProfiles() {
   fs.mkdirSync(agentsDir, { recursive: true });
   for (const file of fs.readdirSync(templateDir)) {
-    fs.copyFileSync(path.join(templateDir, file), path.join(agentsDir, file));
+    const source = path.join(templateDir, file);
+    if (!file.endsWith('.toml') || !fs.statSync(source).isFile()) continue;
+    fs.copyFileSync(source, path.join(agentsDir, file));
   }
 }
 

@@ -24,38 +24,6 @@ function extractRule16(text) {
   return (nextRule < 0 ? section : section.slice(0, marker.length + nextRule)).trim();
 }
 
-function parseRootTomlString(text, key) {
-  for (const rawLine of text.replace(/^\uFEFF/, '').split(/\r?\n/)) {
-    const line = rawLine.trim();
-    if (line === '' || line.startsWith('#')) continue;
-    if (line.startsWith('[')) break;
-
-    const match = rawLine.match(
-      new RegExp(`^\\s*${key}\\s*=\\s*["']([^"']*)["']\\s*(?:#.*)?$`),
-    );
-    if (match) return match[1];
-  }
-  return null;
-}
-
-function configuredRootNote(home, policy) {
-  const configPath = path.join(home, 'config.toml');
-  if (!fs.existsSync(configPath)) return null;
-
-  const text = fs.readFileSync(configPath, 'utf8');
-  const model = parseRootTomlString(text, 'model');
-  const effort = parseRootTomlString(text, 'model_reasoning_effort');
-  if (model === null && effort === null) return null;
-
-  const configured = `${model ?? '未设置模型'} / ${effort ?? '未设置档位'}`;
-  return (
-    `全局 config.toml 的根代理默认值为 ${configured}。` +
-    '该值由任务创建时的模型选择器或配置决定，插件不会改写；' +
-    `普通非短任务默认使用 ${policy.sol.model} / ${policy.sol.defaultCoordinatorEffort}，` +
-    `高风险任务升级到 ${policy.sol.highRiskEffort}，ultra 仅用于极少数超复杂长任务。`
-  );
-}
-
 function writeRuntimeSmokeProof(nonce, details) {
   const requestedPath = process.env.CQO_RUNTIME_SMOKE_PROOF_PATH;
   if (!/^[a-f0-9]{32}$/.test(nonce ?? '') || !requestedPath) return null;
@@ -100,7 +68,7 @@ function main() {
     ? extractRule16(fs.readFileSync(globalAgentsPath, 'utf8'))
     : null;
 
-  const notes = ['[CQO_SESSION_START_LOADED]'];
+  const notes = [];
   const runtimeSmokeNonce = process.env.CQO_RUNTIME_SMOKE_NONCE;
   const rule16Status =
     installedRule === null ? 'injected' : installedRule === canonical ? 'match' : 'mismatch';
@@ -113,14 +81,8 @@ function main() {
         '暂停具名代理调度并公开报告，完成规则同步后再继续。',
     );
   } else {
-    notes.push(
-      '[CQO_RULE16_MATCH] Codex Quality Orchestrator 已启用，' +
-        '全局 Rule 16 与插件规则一致。',
-    );
+    notes.push('[CQO_ACTIVE]');
   }
-
-  const rootNote = configuredRootNote(home, policy);
-  if (rootNote !== null) notes.push(rootNote);
 
   if (missingProfiles.length > 0) {
     notes.push(

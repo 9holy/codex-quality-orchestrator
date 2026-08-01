@@ -84,7 +84,7 @@ Sol 升级: model(gpt-5.6-sol) + reasoning_effort + fork_turns
 - 加载插件内的 Rule 16。
 - 检查全局 `AGENTS.md` 的 Rule 16 是否一致。
 - 检查 Terra、Luna、reviewer 配置是否缺失。
-- 报告全局 `config.toml` 的根代理默认值及建议档位，但不改写它。
+- 规则匹配且代理配置完整时只输出 `[CQO_ACTIVE]`；不重复注入 Rule 16，也不报告可能被任务选择器覆盖的根默认值。
 - 发现冲突或缺失时公开报告，不静默修复或回退。
 
 ### PreToolUse
@@ -222,7 +222,7 @@ powershell -NoProfile -ExecutionPolicy Bypass `
 ## 8. 发布核验
 
 - 仓库：[9holy/codex-quality-orchestrator](https://github.com/9holy/codex-quality-orchestrator)
-- 目标版本：`v0.1.3`
+- 目标版本：`v0.1.4`
 - Release 资产与 SHA-256 必须以该版本的 GitHub Release 页面为准。
 - 发布完成只以当前提交的 Windows、Ubuntu Actions 均通过为准，不能沿用旧提交结果。
 - CI 必须把 Windows 生成的发布 ZIP 交给 Ubuntu 解压并复跑独立验证，不能只验证各平台自行生成的产物。

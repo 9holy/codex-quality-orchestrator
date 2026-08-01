@@ -17,7 +17,9 @@ const agentsDir = path.join(codexHome, 'agents');
 function installProfiles() {
   fs.mkdirSync(agentsDir, { recursive: true });
   for (const file of fs.readdirSync(templateDir)) {
-    fs.copyFileSync(path.join(templateDir, file), path.join(agentsDir, file));
+    const source = path.join(templateDir, file);
+    if (!file.endsWith('.toml') || !fs.statSync(source).isFile()) continue;
+    fs.copyFileSync(source, path.join(agentsDir, file));
   }
 }
 
@@ -41,9 +43,10 @@ function invoke(runtimeSmokeNonce, runtimeSmokeProofPath) {
 
 try {
   installProfiles();
+  const canonicalRule = fs.readFileSync(canonicalPath, 'utf8').trim();
   fs.writeFileSync(
     path.join(codexHome, 'AGENTS.md'),
-    fs.readFileSync(canonicalPath, 'utf8'),
+    `${canonicalRule}\n`,
     'utf8',
   );
   fs.writeFileSync(
@@ -59,14 +62,9 @@ try {
     'utf8',
   );
 
-  const canonical = invoke();
-  assert.match(canonical, /\[CQO_SESSION_START_LOADED\]/);
-  assert.match(canonical, /\[CQO_RULE16_MATCH\]/);
-  assert.match(canonical, /全局 Rule 16 与插件规则一致/);
-  assert.match(canonical, /gpt-5\.6-sol \/ xhigh/);
-  assert.doesNotMatch(canonical, /nested-model-must-not-win/);
-  assert.match(canonical, /插件不会改写/);
-  assert.match(canonical, /普通非短任务默认使用 gpt-5\.6-sol \/ xhigh/);
+  const matched = invoke();
+  assert.equal(matched, '[CQO_ACTIVE]');
+  assert.doesNotMatch(matched, /gpt-5\.6-sol|xhigh|nested-model-must-not-win/);
 
   const nonce = '0123456789abcdef0123456789abcdef';
   const proofPath = path.join(tempRoot, 'session-start-proof.json');
@@ -89,7 +87,7 @@ try {
     '[profiles.unrelated]\nmodel = "nested-only"\nmodel_reasoning_effort = "ultra"\n',
     'utf8',
   );
-  assert.doesNotMatch(invoke(), /全局 config\.toml 的根代理默认值为/);
+  assert.equal(invoke(), '[CQO_ACTIVE]');
 
   fs.rmSync(path.join(agentsDir, 'luna-worker.toml'));
   const missingProfile = invoke();
@@ -105,11 +103,11 @@ try {
   fs.rmSync(path.join(codexHome, 'AGENTS.md'));
   fs.rmSync(path.join(codexHome, 'config.toml'));
   const injected = invoke();
-  assert.match(injected, /\[CQO_SESSION_START_LOADED\]/);
-  assert.match(injected, /\[CQO_RULE16_INJECTED\]/);
-  assert.match(injected, /## Rule 16 — 默认多模型质量编排/);
+  assert.equal(injected, `[CQO_RULE16_INJECTED]\n${canonicalRule}`);
+  assert.ok(injected.length <= canonicalRule.length + 32);
+  assert.doesNotMatch(injected, /README|OPERATING_GUIDE|SKILL\.md/);
 
-  process.stdout.write('PASS session policy injection and root-default advisory\n');
+  process.stdout.write('PASS minimal session policy context and conditional injection\n');
 } finally {
   fs.rmSync(tempRoot, { recursive: true, force: true });
 }
