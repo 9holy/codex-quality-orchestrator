@@ -61,18 +61,26 @@ function expectDeny(name, input, rawInput) {
 }
 
 function routeName(id, overrides = {}) {
+  const agentType = overrides.agentType ?? 'luna_worker';
+  const effort = overrides.effort ?? (agentType === 'luna_worker' ? 'max' : 'xhigh');
+  const routeLabel = `${agentType.replace(/_worker$/, '')}_${effort}`;
   const wave = overrides.wave ?? 1;
   const slot = overrides.slot ?? 1;
   const size = overrides.size ?? 1;
   const attempt = overrides.attempt ?? 1;
-  return `${id}__w${wave}__s${slot}of${size}__a${attempt}`;
+  return `${routeLabel}__${id}__w${wave}__s${slot}of${size}__a${attempt}`;
 }
 
 function workerInput(agentType, input = {}, route = {}) {
+  const effort = input.reasoning_effort ?? (agentType === 'luna_worker' ? 'max' : 'xhigh');
   return {
     agent_type: agentType,
     fork_turns: '1',
-    task_name: routeName(route.id ?? `${agentType}_task`, route),
+    task_name: routeName(route.id ?? `${agentType}_task`, {
+      ...route,
+      agentType,
+      effort,
+    }),
     message: 'gAAAA-host-encrypted-subagent-message',
     ...input,
   };
@@ -118,6 +126,17 @@ try {
   expectDeny('invalid-json', null, '{not-json');
   expectDeny('missing-message', workerInput('luna_worker', { message: '' }));
   expectDeny('invalid-route-name', workerInput('luna_worker', { task_name: 'plain_name' }));
+  expectDeny('mismatched-route-effort', workerInput('terra_worker', {
+    reasoning_effort: 'xhigh',
+    task_name: routeName('wrong_effort', {
+      agentType: 'terra_worker',
+      effort: 'max',
+    }),
+  }));
+  expectDeny('mismatched-route-agent', workerInput('terra_worker', {
+    reasoning_effort: 'max',
+    task_name: routeName('wrong_agent'),
+  }));
   expectDeny('invalid-wave-slot', workerInput('luna_worker', {}, { id: 'bad_slot', slot: 3, size: 2 }));
   expectDeny('luna-attempt-two', workerInput('luna_worker', {}, { id: 'luna_retry', attempt: 2 }));
   expectDeny('terra-attempt-two-without-first', workerInput(

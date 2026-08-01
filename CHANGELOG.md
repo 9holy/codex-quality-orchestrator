@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.3 - 2026-08-02
+
+- Prefix every Worker task name with its actual route, such as `Terra Max` or `Luna Max`, so the task list shows which model tier is running.
+- Reject task names whose visible route disagrees with the selected agent or reasoning effort.
+
 ## 0.3.2 - 2026-08-02
 
 - Allow `gpt-5.6-terra` to run at `ultra` for frozen work units that need near-Sol-XHigh reasoning without transferring lead responsibilities.

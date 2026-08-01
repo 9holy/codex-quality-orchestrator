@@ -101,9 +101,16 @@ function parseRouteTaskName(value, agentType, selectedEffort, policy) {
     };
   }
 
-  const waveSize = Number(match[4]);
-  const workerSlot = Number(match[3]);
-  const workerAttempt = Number(match[5]);
+  const expectedRouteLabel = `${agentType.replace(/_worker$/, '')}_${selectedEffort}`;
+  if (match[1] !== expectedRouteLabel) {
+    return {
+      error: `task_name 的模型档位前缀必须是 ${expectedRouteLabel}。`,
+    };
+  }
+
+  const waveSize = Number(match[5]);
+  const workerSlot = Number(match[4]);
+  const workerAttempt = Number(match[6]);
   if (waveSize > policy.team.maxWorkersPerWave || workerSlot > waveSize) {
     return { error: 'task_name 的波次槽位超出允许范围。' };
   }
@@ -116,8 +123,8 @@ function parseRouteTaskName(value, agentType, selectedEffort, policy) {
 
   return {
     packet: {
-      work_unit_id: match[1],
-      wave_id: `wave-${match[2]}`,
+      work_unit_id: match[2],
+      wave_id: `wave-${match[3]}`,
       wave_size: waveSize,
       worker_slot: workerSlot,
       worker_attempt: workerAttempt,

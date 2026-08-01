@@ -8,7 +8,7 @@
 
 Luna 可可靠胜任且可独立验收的单元必须下派；至少两个互不冲突且并行收益大于协调成本时自动并行，每波默认 2、最多 3 个 Worker。共享文件单写者，Worker 不得下派；无法安全拆分或 Worker 不能可靠胜任时当前 Sol 接管，不创建 Sol 子代理。
 
-每次 Worker 的 `task_name` 使用明文路由键 `<单元>__w<波次>__s<槽位>of<波次大小>__a<尝试>`，如 `unit_name__w1__s1of2__a1`；`message` 用 `[CQO_WORK_PACKET_V1]` 标记并给 Worker 写明目标、范围、写路径、验收、验证、权限、备份、`selected_agent`、`selected_effort` 和预声明 fallback。宿主会在 Hook 前加密 `message`，故 Hook 只校验可见路由键、调用参数、唯一单元、波次槽位、最多 3 个并发、每单元最多 2 次和每根任务最多 8 次调用；语义与消息内容由 Sol 验收。
+每次 Worker 的 `task_name` 使用明文路由键 `<模型档位>__<单元>__w<波次>__s<槽位>of<波次大小>__a<尝试>`；前缀限 `luna_max|terra_xhigh|terra_max|terra_ultra` 并匹配调用，如 `terra_max__unit_name__w1__s1of2__a1`。`message` 用 `[CQO_WORK_PACKET_V1]` 标记，写明目标、范围、写路径、验收、验证、权限、备份及 `selected_agent|selected_effort|fallback`。`message` 在 Hook 前已加密，Hook 只校验路由键、唯一单元、波次槽位、最多 3 个并发、每单元最多 2 次和每根任务最多 8 次调用；语义与消息内容由 Sol 验收。
 
 仅精确消息 `Selected model is at capacity. Please try a different model.` 触发原代理续交“继续”一次，保留上下文和进度，不重做、重拆或重启整项任务；再次失败才按预声明 `Luna→Terra→当前 Sol` 上调。其他终止错误若未触发 `SubagentStop`，先运行插件 `release-failed-dispatch.cjs <原 task_name>` 释放账本，再公开上调或停止；禁止静默降级。
 

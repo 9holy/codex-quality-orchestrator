@@ -22,7 +22,7 @@ skill = skill_path.read_text(encoding="utf-8")
 
 assert manifest["name"] == "codex-quality-orchestrator"
 base_version, separator, cachebuster = manifest["version"].partition("+codex.")
-assert base_version == policy["policyVersion"] == "0.3.2"
+assert base_version == policy["policyVersion"] == "0.3.3"
 assert not separator or cachebuster
 assert list((PLUGIN_ROOT / "skills").rglob("SKILL.md")) == [skill_path]
 assert manifest["interface"]["defaultPrompt"] == [
@@ -85,7 +85,7 @@ assert hooks["hooks"]["SubagentStop"][0]["hooks"][0]["commandWindows"] == (
     'node "$env:PLUGIN_ROOT\\hooks\\continue-capacity-subagent.cjs"'
 )
 assert policy["sol"]["spawnAllowed"] is False
-assert policy["schemaVersion"] == 4
+assert policy["schemaVersion"] == 5
 assert policy["sol"]["defaultCoordinatorEffort"] == "high"
 assert policy["sol"]["complexCoordinatorEffort"] == "xhigh"
 assert policy["team"] == {
@@ -103,8 +103,8 @@ assert policy["team"] == {
 assert policy["workPacket"] == {
     "marker": "CQO_WORK_PACKET_V1",
     "required": True,
-    "hostVisibleTaskNamePattern": "^([a-z0-9][a-z0-9_-]{2,39})__w([1-9]\\d{0,2})__s([1-3])of([1-3])__a([12])$",
-    "hostVisibleTaskNameExample": "unit_name__w1__s1of2__a1",
+    "hostVisibleTaskNamePattern": "^(luna_max|terra_(?:xhigh|max|ultra))__([a-z0-9][a-z0-9_-]{2,39})__w([1-9]\\d{0,2})__s([1-3])of([1-3])__a([12])$",
+    "hostVisibleTaskNameExample": "terra_max__unit_name__w1__s1of2__a1",
     "allowedTaskIntents": ["mutate", "inspect", "verify"],
     "allowedMutationAuthorities": ["none", "declared_paths"],
     "allowedFallbacks": {

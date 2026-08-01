@@ -95,7 +95,7 @@ try {
   }, policy);
   const released = spawnSync(
     process.execPath,
-    [releaseScript, 'unit-release__w1__s1of1__a1'],
+    [releaseScript, 'luna_max__unit-release__w1__s1of1__a1'],
     {
       encoding: 'utf8',
       env: {

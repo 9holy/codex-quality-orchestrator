@@ -21,13 +21,13 @@ if (!match) {
   );
   process.exitCode = 2;
 } else {
-  const error = releaseFailedDispatch(sessionId, match[1], policy);
+  const error = releaseFailedDispatch(sessionId, match[2], policy);
   if (error) {
     process.stderr.write(`${error}\n`);
     process.exitCode = 1;
   } else {
     process.stdout.write(
-      `${JSON.stringify({ sessionId, workUnitId: match[1], status: 'failed' })}\n`,
+      `${JSON.stringify({ sessionId, workUnitId: match[2], status: 'failed' })}\n`,
     );
   }
 }
