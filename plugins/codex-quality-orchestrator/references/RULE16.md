@@ -1,19 +1,12 @@
 ## Rule 16 — 默认多模型质量团队
 
-目标/验收明确、低风险、上下文少且可直接验证的短任务由当前主代理完成；高风险不算短任务。
-
-非短任务由当前 `gpt-5.6-sol` 理解、规划和拆解。Sol 判断每个工作单元：确认 `luna_worker`（Luna Max）能可靠完成且结果可验证，就优先下派；不能胜任或判断不确定就不得试派。Sol 负责整合、复跑验证、最终审核和兜底。
-
-通常使用 1 个 Worker；仅有 2–3 个互不冲突单元且并行收益更大时并行，最多 3 个。共享文件单写者。Worker 不得创建或下派子代理；Sol 不创建执行型 Sol 子代理。仅关键高风险变更需要独立复审时，单独下派 1 个 `sol_reviewer`（Sol XHigh）只读审核；当前 Sol 最终裁决。
-
-Luna 不适用时由当前 Sol 处理；仅当前 Sol 不能可靠完成且深推理子问题可独立下派时使用 Terra Ultra。Terra XHigh/Max 可显式调用但不进入自动路由；主控能力不足则建议下一任务使用 Sol XHigh。架构、安全、公共接口、生产数据/契约、不可逆迁移和最终裁决留给 Sol。
-
-Worker 结果须由 Sol 检查实际差异并复跑验证。仅明确、局部的问题可交原代理修正一次；能力或质量不合格立即交回 Sol，不得继续试错。
-
-仅在能胜任的候选间比较 IQ/成本；IQ 差<3 视为同级，同级先保留热模型/原代理，再选低预计总成本。保持根档位；仅建议下一任务时用最低可靠链 `medium→xhigh→max→ultra`，Sol High 不进自动链，XHigh 胜任不得建议 Max。
-
-`task_name` 使用 `<模型档位>__<单元>__w<波次>__s<槽位>of<波次大小>__a<尝试>`，前缀限 `luna_max|terra_xhigh|terra_max|terra_ultra|sol_reviewer_xhigh`。`message` 用 `[CQO_WORK_PACKET_V1]` 写明目标/范围/写路径/验收/验证/权限/备份及 `selected_agent|selected_effort|fallback`。单元唯一，每单元最多 2 次；Sol 自行验收语义。
-
-遇到精确消息 `Selected model is at capacity. Please try a different model.` 时向原代理发送“继续”一次并保留进度；再次失败交回当前 Sol，不重做。能力/质量失败不得按容量错误续交。其他错误未触发 `SubagentStop` 时运行 `release-failed-dispatch.cjs <task_name>`；禁止静默降级。
-
-调用 `luna_worker` 或 `sol_reviewer` 传 `agent_type,fork_turns`；调用 `terra_worker` 另传 `reasoning_effort=xhigh|max|ultra`；均不传 `model`。`fork_turns` 默认 `"none"`。
+- 目标明确、低风险且可直接验证的短任务由当前主代理完成；高风险任务不算短任务。
+- 非短任务由当前 `gpt-5.6-sol` 理解、拆解和分派。Sol 逐单元判断；Luna Max 能可靠完成且结果可验证，就优先派 `luna_worker`，不能胜任或不确定就不派。Sol 整合结果、复跑验证、最终审核和兜底。
+- 只在能胜任候选间使用新鲜 `[CQO_RADAR]` 数据。Luna Max 能胜任时固定优先；否则 IQ 差≥3 选高 IQ，差<3 视为同级；同级先保留热模型/原代理，再选预计总成本更低者。没有新鲜数据就由 Sol 判断；成本不得引入不胜任模型。
+- Luna 不适用时，由当前 Sol 完成，或将适合独立执行的单元派给能胜任的 Terra 最低档位；主控能力不足则建议下一任务使用 Sol XHigh。架构、安全、公共接口、生产数据/契约、不可逆迁移和最终裁决留给 Sol。
+- 通常使用 1 个 Worker；仅有互不冲突且并行收益更大时使用 2–3 个，最多 3 个。共享文件单写者。Worker 不得创建子代理；Sol 不创建执行型 Sol 子代理。仅关键高风险变更可另派 1 个 `sol_reviewer`（Sol XHigh）只读复审。
+- Worker 结果必须由 Sol 验收。仅明确、局部的问题可交原代理修正一次；能力或质量不合格立即交回 Sol，不得继续试错。
+- 保持根档位；仅建议下一任务时用 `medium→xhigh→max→ultra`，Sol High 不进自动链，XHigh 胜任不得建议 Max。
+- `task_name` 格式为 `<模型档位>__<单元>__w<波次>__s<槽位>of<波次大小>__a<尝试>`，前缀限 `luna_max|terra_xhigh|terra_max|terra_ultra|sol_reviewer_xhigh`。`message` 必须含 `[CQO_WORK_PACKET_V1]` 及目标/范围/写路径/验收/验证/权限/备份/`selected_agent|selected_effort|fallback`。单元唯一，每单元最多 2 次。
+- 遇到精确消息 `Selected model is at capacity. Please try a different model.`，向原代理发送“继续”一次并保留进度；再次失败交回 Sol。能力/质量失败不得这样续交。其他错误未触发 `SubagentStop` 时运行 `release-failed-dispatch.cjs <task_name>`。
+- 调用 `luna_worker` 或 `sol_reviewer` 传 `agent_type,fork_turns`；调用 `terra_worker` 再传 `reasoning_effort=xhigh|max|ultra`；均不传 `model`，`fork_turns` 默认 `"none"`。

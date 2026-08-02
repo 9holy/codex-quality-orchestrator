@@ -12,11 +12,11 @@ Luna Max 在 Sol 判断能胜任的候选中第一优先，雷达数据不能替
 
 短任务必须同时满足目标与验收无歧义、低风险、无需方案选择或诊断、上下文很少且可直接验证；改动大小、文件数量或验证步骤数量只能作为辅助信号。架构、安全、公共接口、生产数据、不可逆操作等高风险事项无论大小都不是短任务。
 
-对每个非短任务，Sol 判断每个工作单元由谁执行。Luna Max 能胜任就优先下派；不适用时由当前 Sol 处理。只有当前 Sol 不能可靠完成、且深推理子问题可独立下派时才交 Terra Ultra；最终审核、架构、高风险、生产数据、跨代理最终集成与最终裁决保留给 Sol。
+对每个非短任务，Sol 判断每个工作单元由谁执行。Luna Max 能胜任就优先下派；不适用时由当前 Sol 处理，或把适合独立下派的单元交给能胜任的 Terra 最低档位。最终审核、架构、高风险、生产数据、跨代理最终集成与最终裁决保留给 Sol。
 
 Worker 结果由 Sol 检查实际差异并复跑验证。明确、局部的问题可让原 Worker 修正一次；能力或质量不合格立即交回 Sol，不按容量错误续交。关键高风险变更需要独立性时才使用一次只读 Sol XHigh reviewer。
 
-容量错误是唯一同级续交例外：子代理最后消息包含精确文本 `Selected model is at capacity. Please try a different model.` 时，`SubagentStop` 首次自动向原子代理提交“继续”，保留原上下文与进度；`stop_hook_active` 防止第二次续交。未创建成功时才以原参数重试同一工作包一次。第二次仍失败就交回当前 Sol，只有当前 Sol 能力不足时才改派 Terra Ultra；不重做已完成工作、不重新拆分或重启整项任务。
+容量错误是唯一同级续交例外：子代理最后消息包含精确文本 `Selected model is at capacity. Please try a different model.` 时，`SubagentStop` 首次自动向原子代理提交“继续”，保留原上下文与进度；`stop_hook_active` 防止第二次续交。未创建成功时才以原参数重试同一工作包一次。第二次仍失败就交回当前 Sol 重新判断；不重做已完成工作、不重新拆分或重启整项任务。
 
 ## 2. 默认工作流
 
@@ -35,7 +35,7 @@ flowchart TD
     G -->|否| O{当前 Sol 可胜任?}
     O -->|是| H
     O -->|否| P{深推理单元可独立下派?}
-    P -->|是| Q[Terra Ultra 执行]
+    P -->|是| Q[Terra 最低可靠档执行]
     P -->|否| R[建议下一任务使用 Sol XHigh]
     Q --> K
     J --> K[Sol 检查实际差异并复跑验证]
@@ -80,7 +80,7 @@ OpenAI 的 Codex 模型指南把 `gpt-5.6-sol / medium` 作为默认 Power 设�
 | Sol 高风险 | `gpt-5.6-sol` | `max` | 架构、安全、公共接口、生产数据、不可逆迁移、公共数据契约、疑难问题和最终裁决 |
 | Sol 系统性主控 | `gpt-5.6-sol` | `ultra` | 可有效并行的系统性多波次任务，不作为 Worker |
 | Luna | `gpt-5.6-luna` | 固定 `max` | 边界冻结、清晰、可独立验收的实现、已定位问题的修复、测试、扫描和批量工作 |
-| Terra | `gpt-5.6-terra` | `xhigh`、`max` 或 `ultra` | 当前自动路由只使用 Ultra；XHigh/Max 保留显式调用能力，不由 Hook 按排名封死 |
+| Terra | `gpt-5.6-terra` | `xhigh`、`max` 或 `ultra` | 承担适合独立下派的工作；Sol 选择能胜任的最低档位 |
 | Sol reviewer | `gpt-5.6-sol` | 固定 `xhigh` | 关键高风险变更的一次独立只读复审 |
 
 `gpt-5.5`、裸 Terra、裸 Luna 和未登记模型禁止下派。

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.16 - 2026-08-02
+
+- Remove the obsolete explicit-only Terra wording and let Sol choose the lowest Terra effort that can handle an independently delegated unit.
+
 ## 0.3.15 - 2026-08-02
 
 - Simplify Luna routing to one Sol judgment: delegate when Luna can reliably complete verifiable work; otherwise do not trial-dispatch.
