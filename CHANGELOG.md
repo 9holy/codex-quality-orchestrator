@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.14 - 2026-08-02
+
+- Require Sol to pass a high-confidence capability, risk, rollback, and verification gate before delegating to Luna Max.
+- Treat Luna output as unaccepted until Sol verifies it, and separate capability failure from the one in-place capacity continuation.
+
 ## 0.3.13 - 2026-08-02
 
 - Keep Terra XHigh, Max, and Ultra mechanically callable while leaving current automatic model preference in Rule 16 and radar evidence instead of hard-coded Hook denials.
