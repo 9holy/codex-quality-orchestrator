@@ -48,11 +48,13 @@ assert "有足够执行量、交接有净收益" in rule
 assert "必须优先派 `luna_worker`" in rule
 assert "单个单元即可下派，不要求并行" in rule
 assert "不能胜任或不确定就不派" in rule
-assert "任务开始时只在能胜任候选间使用一次新鲜 `[CQO_RADAR]` 数据确定执行者" in rule
-assert "Luna Max 能胜任时固定优先" in rule
+assert "Luna Max 能可靠完成时直接选择，不读取 Radar" in rule
+assert "仅当 Luna 不适用且同时存在多个能胜任候选时" in rule
+assert "读取一次新鲜 `[CQO_RADAR]`" in rule
+assert "单一候选或没有新鲜数据时由 Sol 直接判断" in rule
 assert "IQ 差≥3 选高 IQ" in rule
 assert "差<3 视为同级" in rule
-assert "没有新鲜数据就由 Sol 判断" in rule
+assert "没有新鲜数据时由 Sol 直接判断" in rule
 assert "确定后不重复选模" in rule
 assert "仅新增单元、边界变化、执行失败或模型不可用时重判" in rule
 assert "通常使用 1 个 Worker" in rule
@@ -90,10 +92,12 @@ assert "唯一语义路由规范" in maintenance_skill
 assert "不要在 Skill 中复述" in maintenance_skill
 assert len(routing_skill) <= 1900
 assert "单个较大且边界明确" in routing_skill
-assert "不得为单个单元建立 TeamPlan" in routing_skill
-assert "不得派生产 Worker" in routing_skill
-assert "首次分派前读取 `../../routing-policy.json`" in routing_skill
-assert "不要为使用 Worker 切碎任务" in routing_skill
+assert "已加载时不得再次读取或复述" in routing_skill
+assert "首次实际分派前读取 `../../routing-policy.json`" in routing_skill
+assert "Luna 适用或只有一个能胜任候选时不读取 Radar" in routing_skill
+assert "node ../../hooks/radar-routing-evidence.cjs" in routing_skill
+assert "不得为单个单元建立 TeamPlan" not in routing_skill
+assert "Worker 结果必须由 Sol 检查" not in routing_skill
 assert "allow_implicit_invocation: true" in routing_skill_metadata
 assert "$codex-quality-routing-team" in routing_skill_metadata
 assert hooks["hooks"]["SessionStart"][0]["hooks"][0]["additionalContextLimit"] <= 2500

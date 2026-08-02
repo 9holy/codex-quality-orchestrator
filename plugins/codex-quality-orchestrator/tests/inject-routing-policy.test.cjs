@@ -5,11 +5,6 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const {
-  SOURCE_URL,
-  resolveCachePath,
-  writeRadarCache,
-} = require('../hooks/radar-routing-evidence.cjs');
 
 const pluginRoot = path.resolve(__dirname, '..');
 const hookPath = path.join(pluginRoot, 'hooks', 'inject-routing-policy.cjs');
@@ -20,8 +15,7 @@ const codexHome = path.join(tempRoot, '.codex');
 const agentsDir = path.join(codexHome, 'agents');
 const activeContext = [
   '[CQO_ACTIVE]',
-  '[CQO_ROUTE] 非短任务必须使用 $codex-quality-routing-team；' +
-    'Luna Max 能可靠完成、可验收且交接有净收益的执行单元必须下派，Sol 最终验收。',
+  '[CQO_ROUTE] Rule 16 已加载；非短任务使用 $codex-quality-routing-team。',
 ].join('\n');
 
 function installProfiles() {
@@ -77,38 +71,9 @@ try {
   const matched = invoke();
   assert.equal(matched, activeContext);
   assert.doesNotMatch(matched, /gpt-5\.6-sol|xhigh|nested-model-must-not-win/);
-
-  writeRadarCache(resolveCachePath(codexHome), {
-    source: SOURCE_URL,
-    collected_at: new Date().toISOString(),
-    items: [
-      {
-        model: 'gpt-5.6-sol',
-        effort: 'xhigh',
-        iq: 99.11,
-        samples: 112,
-        average_cost_usd: 6.56,
-        cost_samples: 112,
-        average_duration_minutes: 31.47,
-      },
-      {
-        model: 'gpt-5.6-terra',
-        effort: 'ultra',
-        iq: 100.45,
-        samples: 112,
-        average_cost_usd: 9.29,
-        cost_samples: 112,
-        average_duration_minutes: 30.7,
-      },
-    ],
-  });
-  const withRadar = invoke(undefined, undefined, false);
-  assert.match(withRadar, /^\[CQO_ACTIVE\]\n\[CQO_ROUTE\]/);
-  assert.match(withRadar, /\[CQO_RADAR\]/);
-  assert.match(withRadar, /IQ 差<3\.00 视为同级/);
-  assert.match(withRadar, /新任务：Sol XHigh 优先 Terra Ultra/);
-  assert.doesNotMatch(withRadar, /CQO_RADAR_STATUS|CQO_RADAR_FALLBACK|IQ=|采集时间|https:/);
-  assert.ok(withRadar.length < 760);
+  const radarDeferred = invoke(undefined, undefined, false);
+  assert.equal(radarDeferred, activeContext);
+  assert.doesNotMatch(radarDeferred, /CQO_RADAR/);
 
   const nonce = '0123456789abcdef0123456789abcdef';
   const proofPath = path.join(tempRoot, 'session-start-proof.json');

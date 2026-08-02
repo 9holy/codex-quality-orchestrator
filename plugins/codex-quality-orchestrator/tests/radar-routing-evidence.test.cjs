@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 
 const {
   ROUTES,
@@ -12,6 +13,8 @@ const {
   formatRadarContext,
   getRadarEvidence,
   loadRadarCache,
+  resolveCachePath,
+  writeRadarCache,
 } = require('../hooks/radar-routing-evidence.cjs');
 
 const NOW = Date.parse('2026-08-02T00:00:00.000Z');
@@ -186,6 +189,23 @@ function responseFor(value) {
     return responseFor(payload());
   };
   try {
+    const cliHome = path.join(tempRoot, 'cli-home');
+    writeRadarCache(resolveCachePath(cliHome), {
+      ...routingSnapshot,
+      collected_at: new Date().toISOString(),
+    });
+    const cliEnv = { ...process.env, CODEX_HOME: cliHome };
+    delete cliEnv.CQO_RADAR_DISABLE;
+    const cli = spawnSync(
+      process.execPath,
+      [path.resolve(__dirname, '..', 'hooks', 'radar-routing-evidence.cjs')],
+      { encoding: 'utf8', env: cliEnv },
+    );
+    assert.equal(cli.status, 0, cli.stderr);
+    assert.match(cli.stdout, /^\[CQO_RADAR\]/);
+    assert.match(cli.stdout, /Sol：Medium 优先 High/);
+    assert.doesNotMatch(cli.stdout, /IQ=|采集时间|https:/);
+
     const refreshed = await getRadarEvidence({
       codexHome: tempRoot,
       cachePath,

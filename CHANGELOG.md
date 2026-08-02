@@ -5,6 +5,8 @@
 - Add an implicitly invokable daily routing skill so ordinary multi-step work can enter the Sol-led routing workflow instead of exposing only the maintenance skill.
 - Route one substantial, bounded, verifiable Luna Max unit when delegation has net benefit; require multiple units only for parallel TeamPlan execution.
 - Keep the existing four-Hook surface and add a compact SessionStart routing reminder without per-prompt token overhead.
+- Stop injecting Radar into every task; Luna-capable work skips Radar, while other routes load one cached summary only when multiple capable candidates remain.
+- Remove duplicated semantic routing instructions from the daily Skill and keep Rule 16 as the single source of truth.
 
 ## 0.3.18 - 2026-08-02
 

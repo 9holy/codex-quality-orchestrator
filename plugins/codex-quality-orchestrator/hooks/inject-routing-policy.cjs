@@ -3,15 +3,13 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { getRadarEvidence } = require('./radar-routing-evidence.cjs');
 
 const pluginRoot = path.resolve(__dirname, '..');
 const canonicalPath = path.join(pluginRoot, 'references', 'RULE16.md');
 const policyPath = path.join(pluginRoot, 'routing-policy.json');
 const activeContext = [
   '[CQO_ACTIVE]',
-  '[CQO_ROUTE] 非短任务必须使用 $codex-quality-routing-team；' +
-    'Luna Max 能可靠完成、可验收且交接有净收益的执行单元必须下派，Sol 最终验收。',
+  '[CQO_ROUTE] Rule 16 已加载；非短任务使用 $codex-quality-routing-team。',
 ].join('\n');
 
 function codexHome() {
@@ -98,23 +96,7 @@ async function main() {
     );
   }
 
-  let radarStatus = 'skipped';
-  if (
-    rule16Status === 'match' &&
-    missingProfiles.length === 0 &&
-    process.env.CQO_RADAR_DISABLE !== '1'
-  ) {
-    const radar = await getRadarEvidence({
-      codexHome: home,
-      config: policy.radarEvidence,
-    });
-    radarStatus = radar.status;
-    if (radar.context) {
-      notes.push(radar.context);
-    }
-  } else if (process.env.CQO_RADAR_DISABLE === '1') {
-    radarStatus = 'disabled';
-  }
+  const radarStatus = process.env.CQO_RADAR_DISABLE === '1' ? 'disabled' : 'deferred';
 
   if (/^[a-f0-9]{32}$/.test(runtimeSmokeNonce ?? '')) {
     notes.push(`[CQO_RUNTIME_SMOKE:${runtimeSmokeNonce}]`);

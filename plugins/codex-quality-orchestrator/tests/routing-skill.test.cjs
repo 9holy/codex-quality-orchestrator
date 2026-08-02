@@ -36,21 +36,24 @@ for (const exclusion of [
 ]) {
   assert.match(skill, new RegExp(exclusion));
 }
-assert.match(skill, /不得为单个单元建立 TeamPlan/);
-assert.match(skill, /仅当 2–3 个单元互不依赖、写入不冲突且并行收益更大时建立 TeamPlan/);
-assert.match(skill, /不得派生产 Worker/);
-assert.match(skill, /仅关键高风险变更可使用只读 `sol_reviewer`/);
+assert.match(skill, /已加载时不得再次读取或复述/);
 assert.match(skill, /\[CQO_WORK_PACKET_V1\]/);
 assert.match(skill, /selected_agent/);
 assert.match(skill, /selected_effort/);
 assert.match(skill, /fallback/);
-assert.match(skill, /不要为使用 Worker 切碎任务/);
+assert.match(skill, /Luna 适用或只有一个能胜任候选时不读取 Radar/);
+assert.match(skill, /node \.\.\/\.\.\/hooks\/radar-routing-evidence\.cjs/);
 assert.match(skill, /\.\.\/\.\.\/references\/RULE16\.md/);
 assert.match(skill, /\.\.\/\.\.\/routing-policy\.json/);
+assert.ok(Buffer.byteLength(skill, 'utf8') < 1900);
+assert.doesNotMatch(skill, /Sol 只做冻结边界所需的调研/);
+assert.doesNotMatch(skill, /Worker 结果必须由 Sol 检查/);
 assert.match(metadata, /allow_implicit_invocation: true/);
 assert.match(metadata, /\$codex-quality-routing-team/);
 assert.match(rule, /使用 `\$codex-quality-routing-team`/);
 assert.match(rule, /单个单元即可下派，不要求并行/);
+assert.match(rule, /Luna Max 能可靠完成时直接选择，不读取 Radar/);
+assert.match(rule, /仅当 Luna 不适用且同时存在多个能胜任候选时/);
 assert.doesNotMatch(rule, /CQO_WORK_PACKET_V1|selected_effort|hostVisibleTaskNamePattern/);
 
 process.stdout.write('PASS routing skill trigger boundaries and single-worker path\n');

@@ -425,10 +425,7 @@ function evidenceResult(status, snapshot, config) {
   };
 }
 
-/**
- * Load a fresh cached snapshot, refresh it at most every six hours, and use a
- * cache no older than 24 hours when the fixed endpoint is unavailable.
- */
+/** Load or refresh a snapshot according to the configured cache windows. */
 async function getRadarEvidence({
   codexHome,
   config = DEFAULT_CONFIG,
@@ -525,6 +522,21 @@ function formatRadarContext(snapshot, config = {}) {
   return lines.join('\n');
 }
 
+async function runCli() {
+  const pluginRoot = path.resolve(__dirname, '..');
+  const policy = JSON.parse(
+    fs.readFileSync(path.join(pluginRoot, 'routing-policy.json'), 'utf8'),
+  );
+  const evidence = await getRadarEvidence({
+    codexHome: process.env.CODEX_HOME
+      ? path.resolve(process.env.CODEX_HOME)
+      : path.join(os.homedir(), '.codex'),
+    config: policy.radarEvidence,
+  });
+  const output = evidence.context || `[CQO_RADAR_UNAVAILABLE:${evidence.status}]`;
+  process.stdout.write(`${output}\n`);
+}
+
 module.exports = {
   DEFAULT_CONFIG,
   ROUTES,
@@ -539,3 +551,10 @@ module.exports = {
   resolveCachePath,
   writeRadarCache,
 };
+
+if (require.main === module) {
+  runCli().catch(() => {
+    process.stdout.write('[CQO_RADAR_UNAVAILABLE:error]\n');
+    process.exitCode = 1;
+  });
+}
