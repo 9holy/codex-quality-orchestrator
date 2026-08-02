@@ -30,8 +30,6 @@ const ROUTES = Object.freeze([
   Object.freeze({ model: 'gpt-5.6-sol', effort: 'xhigh' }),
   Object.freeze({ model: 'gpt-5.6-sol', effort: 'max' }),
   Object.freeze({ model: 'gpt-5.6-sol', effort: 'ultra' }),
-  Object.freeze({ model: 'gpt-5.6-terra', effort: 'xhigh' }),
-  Object.freeze({ model: 'gpt-5.6-terra', effort: 'max' }),
   Object.freeze({ model: 'gpt-5.6-terra', effort: 'ultra' }),
 ]);
 const ROUTE_KEYS = new Set(ROUTES.map(({ model, effort }) => `${model}|${effort}`));
@@ -507,17 +505,14 @@ function formatRadarContext(snapshot, config = {}) {
   );
   const item = (model, effort) => findItem(normalized.items, model, effort);
   const relations = [];
-  if (isLowerCostPeer(item('gpt-5.6-luna', 'max'), item('gpt-5.6-terra', 'max'), iqTieMargin)) {
-    relations.push('可验收执行：Luna Max 优先 Terra Max');
-  }
-  if (isLowerCostPeer(item('gpt-5.6-sol', 'medium'), item('gpt-5.6-terra', 'max'), iqTieMargin)) {
-    relations.push('同角色：Sol Medium 优先 Terra Max');
-  }
   if (isLowerCostPeer(item('gpt-5.6-sol', 'medium'), item('gpt-5.6-sol', 'high'), iqTieMargin)) {
     relations.push('Sol：Medium 优先 High');
   }
   if (isLowerCostPeer(item('gpt-5.6-sol', 'xhigh'), item('gpt-5.6-sol', 'max'), iqTieMargin)) {
     relations.push('Sol：XHigh 优先 Max');
+  }
+  if (isLowerCostPeer(item('gpt-5.6-sol', 'xhigh'), item('gpt-5.6-terra', 'ultra'), iqTieMargin)) {
+    relations.push('新任务：Sol XHigh 优先 Terra Ultra');
   }
   const lines = [
     '[CQO_RADAR]',

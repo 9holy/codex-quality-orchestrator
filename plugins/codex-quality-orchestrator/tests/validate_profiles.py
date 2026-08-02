@@ -22,14 +22,15 @@ skill = skill_path.read_text(encoding="utf-8")
 
 assert manifest["name"] == "codex-quality-orchestrator"
 base_version, separator, cachebuster = manifest["version"].partition("+codex.")
-assert base_version == policy["policyVersion"] == "0.3.10"
+assert base_version == policy["policyVersion"] == "0.3.11"
 assert not separator or cachebuster
 assert list((PLUGIN_ROOT / "skills").rglob("SKILL.md")) == [skill_path]
 assert manifest["interface"]["defaultPrompt"] == [
     "Audit my current model routing configuration.",
     "Verify that the orchestrator plugin and hooks are active.",
 ]
-assert "主线：短任务由当前主代理直接完成" in rule
+assert "目标/验收明确、低风险、上下文少且可直接验证才算短任务" in rule
+assert "高风险不算短任务" in rule
 assert "其余由当前 `gpt-5.6-sol` 规划" in rule
 assert "拆成 `luna_worker / gpt-5.6-luna / max` 能可靠执行且可独立验收的工作单" in rule
 assert "能拆给 Luna 就必须下派，Sol 不得代做" in rule
@@ -41,24 +42,24 @@ assert "Sol High 不进入自动链" in rule
 assert "XHigh 能胜任不得建议 Max" in rule
 assert "同一工作单元保持当前模型和原代理" in rule
 assert "局部问题最多续交一次定向修正" in rule
-assert "补充路由仅在主线不适用时使用" in rule
-assert "无需独立或并行且当前 Sol 能可靠完成时由 Sol 接管" in rule
-assert "普通独立复核或必须并行的复杂单元用 Terra Max" in rule
-assert "最深独立推理用 Terra Ultra" in rule
-assert "Terra XHigh 仅接受显式兼容调用" in rule
+assert "仅主线不适用时补充" in rule
+assert "当前 Sol 能可靠完成时由 Sol 接管" in rule
+assert "当前 Sol 能力不足且深推理子问题可独立下派时用 Terra Ultra" in rule
+assert "任务级主控能力不足则建议下一任务使用 Sol XHigh" in rule
+assert "Terra XHigh/Max 不自动调用" in rule
+assert "不默认另派 Terra 复核" in rule
 assert "IQ 差小于 3 视为同级" in rule
 assert "同级先保留热模型/原代理" in rule
-assert "通常使用 1 个 Worker" in rule
+assert "通常 1 个 Worker" in rule
 assert "最多 3 个" in rule
 assert "CQO_WORK_PACKET_V1" in rule
 assert "selected_effort" in rule
-assert "每根任务 8 次" not in rule
+assert "每根任务" not in rule
 assert "共享文件单写者" in rule
 assert "Worker 不得下派" in rule
+assert "Sol 不创建 Sol 子代理" in rule
 assert "Hook 只校验" not in rule
 assert policy["namedAgents"]["terra_worker"]["allowedEfforts"] == [
-    "xhigh",
-    "max",
     "ultra",
 ]
 assert "生产数据、不可逆迁移、公共数据契约" in rule
@@ -68,7 +69,8 @@ capacity_message = "Selected model is at capacity. Please try a different model.
 assert capacity_message in rule
 assert rule.count(capacity_message) == 1
 assert "向原代理发送“继续”一次并保留进度" in rule
-assert "再次失败按 `Luna→Terra→当前 Sol` 上调" in rule
+assert "再次失败交回当前 Sol，不重做" in rule
+assert "仅当前 Sol 能力不足时改派 Terra Ultra" in rule
 assert '`fork_turns` 默认 `"none"`' in rule
 assert len(skill) <= 1600
 assert "唯一语义路由规范" in skill
@@ -101,7 +103,6 @@ assert policy["team"] == {
     "defaultWorkersPerWave": 1,
     "maxWorkersPerWave": 3,
     "maxWorkerAttemptsPerWorkUnit": 2,
-    "maxRootWorkerAttempts": 64,
     "maxFollowupsPerWorker": 1,
     "singleWriterForSharedFiles": True,
     "workersMayDelegate": False,
@@ -112,12 +113,12 @@ assert policy["team"] == {
 assert policy["workPacket"] == {
     "marker": "CQO_WORK_PACKET_V1",
     "required": True,
-    "hostVisibleTaskNamePattern": "^(luna_max|terra_(?:xhigh|max|ultra))__([a-z0-9][a-z0-9_-]{2,39})__w([1-9]\\d{0,2})__s([1-3])of([1-3])__a([12])$",
-    "hostVisibleTaskNameExample": "terra_max__unit_name__w1__s1of2__a1",
+    "hostVisibleTaskNamePattern": "^(luna_max|terra_ultra)__([a-z0-9][a-z0-9_-]{2,39})__w([1-9]\\d{0,2})__s([1-3])of([1-3])__a([12])$",
+    "hostVisibleTaskNameExample": "terra_ultra__unit_name__w1__s1of2__a1",
     "allowedTaskIntents": ["mutate", "inspect", "verify"],
     "allowedMutationAuthorities": ["none", "declared_paths"],
     "allowedFallbacks": {
-        "luna_worker": ["terra_worker"],
+        "luna_worker": ["sol_controller", "terra_worker"],
         "terra_worker": ["sol_controller"],
     },
 }
@@ -125,7 +126,7 @@ assert policy["capacityRecovery"] == {
     "message": capacity_message,
     "automaticContinuationPrompt": "继续",
     "maxAutomaticContinuationsPerSubagent": 1,
-    "escalationOrder": ["luna_worker", "terra_worker", "sol_controller"],
+    "escalationOrder": ["luna_worker", "sol_controller", "terra_worker"],
 }
 assert policy["radarEvidence"] == {
     "enabled": True,
@@ -167,7 +168,7 @@ assert "fallback_agent" in routing_hook
 assert "replace(/^\\uFEFF+/, '')" in routing_hook
 assert "replace(/^\\uFEFF+/, '')" in capacity_hook
 assert "replace(/^\\uFEFF+/, '')" in start_hook
-assert "maxRootWorkerAttempts" in ledger_hook
+assert "maxRootWorkerAttempts" not in ledger_hook
 assert "attempt=1 尚未结束" in ledger_hook
 assert "releaseFailedDispatch" in ledger_hook
 assert "CODEX_THREAD_ID" in release_hook
@@ -194,20 +195,16 @@ for forbidden_work in ("重新定义需求", "根因诊断", "跨上下文推断
 
 assert "已定位问题的修复" in luna_instructions
 assert "局部实现选择与修正" in luna_instructions
-assert "独立复核" in tomllib.loads(
-    (PLUGIN_ROOT / "templates" / "agents" / "terra-worker.toml").read_text(
-        encoding="utf-8"
-    )
-)["developer_instructions"]
 terra_instructions = tomllib.loads(
     (PLUGIN_ROOT / "templates" / "agents" / "terra-worker.toml").read_text(
         encoding="utf-8"
     )
 )["developer_instructions"]
-assert "xhigh 仅接受显式兼容调用" in terra_instructions
-assert "max 接受普通独立复核或必须并行的复杂单元" in terra_instructions
-assert "ultra 接受最深独立推理" in terra_instructions
+assert "仅接受当前 Sol 无法可靠完成" in terra_instructions
+assert "可独立下派" in terra_instructions
+assert "固定使用 ultra，不接受 xhigh 或 max" in terra_instructions
 assert "xhigh 用于常规判断" not in terra_instructions
+assert "普通独立复核" not in terra_instructions
 
 retired = policy["retiredProfiles"]
 assert retired == [

@@ -56,10 +56,10 @@ function payload() {
       'task-b|gpt-5.6-sol|medium': {
         ran_by: [run(true, '2026-08-01T03:00:00Z', Number.NaN, Infinity)],
       },
-      'task-a|gpt-5.6-terra|xhigh': {
+      'task-a|gpt-5.6-terra|max': {
         ran_by: [run(true, '2026-08-01T04:00:00Z', 4, 240)],
       },
-      'task-b|gpt-5.6-terra|xhigh': {
+      'task-b|gpt-5.6-terra|max': {
         ran_by: [run(false, '2026-08-01T05:00:00Z', 6, 300)],
       },
       'task-c|gpt-5.6-sol|high': {
@@ -90,8 +90,6 @@ function responseFor(value) {
     'gpt-5.6-sol|xhigh',
     'gpt-5.6-sol|max',
     'gpt-5.6-sol|ultra',
-    'gpt-5.6-terra|xhigh',
-    'gpt-5.6-terra|max',
     'gpt-5.6-terra|ultra',
   ]);
 
@@ -120,15 +118,6 @@ function responseFor(value) {
       cost_samples: 1,
       average_duration_minutes: 3,
     },
-    {
-      model: 'gpt-5.6-terra',
-      effort: 'xhigh',
-      iq: 75,
-      samples: 2,
-      average_cost_usd: 5,
-      cost_samples: 2,
-      average_duration_minutes: 4.5,
-    },
   ]);
   const itemKeys = Object.keys(snapshot.items[0]).sort();
   assert.deepEqual(itemKeys, [
@@ -152,7 +141,7 @@ function responseFor(value) {
       ['gpt-5.6-sol', 'high', 88.39, 5.22],
       ['gpt-5.6-sol', 'xhigh', 99.11, 6.56],
       ['gpt-5.6-sol', 'max', 100.45, 9.57],
-      ['gpt-5.6-terra', 'max', 88.39, 4.07],
+      ['gpt-5.6-terra', 'ultra', 100.45, 9.29],
     ].map(([model, effort, iq, average_cost_usd]) => ({
       model,
       effort,
@@ -166,10 +155,9 @@ function responseFor(value) {
   const context = formatRadarContext(routingSnapshot);
   assert.match(context, /^\[CQO_RADAR\]/);
   assert.match(context, /IQ 差<3\.00 视为同级/);
-  assert.match(context, /可验收执行：Luna Max 优先 Terra Max/);
-  assert.match(context, /同角色：Sol Medium 优先 Terra Max/);
   assert.match(context, /Sol：Medium 优先 High/);
   assert.match(context, /Sol：XHigh 优先 Max/);
+  assert.match(context, /新任务：Sol XHigh 优先 Terra Ultra/);
   assert.ok(context.length < 420);
   assert.doesNotMatch(context, /attacker-controlled|untrusted|https:|采集时间|CQO_RADAR_STATUS|IQ=|0\.47/);
   assert.equal(
@@ -197,7 +185,7 @@ function responseFor(value) {
     assert.equal(refreshed.status, 'refreshed');
     assert.equal(fetchCalls, 1);
     assert.equal(fs.existsSync(cachePath), true);
-    assert.equal(loadRadarCache(cachePath, { minSamples: 2 }).items.length, 3);
+    assert.equal(loadRadarCache(cachePath, { minSamples: 2 }).items.length, 2);
     assert.equal(fs.readdirSync(tempRoot).some((name) => name.includes('.tmp-')), false);
 
     const fresh = await getRadarEvidence({

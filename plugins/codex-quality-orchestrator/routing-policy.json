@@ -1,6 +1,6 @@
 {
   "schemaVersion": 5,
-  "policyVersion": "0.3.10",
+  "policyVersion": "0.3.11",
   "toolNames": [
     "spawn_agent",
     "Agent",
@@ -25,7 +25,6 @@
     "defaultWorkersPerWave": 1,
     "maxWorkersPerWave": 3,
     "maxWorkerAttemptsPerWorkUnit": 2,
-    "maxRootWorkerAttempts": 64,
     "maxFollowupsPerWorker": 1,
     "singleWriterForSharedFiles": true,
     "workersMayDelegate": false,
@@ -36,8 +35,8 @@
   "workPacket": {
     "marker": "CQO_WORK_PACKET_V1",
     "required": true,
-    "hostVisibleTaskNamePattern": "^(luna_max|terra_(?:xhigh|max|ultra))__([a-z0-9][a-z0-9_-]{2,39})__w([1-9]\\d{0,2})__s([1-3])of([1-3])__a([12])$",
-    "hostVisibleTaskNameExample": "terra_max__unit_name__w1__s1of2__a1",
+    "hostVisibleTaskNamePattern": "^(luna_max|terra_ultra)__([a-z0-9][a-z0-9_-]{2,39})__w([1-9]\\d{0,2})__s([1-3])of([1-3])__a([12])$",
+    "hostVisibleTaskNameExample": "terra_ultra__unit_name__w1__s1of2__a1",
     "allowedTaskIntents": [
       "mutate",
       "inspect",
@@ -49,6 +48,7 @@
     ],
     "allowedFallbacks": {
       "luna_worker": [
+        "sol_controller",
         "terra_worker"
       ],
       "terra_worker": [
@@ -62,8 +62,8 @@
     "maxAutomaticContinuationsPerSubagent": 1,
     "escalationOrder": [
       "luna_worker",
-      "terra_worker",
-      "sol_controller"
+      "sol_controller",
+      "terra_worker"
     ]
   },
   "radarEvidence": {
@@ -83,8 +83,6 @@
       "model": "gpt-5.6-terra",
       "effortMode": "required",
       "allowedEfforts": [
-        "xhigh",
-        "max",
         "ultra"
       ]
     },

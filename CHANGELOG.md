@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.11 - 2026-08-02
+
+- Make Sol planning, Luna Max execution, and Sol final audit the primary route; return Luna failures to the current Sol before any Terra call.
+- Remove Terra XHigh and Terra Max from automatic routing; reserve Terra Ultra for independently delegable deep reasoning that exceeds the current Sol.
+- Remove the cumulative Worker-call ceiling while retaining the three-active-Worker and two-attempt-per-unit safety constraints.
+- Restore the explicit short-task boundary, high-risk exclusion, prohibition on Sol subagents, and Sol-only final review.
+
 ## 0.3.10 - 2026-08-02
 
 - Make the primary workflow explicit and first: Sol plans and splits work into independently verifiable Luna Max units, Luna executes them, and Sol integrates, re-runs verification, audits, and falls back only when needed.

@@ -78,20 +78,20 @@ try {
     collected_at: new Date().toISOString(),
     items: [
       {
-        model: 'gpt-5.6-luna',
-        effort: 'max',
-        iq: 85.71,
+        model: 'gpt-5.6-sol',
+        effort: 'xhigh',
+        iq: 99.11,
         samples: 112,
-        average_cost_usd: 0.47,
+        average_cost_usd: 6.56,
         cost_samples: 112,
         average_duration_minutes: 31.47,
       },
       {
         model: 'gpt-5.6-terra',
-        effort: 'max',
-        iq: 88.39,
+        effort: 'ultra',
+        iq: 100.45,
         samples: 112,
-        average_cost_usd: 4.07,
+        average_cost_usd: 9.29,
         cost_samples: 112,
         average_duration_minutes: 30.7,
       },
@@ -101,7 +101,7 @@ try {
   assert.match(withRadar, /^\[CQO_ACTIVE\]/);
   assert.match(withRadar, /\[CQO_RADAR\]/);
   assert.match(withRadar, /IQ 差<3\.00 视为同级/);
-  assert.match(withRadar, /可验收执行：Luna Max 优先 Terra Max/);
+  assert.match(withRadar, /新任务：Sol XHigh 优先 Terra Ultra/);
   assert.doesNotMatch(withRadar, /CQO_RADAR_STATUS|CQO_RADAR_FALLBACK|IQ=|采集时间|https:/);
   assert.ok(withRadar.length < 600);
 

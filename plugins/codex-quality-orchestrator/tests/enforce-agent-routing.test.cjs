@@ -62,7 +62,7 @@ function expectDeny(name, input, rawInput) {
 
 function routeName(id, overrides = {}) {
   const agentType = overrides.agentType ?? 'luna_worker';
-  const effort = overrides.effort ?? (agentType === 'luna_worker' ? 'max' : 'xhigh');
+  const effort = overrides.effort ?? (agentType === 'luna_worker' ? 'max' : 'ultra');
   const routeLabel = `${agentType.replace(/_worker$/, '')}_${effort}`;
   const wave = overrides.wave ?? 1;
   const slot = overrides.slot ?? 1;
@@ -72,7 +72,7 @@ function routeName(id, overrides = {}) {
 }
 
 function workerInput(agentType, input = {}, route = {}) {
-  const effort = input.reasoning_effort ?? (agentType === 'luna_worker' ? 'max' : 'xhigh');
+  const effort = input.reasoning_effort ?? (agentType === 'luna_worker' ? 'max' : 'ultra');
   return {
     agent_type: agentType,
     fork_turns: '1',
@@ -96,12 +96,10 @@ try {
       fork_turns: '1',
     });
   }
-  for (const effort of ['xhigh', 'max', 'ultra']) {
-    expectAllow(`terra-${effort}`, workerInput('terra_worker', {
-      reasoning_effort: effort,
-      fork_turns: 'none',
-    }, { id: `terra_${effort}` }));
-  }
+  expectAllow('terra-ultra', workerInput('terra_worker', {
+    reasoning_effort: 'ultra',
+    fork_turns: 'none',
+  }, { id: 'terra_ultra' }));
   expectAllow('luna-profile', workerInput('luna_worker'));
   expectAllow('hyphenated-unit', workerInput('luna_worker', {}, { id: 'luna-audit-01' }));
   expectAllow('encrypted-host-message', workerInput('luna_worker', {}, { id: 'encrypted_message' }));
@@ -119,6 +117,8 @@ try {
   expectDeny('bare-terra', { model: 'gpt-5.6-terra', reasoning_effort: 'max', fork_turns: '1' });
   expectDeny('bare-luna', { model: 'gpt-5.6-luna', reasoning_effort: 'max', fork_turns: '1' });
   expectDeny('terra-high', workerInput('terra_worker', { reasoning_effort: 'high' }));
+  expectDeny('terra-xhigh', workerInput('terra_worker', { reasoning_effort: 'xhigh' }));
+  expectDeny('terra-max', workerInput('terra_worker', { reasoning_effort: 'max' }));
   expectDeny('luna-effort-override', workerInput('luna_worker', { reasoning_effort: 'high' }));
   expectDeny('retired-reviewer', { agent_type: 'sol_reviewer', fork_turns: '1' });
   expectDeny('default-agent', { agent_type: 'default', fork_turns: '1' });
@@ -127,21 +127,21 @@ try {
   expectDeny('missing-message', workerInput('luna_worker', { message: '' }));
   expectDeny('invalid-route-name', workerInput('luna_worker', { task_name: 'plain_name' }));
   expectDeny('mismatched-route-effort', workerInput('terra_worker', {
-    reasoning_effort: 'xhigh',
+    reasoning_effort: 'ultra',
     task_name: routeName('wrong_effort', {
       agentType: 'terra_worker',
       effort: 'max',
     }),
   }));
   expectDeny('mismatched-route-agent', workerInput('terra_worker', {
-    reasoning_effort: 'max',
+    reasoning_effort: 'ultra',
     task_name: routeName('wrong_agent'),
   }));
   expectDeny('invalid-wave-slot', workerInput('luna_worker', {}, { id: 'bad_slot', slot: 3, size: 2 }));
   expectDeny('luna-attempt-two', workerInput('luna_worker', {}, { id: 'luna_retry', attempt: 2 }));
   expectDeny('terra-attempt-two-without-first', workerInput(
     'terra_worker',
-    { reasoning_effort: 'max' },
+    { reasoning_effort: 'ultra' },
     { id: 'terra_retry', attempt: 2 },
   ));
 
@@ -155,10 +155,10 @@ try {
 
   fs.appendFileSync(
     path.join(agentsDir, 'terra-worker.toml'),
-    '\nmodel_reasoning_effort = "max"\n',
+    '\nmodel_reasoning_effort = "ultra"\n',
     'utf8',
   );
-  expectDeny('terra-pinned-effort', workerInput('terra_worker', { reasoning_effort: 'max' }));
+  expectDeny('terra-pinned-effort', workerInput('terra_worker', { reasoning_effort: 'ultra' }));
   installProfiles();
 
   fs.writeFileSync(path.join(codexHome, 'AGENTS.md'), '## Rule 16 - stale\n', 'utf8');

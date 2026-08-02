@@ -19,9 +19,7 @@ Sol 是根任务主控和最终兜底，不创建 Sol 子代理。
 | 代理 | 模型与档位 | 首选工作 | 禁止事项 |
 |---|---|---|---|
 | `luna_worker` | `gpt-5.6-luna / max` | 边界冻结、清晰、可独立验收的实现、多文件修改、已定位问题的修复、测试、扫描和批量工作，可在冻结边界内做局部实现选择 | 需求重定义、消歧、根因诊断、跨上下文推断、架构、安全、公共接口、生产数据、不可逆迁移和最终裁决 |
-| `terra_worker` | `gpt-5.6-terra / xhigh` | 保留兼容和显式调用，不作为自动路由节点 | 架构与最终质量裁决 |
-| `terra_worker` | `gpt-5.6-terra / max` | 普通独立复核或必须并行的复杂单元 | 架构与最终质量裁决 |
-| `terra_worker` | `gpt-5.6-terra / ultra` | 需要最深推理的实现、诊断或独立复核 | 主控职责、架构与最终质量裁决 |
+| `terra_worker` | `gpt-5.6-terra / ultra` | 当前 Sol 能力不足时，可独立下派的最深推理单元 | 默认执行、默认复核、主控职责、架构与最终质量裁决 |
 
 在质量、胜任能力和风险边界全部满足后，先保留当前热模型和原代理，再比较预计总算力成本，计入新上下文、重试、返工和复核。除短任务和 Sol 保留项外，只要 Luna Max 能可靠完成就必须下派，Sol 不得代做；Luna 不适用后，当前 Sol 能可靠完成且无需独立/并行就直接处理。
 
@@ -30,10 +28,10 @@ Luna Max 的能力门槛是硬优先级：能可靠完成且可独立验收时�
 ## 团队并行
 
 - 只有至少两个互不冲突的完整工作单元，且并行收益高于协调成本时组队。
-- 通常每波 1 个 Worker；只有并行收益大于额外算力和整合成本时才使用 2–3 个，最多 3 个。根任务累计最多 64 次 Worker 调用，不为使用代理拆分短任务。
+- 通常每波 1 个 Worker；只有并行收益大于额外算力和整合成本时才使用 2–3 个，最多 3 个。不设置根任务累计调用上限，也不为使用代理拆分短任务。
 - 每个工作包固定目标、范围、文件所有权、输入输出、验收、验证命令和备份状态。
 - 共享文件坚持单写者；Worker 不得创建更多 Worker。
-- Sol 负责整合、复跑验证和最终验收，并按风险决定是否另派 Terra 独立复核及所需档位。
+- Sol 负责整合、复跑验证和最终审核；不默认另派 Terra 复核。
 
 ## 冻结工作单
 
@@ -47,13 +45,13 @@ luna_max__unit_name__w1__s1of2__a1
 
 ```text
 [CQO_WORK_PACKET_V1]
-{"work_unit_id":"...","objective":"...","scope":["..."],"write_paths":[],"acceptance":["..."],"verification":["..."],"task_intent":"verify","mutation_authority":"none","backup_required":false,"selected_agent":"luna_worker","selected_effort":"max","fallback_agent":"terra_worker","worker_attempt":1,"wave_id":"wave_01","wave_size":2,"worker_slot":1}
+{"work_unit_id":"...","objective":"...","scope":["..."],"write_paths":[],"acceptance":["..."],"verification":["..."],"task_intent":"verify","mutation_authority":"none","backup_required":false,"selected_agent":"luna_worker","selected_effort":"max","fallback_agent":"sol_controller","worker_attempt":1,"wave_id":"wave_01","wave_size":2,"worker_slot":1}
 [/CQO_WORK_PACKET_V1]
 ```
 
-Sol 判断任务语义并生成工作单；由于宿主会在 Hook 前加密 `message`，Hook 只验证明文路由键、调用参数和账本，Sol 必须自己保证工作单内容、权限和备份声明正确。Luna 只允许首轮且 `selected_effort=max`；Terra 的 `selected_effort` 必须等于调用的 `reasoning_effort`，可作为初始判断型 Worker 或 Luna 结束后的第二轮；兜底链在调用前声明。
+Sol 判断任务语义并生成工作单；由于宿主会在 Hook 前加密 `message`，Hook 只验证明文路由键、调用参数和账本，Sol 必须自己保证工作单内容、权限和备份声明正确。Luna 使用 `selected_effort=max`；Terra 使用 `selected_effort=ultra`，仅在当前 Sol 能力不足且深推理单元可独立下派时调用；兜底链在调用前声明。
 
-会话账本以宿主 `session_id` 记录唯一工作单元、波次槽位、pending/active/stopped 生命周期和累计次数：同时 pending/active 最多 3 个，每单元最多 2 次，根任务最多 64 次。`SubagentStart` 绑定原生 `agent_id`，`SubagentStop` 释放槽位；同一单元的第二次尝试必须等待第一次结束并使用预声明 fallback。账本不判断任务语义，也不检查真实文件写入。
+会话账本以宿主 `session_id` 记录唯一工作单元、波次槽位和 pending/active/stopped 生命周期：同时 pending/active 最多 3 个，每单元最多 2 次，不设置根任务累计调用上限。`SubagentStart` 绑定原生 `agent_id`，`SubagentStop` 释放槽位；同一单元的第二次尝试必须等待第一次结束并使用预声明 fallback。账本不判断任务语义，也不检查真实文件写入。
 
 ## 容量恢复
 
@@ -62,7 +60,7 @@ Sol 判断任务语义并生成工作单；由于宿主会在 Hook 前加密 `me
 1. 首次出现时，`SubagentStop` 自动向原子代理提交一次“继续”，保留原上下文和进度。
 2. `stop_hook_active` 防止第二次自动续交，避免循环。
 3. 若代理尚未创建成功，则使用原参数重试同一工作包一次。
-4. 第二次仍失败，才沿 `Luna → Terra → 当前 Sol` 升级。
+4. 第二次仍失败就交回当前 Sol；只有当前 Sol 能力不足时才改派 Terra Ultra。
 5. 不重做已完成工作，不重新拆分或重启整项任务，不静默降级。
 6. 非容量终止错误若未触发 `SubagentStop`，主控运行 `release-failed-dispatch.cjs <原 task_name>` 释放当前会话账本后再上调或停止。
 
@@ -70,7 +68,7 @@ Sol 判断任务语义并生成工作单；由于宿主会在 Hook 前加密 `me
 
 ```text
 luna_worker: agent_type + fork_turns
-terra_worker: agent_type + reasoning_effort(xhigh|max|ultra) + fork_turns
+terra_worker: agent_type + reasoning_effort(ultra) + fork_turns
 ```
 
 具名代理模型由 TOML 固定，调用时不得传 `model`。`fork_turns` 默认 `"none"`，仅需少量历史时传正整数数字字符串。禁止 Sol 子代理、裸 Terra/Luna、`gpt-5.5` 和未登记模型。

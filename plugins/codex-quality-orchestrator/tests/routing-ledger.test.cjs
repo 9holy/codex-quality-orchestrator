@@ -34,7 +34,7 @@ function packet(id, overrides = {}) {
     work_unit_id: id,
     selected_agent: 'luna_worker',
     selected_effort: 'max',
-    fallback_agent: 'terra_worker',
+    fallback_agent: 'sol_controller',
     worker_attempt: 1,
     wave_id: 'wave-1',
     wave_size: 1,
@@ -69,11 +69,13 @@ try {
     /必须存在.*attempt=1/,
   );
 
-  assert.equal(registerDispatch(payload('fallback', 1), packet('unit-c'), policy), null);
+  assert.equal(registerDispatch(payload('fallback', 1), packet('unit-c', {
+    fallback_agent: 'terra_worker',
+  }), policy), null);
   startStop('fallback', 'agent-c1', 'luna_worker');
   assert.equal(registerDispatch(payload('fallback', 2), packet('unit-c', {
     selected_agent: 'terra_worker',
-    selected_effort: 'xhigh',
+    selected_effort: 'ultra',
     fallback_agent: 'sol_controller',
     worker_attempt: 2,
   }), policy), null);
@@ -87,7 +89,9 @@ try {
     /已经使用过 attempt=2/,
   );
 
-  assert.equal(registerDispatch(payload('explicit-release', 1), packet('unit-release'), policy), null);
+  assert.equal(registerDispatch(payload('explicit-release', 1), packet('unit-release', {
+    fallback_agent: 'terra_worker',
+  }), policy), null);
   trackSubagentStart({
     session_id: 'explicit-release',
     agent_id: 'release-agent-1',
@@ -108,7 +112,7 @@ try {
   assert.equal(released.status, 0, released.stderr);
   assert.equal(registerDispatch(payload('explicit-release', 2), packet('unit-release', {
     selected_agent: 'terra_worker',
-    selected_effort: 'xhigh',
+    selected_effort: 'ultra',
     fallback_agent: 'sol_controller',
     worker_attempt: 2,
   }), policy), null);
@@ -153,18 +157,12 @@ try {
     /slot=1 已被占用/,
   );
 
-  for (let index = 1; index <= policy.team.maxRootWorkerAttempts; index += 1) {
+  for (let index = 1; index <= 80; index += 1) {
     assert.equal(registerDispatch(payload('root-budget', index), packet(`budget-${index}`, {
       wave_id: `budget-wave-${index}`,
     }), policy), null);
     startStop('root-budget', `budget-agent-${index}`, 'luna_worker');
   }
-  assert.match(
-    registerDispatch(payload('root-budget', policy.team.maxRootWorkerAttempts + 1), packet('budget-overflow', {
-      wave_id: 'budget-wave-overflow',
-    }), policy),
-    new RegExp(`根任务最多允许 ${policy.team.maxRootWorkerAttempts} 次 Worker 调用`),
-  );
 
   process.stdout.write('PASS governed session routing ledger\n');
 } finally {

@@ -121,10 +121,6 @@ function registerDispatch(payload, packet, policy) {
     const session = getSession(state, payload.session_id, now);
     pruneSession(session, policy, now);
 
-    if (session.attempts.length >= policy.team.maxRootWorkerAttempts) {
-      return `根任务最多允许 ${policy.team.maxRootWorkerAttempts} 次 Worker 调用。`;
-    }
-
     const existing = session.attempts.filter(
       (item) => item.workUnitId === packet.work_unit_id,
     );
