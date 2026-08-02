@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.9 - 2026-08-02
+
+- Replace the remaining Hook implementation narration in Rule 16 with direct Sol obligations, and align Terra's model instructions with the current non-automatic XHigh, independent/parallel Max, and deepest-reasoning Ultra routes.
+
 ## 0.3.8 - 2026-08-02
 
 - Rewrite the root-effort sentence as direct instructions to Sol: keep the current root effort, and use the minimum reliable ladder only when asked to recommend the next task's effort.

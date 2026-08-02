@@ -22,7 +22,7 @@ skill = skill_path.read_text(encoding="utf-8")
 
 assert manifest["name"] == "codex-quality-orchestrator"
 base_version, separator, cachebuster = manifest["version"].partition("+codex.")
-assert base_version == policy["policyVersion"] == "0.3.8"
+assert base_version == policy["policyVersion"] == "0.3.9"
 assert not separator or cachebuster
 assert list((PLUGIN_ROOT / "skills").rglob("SKILL.md")) == [skill_path]
 assert manifest["interface"]["defaultPrompt"] == [
@@ -55,6 +55,7 @@ assert "Worker 不得下派" in rule
 assert "当前 Sol 接管" in rule
 assert "不创建 Sol 子代理" in rule
 assert "按风险决定独立复核" in rule
+assert "Hook 只校验" not in rule
 assert policy["namedAgents"]["terra_worker"]["allowedEfforts"] == [
     "xhigh",
     "max",
@@ -198,6 +199,15 @@ assert "独立复核" in tomllib.loads(
         encoding="utf-8"
     )
 )["developer_instructions"]
+terra_instructions = tomllib.loads(
+    (PLUGIN_ROOT / "templates" / "agents" / "terra-worker.toml").read_text(
+        encoding="utf-8"
+    )
+)["developer_instructions"]
+assert "xhigh 仅接受显式兼容调用" in terra_instructions
+assert "max 接受普通独立复核或必须并行的复杂单元" in terra_instructions
+assert "ultra 接受最深独立推理" in terra_instructions
+assert "xhigh 用于常规判断" not in terra_instructions
 
 retired = policy["retiredProfiles"]
 assert retired == [

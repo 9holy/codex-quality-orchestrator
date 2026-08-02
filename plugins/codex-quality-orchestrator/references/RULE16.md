@@ -8,7 +8,7 @@
 
 通常 1 个 Worker；仅 2–3 个互不冲突且并行收益更大时并行，最多 3 个。共享文件单写者，Worker 不得下派；无法安全拆分时当前 Sol 接管，不创建 Sol 子代理。
 
-Worker 的 `task_name` 使用 `<模型档位>__<单元>__w<波次>__s<槽位>of<波次大小>__a<尝试>`；前缀限 `luna_max|terra_xhigh|terra_max|terra_ultra`。`message` 用 `[CQO_WORK_PACKET_V1]` 写明目标、范围、写路径、验收、验证、权限、备份和 `selected_agent|selected_effort|fallback`。Hook 只校验路由键、唯一单元、最多 3 并发、每单元 2 次和每根任务 8 次；语义由 Sol 验收。
+Worker 的 `task_name` 使用 `<模型档位>__<单元>__w<波次>__s<槽位>of<波次大小>__a<尝试>`；前缀限 `luna_max|terra_xhigh|terra_max|terra_ultra`。`message` 用 `[CQO_WORK_PACKET_V1]` 写明目标、范围、写路径、验收、验证、权限、备份和 `selected_agent|selected_effort|fallback`。调用须保证路由键和单元唯一、最多 3 并发、每单元 2 次、每根任务 8 次；Sol 必须自行验收语义。
 
 仅精确消息 `Selected model is at capacity. Please try a different model.` 触发原代理“继续”一次并保留进度；再次失败按 `Luna→Terra→当前 Sol` 上调。其他终止错误未触发 `SubagentStop` 时运行 `release-failed-dispatch.cjs <task_name>`；禁止静默降级。
 
