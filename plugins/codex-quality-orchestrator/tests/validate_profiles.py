@@ -62,8 +62,9 @@ assert "仅有 2–3 个互不依赖、写入不冲突且并行收益更大的�
 assert "最多 3 个" in rule
 assert "共享文件单写者" in rule
 assert "Worker 不得创建子代理" in rule
-assert "Luna 不适用时，由当前 Sol 完成" in rule
-assert "适合独立执行的单元派给能胜任的 Terra 最低档位" in rule
+assert "只读不等于可下派" in rule
+assert "根因未确定的诊断" in rule
+assert "Luna 不适用的其他独立单元才可派给能胜任的 Terra 最低档位" in rule
 assert "Worker 结果必须由 Sol 检查实际差异并复跑必要验证" in rule
 assert "仅明确、局部的问题可交原 Worker 修正一次" in rule
 assert "能力不足、越界或质量不合格立即交回 Sol" in rule
@@ -94,6 +95,10 @@ assert len(routing_skill) <= 1900
 assert "单个较大且边界明确" in routing_skill
 assert "已加载时不得再次读取或复述" in routing_skill
 assert "首次实际分派前读取 `../../routing-policy.json`" in routing_skill
+assert "调用 `spawn_agent` 必须显式传 `agent_type` 和 `fork_turns`" in routing_skill
+assert '默认 `fork_turns:"none"`' in routing_skill
+assert "`terra_worker` 另传 `reasoning_effort`" in routing_skill
+assert "均不传 `model`" in routing_skill
 assert "Luna 适用或只有一个能胜任候选时不读取 Radar" in routing_skill
 assert "node ../../hooks/radar-routing-evidence.cjs" in routing_skill
 assert "不得为单个单元建立 TeamPlan" not in routing_skill

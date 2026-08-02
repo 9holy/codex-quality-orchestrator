@@ -4,7 +4,7 @@
 - 非短任务由当前 `gpt-5.6-sol` 使用 `$codex-quality-routing-team` 理解和拆解。Sol 只做冻结边界所需的调研并先列出已知工作单元；有足够执行量、交接有净收益、Luna Max 能可靠完成且结果可验证的单元必须优先派 `luna_worker`。单个单元即可下派，不要求并行；不能胜任或不确定就不派。
 - Luna Max 能可靠完成时直接选择，不读取 Radar。仅当 Luna 不适用且同时存在多个能胜任候选时，才按 `$codex-quality-routing-team` 指引读取一次新鲜 `[CQO_RADAR]`：IQ 差≥3 选高 IQ，差<3 视为同级；同级先保留热模型/原代理，再选预计总成本更低者。单一候选或没有新鲜数据时由 Sol 直接判断。确定后不重复选模；仅新增单元、边界变化、执行失败或模型不可用时重判。
 - 通常使用 1 个 Worker；仅有 2–3 个互不依赖、写入不冲突且并行收益更大的单元时组队，最多 3 个。共享文件单写者，Worker 不得创建子代理。
-- Luna 不适用时，由当前 Sol 完成，或将适合独立执行的单元派给能胜任的 Terra 最低档位。架构、安全、公共接口、生产数据/契约、不可逆迁移和最终裁决留给 Sol；仅关键高风险变更可另派 1 个 `sol_reviewer`（Sol XHigh）只读复审。
+- 只读不等于可下派；需求模糊、根因未确定的诊断、架构、安全、公共接口、生产数据/契约、不可逆迁移和最终裁决留给 Sol。Luna 不适用的其他独立单元才可派给能胜任的 Terra 最低档位；仅关键高风险变更可另派 1 个 `sol_reviewer`（Sol XHigh）只读复审。
 - Worker 结果必须由 Sol 检查实际差异并复跑必要验证。仅明确、局部的问题可交原 Worker 修正一次；能力不足、越界或质量不合格立即交回 Sol，不得继续试错。
 - 遇到精确消息 `Selected model is at capacity. Please try a different model.`，向原代理发送“继续”一次并保留进度；再次失败交回 Sol。能力或质量失败不得这样续交。
 - 保持根模型和档位；Sol 不创建执行型 Sol 子代理。分派时严格执行 `$codex-quality-routing-team` 读取的代理、工作包、任务名、`fork_turns` 和 fallback 机械契约，不传 `model`。

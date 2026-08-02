@@ -7,6 +7,8 @@
 - Keep the existing four-Hook surface and add a compact SessionStart routing reminder without per-prompt token overhead.
 - Stop injecting Radar into every task; Luna-capable work skips Radar, while other routes load one cached summary only when multiple capable candidates remain.
 - Remove duplicated semantic routing instructions from the daily Skill and keep Rule 16 as the single source of truth.
+- Keep ambiguous and root-cause diagnosis work with Sol even when the work is read-only.
+- Require explicit `agent_type` and `fork_turns` tool arguments before dispatch so the Hook does not reject an otherwise valid work packet.
 
 ## 0.3.18 - 2026-08-02
 
