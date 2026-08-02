@@ -91,11 +91,25 @@ if (($Args -join ' ') -ceq 'plugin list --json') {
   exit 0
 }
 if ($Args[0] -ceq 'plugin' -and $Args[1] -ceq 'marketplace') {
-  if (-not [string]::IsNullOrWhiteSpace($env:CQO_TEST_REQUIRE_MARKETPLACE)) {
-    [IO.File]::WriteAllText($env:CQO_TEST_REQUIRE_MARKETPLACE, ($Args -join ' '), [Text.UTF8Encoding]::new($false))
+  if ($Args[2] -ceq 'add') {
+    if (-not [string]::IsNullOrWhiteSpace($env:CQO_TEST_MARKETPLACE_CONFLICT) -and
+        -not (Test-Path -LiteralPath $env:CQO_TEST_MARKETPLACE_CONFLICT)) {
+      Write-Output "Error: marketplace 'codex-quality-orchestrator' is already added from a different source; remove it before adding this source"
+      exit 1
+    }
+    if (-not [string]::IsNullOrWhiteSpace($env:CQO_TEST_REQUIRE_MARKETPLACE)) {
+      [IO.File]::WriteAllText($env:CQO_TEST_REQUIRE_MARKETPLACE, ($Args -join ' '), [Text.UTF8Encoding]::new($false))
+    }
+    '{"marketplaceName":"cqo-test"}'
+    exit 0
   }
-  '{"marketplaceName":"cqo-test"}'
-  exit 0
+  if ($Args[2] -ceq 'remove') {
+    if (-not [string]::IsNullOrWhiteSpace($env:CQO_TEST_MARKETPLACE_CONFLICT)) {
+      New-Item -ItemType File -Path $env:CQO_TEST_MARKETPLACE_CONFLICT -Force | Out-Null
+    }
+    '{"removed":true}'
+    exit 0
+  }
 }
 if ($Args[0] -ceq 'plugin' -and $Args[1] -ceq 'add') {
   if (-not $text.Contains('[plugins."codex-quality-orchestrator@codex-quality-orchestrator"]')) {
@@ -161,11 +175,16 @@ wire_api = "responses"
   [IO.File]::WriteAllText((Join-Path $metadataRoot '.codex-marketplace-install.json'), $metadata, [Text.UTF8Encoding]::new($false))
   [IO.File]::WriteAllText($configPath, "model = `"gpt-5.6-sol`"`n", [Text.UTF8Encoding]::new($false))
   $marketplaceMarker = Join-Path $tempRoot 'marketplace-call.txt'
+  $conflictResolvedMarker = Join-Path $tempRoot 'marketplace-conflict-resolved'
   $env:CQO_TEST_REQUIRE_MARKETPLACE = $marketplaceMarker
+  $env:CQO_TEST_MARKETPLACE_CONFLICT = $conflictResolvedMarker
   $legacyRepair = ((& $guardScript -Mode Repair -CodexHome $codexHome -CodexCommand $fakeCodex) -join [Environment]::NewLine) | ConvertFrom-Json
   Assert-True $legacyRepair.Healthy 'Legacy null-ref state was not repaired'
   Assert-True ((Get-Content -LiteralPath $marketplaceMarker -Raw).Contains('--ref main')) 'Marketplace repair did not recover ref_name from install metadata'
+  Assert-True (Test-Path -LiteralPath $conflictResolvedMarker -PathType Leaf) 'Verified same-source marketplace conflict was not recovered'
+  Assert-True (@(Get-ChildItem -LiteralPath (Split-Path -Parent $metadataRoot) -Directory -Filter 'codex-quality-orchestrator-*').Count -ge 1) 'Marketplace conflict recovery did not create a rollback backup'
   Remove-Item Env:CQO_TEST_REQUIRE_MARKETPLACE
+  Remove-Item Env:CQO_TEST_MARKETPLACE_CONFLICT
   [IO.File]::WriteAllText($statePath, $validState, [Text.UTF8Encoding]::new($false))
 
   $tampered = $validState | ConvertFrom-Json
@@ -269,6 +288,7 @@ wire_api = "responses"
   Remove-Item Env:CQO_TEST_PLUGIN_ROOT -ErrorAction SilentlyContinue
   Remove-Item Env:CQO_TEST_FAIL_ONCE -ErrorAction SilentlyContinue
   Remove-Item Env:CQO_TEST_REQUIRE_MARKETPLACE -ErrorAction SilentlyContinue
+  Remove-Item Env:CQO_TEST_MARKETPLACE_CONFLICT -ErrorAction SilentlyContinue
   if (Test-Path -LiteralPath $tempRoot) {
     $resolved = [IO.Path]::GetFullPath($tempRoot)
     $tempBase = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())

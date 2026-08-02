@@ -149,6 +149,18 @@ function New-FileBackup {
   return $directory
 }
 
+function New-DirectoryBackup {
+  param([string]$Path)
+  if (-not (Test-Path -LiteralPath $Path -PathType Container)) { return $null }
+  $stamp = Get-Date -Format 'yyyyMMdd-HHmmssfff'
+  $backup = $Path + '-' + $stamp
+  Copy-Item -LiteralPath $Path -Destination $backup -Recurse -ErrorAction Stop
+  if (-not (Test-Path -LiteralPath $backup -PathType Container)) {
+    throw "Directory backup failed: $Path"
+  }
+  return $backup
+}
+
 function Write-Utf8Atomic {
   param([string]$Path, [string]$Text)
   $temp = $Path + '.tmp-' + [guid]::NewGuid().ToString('N')
@@ -286,6 +298,43 @@ function Test-InstalledIdentity {
   return [string]$source -ceq [string]$State.marketplaceSource
 }
 
+function Add-MarketplaceWithRecovery {
+  param([object]$State, [string]$MarketplaceRef)
+  $marketplaceName = $pluginId.Split('@')[1]
+  $arguments = @('plugin', 'marketplace', 'add', [string]$State.marketplaceSource, '--json')
+  if (-not [string]::IsNullOrWhiteSpace($MarketplaceRef)) {
+    $arguments += @('--ref', $MarketplaceRef)
+  }
+  try {
+    return [pscustomobject]@{ Result=(Invoke-CodexJson $arguments); Backup=$null }
+  } catch {
+    if ($_.Exception.Message -notmatch "marketplace '.*' is already added from a different source") { throw }
+  }
+
+  $marketplaceRoot = Join-Path $CodexHome (".tmp\marketplaces\$marketplaceName")
+  $metadata = Get-MarketplaceInstallMetadata $marketplaceName
+  $metadataMatches = $null -ne $metadata -and
+    [string]$metadata.source_type -ceq [string]$State.marketplaceSourceType -and
+    [string]$metadata.source -ceq [string]$State.marketplaceSource -and
+    ([string]::IsNullOrWhiteSpace($MarketplaceRef) -or [string]$metadata.ref_name -ceq $MarketplaceRef)
+  if (-not $metadataMatches) {
+    throw 'Conflicting marketplace metadata does not match the approved source and ref; refusing automatic removal'
+  }
+
+  $backup = New-DirectoryBackup $marketplaceRoot
+  try {
+    [void](Invoke-CodexJson @('plugin', 'marketplace', 'remove', $marketplaceName, '--json'))
+    $result = Invoke-CodexJson $arguments
+    return [pscustomobject]@{ Result=$result; Backup=$backup }
+  } catch {
+    if ($null -ne $backup -and
+        -not (Test-Path -LiteralPath $marketplaceRoot -PathType Container)) {
+      Copy-Item -LiteralPath $backup -Destination $marketplaceRoot -Recurse -ErrorAction SilentlyContinue
+    }
+    throw
+  }
+}
+
 function Test-TrustPresent {
   param([object[]]$TrustedHooks)
   if (-not (Test-Path -LiteralPath $script:configPath -PathType Leaf)) { return $false }
@@ -316,7 +365,6 @@ function Repair-Registration {
   $installed = Get-InstalledPlugin
   if ($null -eq $installed) {
     $backups += New-FileBackup $script:configPath
-    $arguments = @('plugin', 'marketplace', 'add', [string]$state.marketplaceSource, '--json')
     $marketplaceRef = [string]$state.marketplaceRef
     if ([string]::IsNullOrWhiteSpace($marketplaceRef)) {
       $metadata = Get-MarketplaceInstallMetadata ($pluginId.Split('@')[1])
@@ -326,18 +374,20 @@ function Repair-Registration {
         $marketplaceRef = [string]$metadata.ref_name
       }
     }
-    if (-not [string]::IsNullOrWhiteSpace($marketplaceRef)) {
-      $arguments += @('--ref', $marketplaceRef)
-    }
-    $marketplace = Invoke-CodexJson $arguments
+    $marketplaceRepair = Add-MarketplaceWithRecovery $state $marketplaceRef
+    if ($null -ne $marketplaceRepair.Backup) { $backups += [string]$marketplaceRepair.Backup }
+    $marketplace = $marketplaceRepair.Result
     $marketplaceName = [string]$marketplace.marketplaceName
     if ([string]::IsNullOrWhiteSpace($marketplaceName)) {
       throw 'Marketplace add did not return a marketplace name'
     }
-    $selector = $pluginId.Split('@')[0] + '@' + $marketplaceName
-    $added = Invoke-CodexJson @('plugin', 'add', $selector, '--json')
-    $installedPath = [string]$added.installedPath
     $installed = Get-InstalledPlugin
+    if ($null -eq $installed) {
+      $selector = $pluginId.Split('@')[0] + '@' + $marketplaceName
+      $added = Invoke-CodexJson @('plugin', 'add', $selector, '--json')
+      $installedPath = [string]$added.installedPath
+      $installed = Get-InstalledPlugin
+    }
   }
 
   if ($null -eq $installed -or -not (Test-InstalledIdentity $installed $state)) {
