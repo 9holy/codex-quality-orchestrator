@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.17 - 2026-08-02
+
+- Freeze the routing plan once per task and re-evaluate only for new units, scope changes, failures, or model unavailability.
+
 ## 0.3.16 - 2026-08-02
 
 - Remove the obsolete explicit-only Terra wording and let Sol choose the lowest Terra effort that can handle an independently delegated unit.

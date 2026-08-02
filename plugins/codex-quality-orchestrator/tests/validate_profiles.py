@@ -21,7 +21,7 @@ skill = skill_path.read_text(encoding="utf-8")
 
 assert manifest["name"] == "codex-quality-orchestrator"
 base_version, separator, cachebuster = manifest["version"].partition("+codex.")
-assert base_version == policy["policyVersion"] == "0.3.16"
+assert base_version == policy["policyVersion"] == "0.3.17"
 assert not separator or cachebuster
 assert list((PLUGIN_ROOT / "skills").rglob("SKILL.md")) == [skill_path]
 assert manifest["interface"]["defaultPrompt"] == [
@@ -30,8 +30,8 @@ assert manifest["interface"]["defaultPrompt"] == [
 ]
 assert "目标明确、低风险且可直接验证的短任务" in rule
 assert "高风险任务不算短任务" in rule
-assert "非短任务由当前 `gpt-5.6-sol` 理解、拆解和分派" in rule
-assert "Sol 逐单元判断" in rule
+assert "非短任务由当前 `gpt-5.6-sol` 理解和拆解" in rule
+assert "任务开始时列出已知工作单元" in rule
 assert "Luna Max 能可靠完成且结果可验证，就优先派 `luna_worker`" in rule
 assert "不能胜任或不确定就不派" in rule
 assert "Sol 整合结果、复跑验证、最终审核和兜底" in rule
@@ -40,12 +40,14 @@ assert "Sol 不得代做" not in rule
 assert "高置信度" not in rule
 assert "失败可回滚" not in rule
 assert "能力/风险门槛" not in rule
-assert "只在能胜任候选间使用新鲜 `[CQO_RADAR]` 数据" in rule
+assert "任务开始时只在能胜任候选间使用一次新鲜 `[CQO_RADAR]` 数据确定执行者" in rule
 assert "Luna Max 能胜任时固定优先" in rule
 assert "IQ 差≥3 选高 IQ" in rule
 assert "差<3 视为同级" in rule
 assert "没有新鲜数据就由 Sol 判断" in rule
-assert "成本不得引入不胜任模型" in rule
+assert "确定后按方案派发，不重复选模" in rule
+assert "仅新增单元、边界变化、执行失败或模型不可用时重判" in rule
+assert "每次分派" not in rule
 assert "`medium→xhigh→max→ultra`" in rule
 assert "保持根档位" in rule
 assert "仅建议下一任务时用 `medium→xhigh→max→ultra`" in rule
@@ -84,7 +86,7 @@ assert "生产数据/契约、不可逆迁移" in rule
 assert "插件不改已启动根档位" not in rule
 assert "插件" not in rule
 assert "用户" not in rule
-assert len(rule.strip()) <= 1300
+assert len(rule.strip()) <= 1400
 capacity_message = "Selected model is at capacity. Please try a different model."
 assert capacity_message in rule
 assert rule.count(capacity_message) == 1
