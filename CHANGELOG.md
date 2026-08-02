@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.10 - 2026-08-02
+
+- Make the primary workflow explicit and first: Sol plans and splits work into independently verifiable Luna Max units, Luna executes them, and Sol integrates, re-runs verification, audits, and falls back only when needed.
+- Raise the per-root Worker safety budget from 8 to 64 so long-running tasks do not fall back to Sol after a few completed units; keep the 3-concurrent and 2-attempt-per-unit limits.
+
 ## 0.3.9 - 2026-08-02
 
 - Replace the remaining Hook implementation narration in Rule 16 with direct Sol obligations, and align Terra's model instructions with the current non-automatic XHigh, independent/parallel Max, and deepest-reasoning Ultra routes.

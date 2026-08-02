@@ -22,39 +22,39 @@ skill = skill_path.read_text(encoding="utf-8")
 
 assert manifest["name"] == "codex-quality-orchestrator"
 base_version, separator, cachebuster = manifest["version"].partition("+codex.")
-assert base_version == policy["policyVersion"] == "0.3.9"
+assert base_version == policy["policyVersion"] == "0.3.10"
 assert not separator or cachebuster
 assert list((PLUGIN_ROOT / "skills").rglob("SKILL.md")) == [skill_path]
 assert manifest["interface"]["defaultPrompt"] == [
     "Audit my current model routing configuration.",
     "Verify that the orchestrator plugin and hooks are active.",
 ]
-assert "gpt-5.6-sol` 主控" in rule
+assert "主线：短任务由当前主代理直接完成" in rule
+assert "其余由当前 `gpt-5.6-sol` 规划" in rule
+assert "拆成 `luna_worker / gpt-5.6-luna / max` 能可靠执行且可独立验收的工作单" in rule
+assert "能拆给 Luna 就必须下派，Sol 不得代做" in rule
+assert "分派、整合、复跑验证、最终审核和兜底" in rule
 assert "`medium→xhigh→max→ultra`" in rule
 assert "保持当前根档位" in rule
 assert "仅在需要建议下一任务档位时使用最低可靠链" in rule
-assert "Sol `high` 和 Terra `xhigh` 不自动选择" in rule
-assert "`xhigh` 能胜任不得建议 `max`" in rule
-assert "先过能力和风险门槛，再考虑热缓存与总成本" in rule
-assert "必须优先交 `luna_worker / gpt-5.6-luna / max`" in rule
+assert "Sol High 不进入自动链" in rule
+assert "XHigh 能胜任不得建议 Max" in rule
 assert "同一工作单元保持当前模型和原代理" in rule
 assert "局部问题最多续交一次定向修正" in rule
-assert "能力不足、修正仍失败、容量再次失败或有独立/并行硬需求" in rule
-assert "当前 Sol 能可靠完成且无需独立/并行就直接处理" in rule
-assert "Terra Max 只做普通独立复核或必须并行的复杂单元" in rule
-assert "Terra Ultra 做最深独立推理" in rule
+assert "补充路由仅在主线不适用时使用" in rule
+assert "无需独立或并行且当前 Sol 能可靠完成时由 Sol 接管" in rule
+assert "普通独立复核或必须并行的复杂单元用 Terra Max" in rule
+assert "最深独立推理用 Terra Ultra" in rule
+assert "Terra XHigh 仅接受显式兼容调用" in rule
 assert "IQ 差小于 3 视为同级" in rule
 assert "同级先保留热模型/原代理" in rule
-assert "通常 1 个 Worker" in rule
+assert "通常使用 1 个 Worker" in rule
 assert "最多 3 个" in rule
 assert "CQO_WORK_PACKET_V1" in rule
 assert "selected_effort" in rule
-assert "每根任务 8 次" in rule
+assert "每根任务 8 次" not in rule
 assert "共享文件单写者" in rule
 assert "Worker 不得下派" in rule
-assert "当前 Sol 接管" in rule
-assert "不创建 Sol 子代理" in rule
-assert "按风险决定独立复核" in rule
 assert "Hook 只校验" not in rule
 assert policy["namedAgents"]["terra_worker"]["allowedEfforts"] == [
     "xhigh",
@@ -67,7 +67,7 @@ assert len(rule.strip()) <= 1300
 capacity_message = "Selected model is at capacity. Please try a different model."
 assert capacity_message in rule
 assert rule.count(capacity_message) == 1
-assert "触发原代理“继续”一次并保留进度" in rule
+assert "向原代理发送“继续”一次并保留进度" in rule
 assert "再次失败按 `Luna→Terra→当前 Sol` 上调" in rule
 assert '`fork_turns` 默认 `"none"`' in rule
 assert len(skill) <= 1600
@@ -101,7 +101,7 @@ assert policy["team"] == {
     "defaultWorkersPerWave": 1,
     "maxWorkersPerWave": 3,
     "maxWorkerAttemptsPerWorkUnit": 2,
-    "maxRootWorkerAttempts": 8,
+    "maxRootWorkerAttempts": 64,
     "maxFollowupsPerWorker": 1,
     "singleWriterForSharedFiles": True,
     "workersMayDelegate": False,

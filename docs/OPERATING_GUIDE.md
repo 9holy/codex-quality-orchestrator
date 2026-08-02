@@ -6,7 +6,7 @@
 
 插件不是自动替模型做语义判断的决策树。任务含义、风险、目标模型是否能可靠胜任，由 Sol 根据完整上下文判断；代码只校验 Sol 已冻结的工作单和调用契约。
 
-质量、胜任能力和风险边界是硬约束；满足后再考虑热缓存和预计总成本。只要 Luna Max 能可靠胜任，就优先承担已冻结、可独立验收且足以摊薄新上下文的执行量。短任务和当前 Sol 可可靠完成、又不需要独立性或并行的判断工作留在当前 Sol，避免无收益的模型切换。
+质量、胜任能力和风险边界是硬约束；满足后再考虑热缓存和预计总成本。除短任务和 Sol 保留项外，Sol 在实现前必须先冻结目标、边界和验收；只要 Luna Max 能可靠胜任就必须下派，Sol 不得代做。当前 Sol 可可靠完成、又不需要独立性或并行的判断工作仍留在当前 Sol。
 
 Luna Max 能可靠完成且可独立验收时绝不上调，雷达数据不得覆盖此规则。SessionStart 只向 Sol 提供由本地完整快照计算出的稳定优先关系，不注入时间、状态、分数或整张表。IQ 差距小于稳定区间时先保留热模型和原代理，再比较预计总成本；无新鲜证据时完全按静态能力矩阵执行。
 
@@ -124,7 +124,7 @@ luna_worker: agent_type + fork_turns
 
 ### SubagentStart
 
-仅匹配 `luna_worker` 和 `terra_worker`，把原生 `agent_id` 绑定到已通过 PreToolUse 的 pending 工作单并标为 active。会话账本按宿主 `session_id` 隔离，最多允许 3 个 pending/active Worker、每个工作单元 2 次尝试、每个根任务累计 8 次 Worker 调用；同一波次槽位不可分配给不同工作单元，第二次尝试必须等待第一次结束并使用预声明 fallback。
+仅匹配 `luna_worker` 和 `terra_worker`，把原生 `agent_id` 绑定到已通过 PreToolUse 的 pending 工作单并标为 active。会话账本按宿主 `session_id` 隔离，最多允许 3 个 pending/active Worker、每个工作单元 2 次尝试、每个根任务累计 64 次 Worker 调用；同一波次槽位不可分配给不同工作单元，第二次尝试必须等待第一次结束并使用预声明 fallback。
 
 ### SubagentStop
 

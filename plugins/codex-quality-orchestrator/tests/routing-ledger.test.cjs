@@ -160,10 +160,10 @@ try {
     startStop('root-budget', `budget-agent-${index}`, 'luna_worker');
   }
   assert.match(
-    registerDispatch(payload('root-budget', 9), packet('budget-9', {
-      wave_id: 'budget-wave-9',
+    registerDispatch(payload('root-budget', policy.team.maxRootWorkerAttempts + 1), packet('budget-overflow', {
+      wave_id: 'budget-wave-overflow',
     }), policy),
-    /根任务最多允许 8 次 Worker 调用/,
+    new RegExp(`根任务最多允许 ${policy.team.maxRootWorkerAttempts} 次 Worker 调用`),
   );
 
   process.stdout.write('PASS governed session routing ledger\n');

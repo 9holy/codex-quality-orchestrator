@@ -1,6 +1,6 @@
 {
   "schemaVersion": 5,
-  "policyVersion": "0.3.9",
+  "policyVersion": "0.3.10",
   "toolNames": [
     "spawn_agent",
     "Agent",
@@ -25,7 +25,7 @@
     "defaultWorkersPerWave": 1,
     "maxWorkersPerWave": 3,
     "maxWorkerAttemptsPerWorkUnit": 2,
-    "maxRootWorkerAttempts": 8,
+    "maxRootWorkerAttempts": 64,
     "maxFollowupsPerWorker": 1,
     "singleWriterForSharedFiles": true,
     "workersMayDelegate": false,
