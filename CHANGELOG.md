@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.15 - 2026-08-02
+
+- Simplify Luna routing to one Sol judgment: delegate when Luna can reliably complete verifiable work; otherwise do not trial-dispatch.
+
 ## 0.3.14 - 2026-08-02
 
 - Require Sol to pass a high-confidence capability, risk, rollback, and verification gate before delegating to Luna Max.
