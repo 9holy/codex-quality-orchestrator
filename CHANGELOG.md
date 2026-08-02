@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.13 - 2026-08-02
+
+- Keep Terra XHigh, Max, and Ultra mechanically callable while leaving current automatic model preference in Rule 16 and radar evidence instead of hard-coded Hook denials.
+
 ## 0.3.12 - 2026-08-02
 
 - Replace the ambiguous `Worker must not dispatch` wording with an explicit ban on Workers creating or delegating to subagents.

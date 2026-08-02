@@ -80,7 +80,7 @@ OpenAI 的 Codex 模型指南把 `gpt-5.6-sol / medium` 作为默认 Power 设�
 | Sol 高风险 | `gpt-5.6-sol` | `max` | 架构、安全、公共接口、生产数据、不可逆迁移、公共数据契约、疑难问题和最终裁决 |
 | Sol 系统性主控 | `gpt-5.6-sol` | `ultra` | 可有效并行的系统性多波次任务，不作为 Worker |
 | Luna | `gpt-5.6-luna` | 固定 `max` | 边界冻结、清晰、可独立验收的实现、已定位问题的修复、测试、扫描和批量工作 |
-| Terra | `gpt-5.6-terra` | 固定调用 `ultra` | 当前 Sol 能力不足时，可独立下派的最深推理单元 |
+| Terra | `gpt-5.6-terra` | `xhigh`、`max` 或 `ultra` | 当前自动路由只使用 Ultra；XHigh/Max 保留显式调用能力，不由 Hook 按排名封死 |
 | Sol reviewer | `gpt-5.6-sol` | 固定 `xhigh` | 关键高风险变更的一次独立只读复审 |
 
 `gpt-5.5`、裸 Terra、裸 Luna 和未登记模型禁止下派。
@@ -91,15 +91,15 @@ Luna 不处理消歧、诊断、架构、安全、公共接口、生产数据或
 
 ### 3.2 调用契约
 
-具名代理的模型由 TOML 固定，调用时不能用 `model` 覆盖。Terra 只允许 `ultra`，Luna 固定 `max`，reviewer 固定 `xhigh`：
+具名代理的模型由 TOML 固定，调用时不能用 `model` 覆盖。Terra 允许 `xhigh/max/ultra`，Luna 固定 `max`，reviewer 固定 `xhigh`：
 
 ```text
-terra_worker: agent_type + reasoning_effort(ultra) + fork_turns
+terra_worker: agent_type + reasoning_effort(xhigh|max|ultra) + fork_turns
 luna_worker: agent_type + fork_turns
 sol_reviewer: agent_type + fork_turns
 ```
 
-`fork_turns` 默认 `"none"`，仅确实需要少量历史时使用正整数数字字符串。Luna 和 reviewer 不得覆盖固定推理档位；Terra 必须显式传入 `ultra`。
+`fork_turns` 默认 `"none"`，仅确实需要少量历史时使用正整数数字字符串。Luna 和 reviewer 不得覆盖固定推理档位；Terra 必须显式传入 `xhigh`、`max` 或 `ultra`。
 
 ## 4. Hook 的职责
 

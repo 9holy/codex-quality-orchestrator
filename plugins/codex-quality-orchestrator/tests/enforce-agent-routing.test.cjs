@@ -100,10 +100,12 @@ try {
       fork_turns: '1',
     });
   }
-  expectAllow('terra-ultra', workerInput('terra_worker', {
-    reasoning_effort: 'ultra',
-    fork_turns: 'none',
-  }, { id: 'terra_ultra' }));
+  for (const effort of ['xhigh', 'max', 'ultra']) {
+    expectAllow(`terra-${effort}`, workerInput('terra_worker', {
+      reasoning_effort: effort,
+      fork_turns: 'none',
+    }, { id: `terra_${effort}` }));
+  }
   expectAllow('luna-profile', workerInput('luna_worker'));
   expectAllow('sol-reviewer', workerInput('sol_reviewer', { fork_turns: 'none' }));
   expectAllow('hyphenated-unit', workerInput('luna_worker', {}, { id: 'luna-audit-01' }));
@@ -122,8 +124,6 @@ try {
   expectDeny('bare-terra', { model: 'gpt-5.6-terra', reasoning_effort: 'max', fork_turns: '1' });
   expectDeny('bare-luna', { model: 'gpt-5.6-luna', reasoning_effort: 'max', fork_turns: '1' });
   expectDeny('terra-high', workerInput('terra_worker', { reasoning_effort: 'high' }));
-  expectDeny('terra-xhigh', workerInput('terra_worker', { reasoning_effort: 'xhigh' }));
-  expectDeny('terra-max', workerInput('terra_worker', { reasoning_effort: 'max' }));
   expectDeny('luna-effort-override', workerInput('luna_worker', { reasoning_effort: 'high' }));
   expectDeny('reviewer-effort-override', workerInput('sol_reviewer', { reasoning_effort: 'max' }));
   expectDeny('reviewer-model-override', workerInput('sol_reviewer', { model: 'gpt-5.6-sol' }));

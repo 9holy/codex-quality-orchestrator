@@ -19,7 +19,7 @@ Sol 是根任务主控和最终兜底，不创建执行型 Sol 子代理；关�
 | 代理 | 模型与档位 | 首选工作 | 禁止事项 |
 |---|---|---|---|
 | `luna_worker` | `gpt-5.6-luna / max` | 边界冻结、清晰、可独立验收的实现、多文件修改、已定位问题的修复、测试、扫描和批量工作，可在冻结边界内做局部实现选择 | 需求重定义、消歧、根因诊断、跨上下文推断、架构、安全、公共接口、生产数据、不可逆迁移和最终裁决 |
-| `terra_worker` | `gpt-5.6-terra / ultra` | 当前 Sol 能力不足时，可独立下派的最深推理单元 | 默认执行、默认复核、主控职责、架构与最终质量裁决 |
+| `terra_worker` | `gpt-5.6-terra / xhigh|max|ultra` | 当前自动路由只用 Ultra；XHigh/Max 保留显式调用能力 | 默认执行、默认复核、主控职责、架构与最终质量裁决 |
 | `sol_reviewer` | `gpt-5.6-sol / xhigh` | 关键高风险变更的一次独立只读复审 | 生产执行、文件写入、并行 reviewer、子代理和最终裁决 |
 
 在质量、胜任能力和风险边界全部满足后，先保留当前热模型和原代理，再比较预计总算力成本，计入新上下文、重试、返工和复核。除短任务和 Sol 保留项外，只要 Luna Max 能可靠完成就必须下派，Sol 不得代做；Luna 不适用后，当前 Sol 能可靠完成且无需独立/并行就直接处理。
@@ -69,7 +69,7 @@ Sol 判断任务语义并生成工作单；由于宿主会在 Hook 前加密 `me
 
 ```text
 luna_worker: agent_type + fork_turns
-terra_worker: agent_type + reasoning_effort(ultra) + fork_turns
+terra_worker: agent_type + reasoning_effort(xhigh|max|ultra) + fork_turns
 sol_reviewer: agent_type + fork_turns
 ```
 

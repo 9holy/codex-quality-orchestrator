@@ -21,7 +21,7 @@ skill = skill_path.read_text(encoding="utf-8")
 
 assert manifest["name"] == "codex-quality-orchestrator"
 base_version, separator, cachebuster = manifest["version"].partition("+codex.")
-assert base_version == policy["policyVersion"] == "0.3.12"
+assert base_version == policy["policyVersion"] == "0.3.13"
 assert not separator or cachebuster
 assert list((PLUGIN_ROOT / "skills").rglob("SKILL.md")) == [skill_path]
 assert manifest["interface"]["defaultPrompt"] == [
@@ -45,7 +45,7 @@ assert "仅主线不适用时补充" in rule
 assert "当前 Sol 能可靠完成时由 Sol 接管" in rule
 assert "当前 Sol 能力不足且深推理子问题可独立下派时用 Terra Ultra" in rule
 assert "任务级主控能力不足则建议下一任务使用 Sol XHigh" in rule
-assert "Terra XHigh/Max 不自动调用" in rule
+assert "Terra XHigh/Max 可显式调用但不进入当前自动路由" in rule
 assert "不默认另派 Terra 复核" in rule
 assert "IQ 差小于 3 视为同级" in rule
 assert "同级先保留热模型/原代理" in rule
@@ -64,6 +64,8 @@ assert "与生产 Worker 分开" in rule
 assert "一次一个" in rule
 assert "Hook 只校验" not in rule
 assert policy["namedAgents"]["terra_worker"]["allowedEfforts"] == [
+    "xhigh",
+    "max",
     "ultra",
 ]
 assert "生产数据、不可逆迁移、公共数据契约" in rule
@@ -118,7 +120,7 @@ assert policy["team"] == {
 assert policy["workPacket"] == {
     "marker": "CQO_WORK_PACKET_V1",
     "required": True,
-    "hostVisibleTaskNamePattern": "^(luna_max|terra_ultra|sol_reviewer_xhigh)__([a-z0-9][a-z0-9_-]{2,39})__w([1-9]\\d{0,2})__s([1-3])of([1-3])__a([12])$",
+    "hostVisibleTaskNamePattern": "^(luna_max|terra_(?:xhigh|max|ultra)|sol_reviewer_xhigh)__([a-z0-9][a-z0-9_-]{2,39})__w([1-9]\\d{0,2})__s([1-3])of([1-3])__a([12])$",
     "hostVisibleTaskNameExample": "terra_ultra__unit_name__w1__s1of2__a1",
     "allowedTaskIntents": ["mutate", "inspect", "verify"],
     "allowedMutationAuthorities": ["none", "declared_paths"],
@@ -206,9 +208,8 @@ terra_instructions = tomllib.loads(
         encoding="utf-8"
     )
 )["developer_instructions"]
-assert "仅接受当前 Sol 无法可靠完成" in terra_instructions
-assert "可独立下派" in terra_instructions
-assert "固定使用 ultra，不接受 xhigh 或 max" in terra_instructions
+assert "Sol 已明确" in terra_instructions
+assert "不改变已选的 xhigh、max 或 ultra" in terra_instructions
 assert "xhigh 用于常规判断" not in terra_instructions
 assert "普通独立复核" not in terra_instructions
 

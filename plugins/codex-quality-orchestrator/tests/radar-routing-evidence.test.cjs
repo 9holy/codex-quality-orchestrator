@@ -90,6 +90,8 @@ function responseFor(value) {
     'gpt-5.6-sol|xhigh',
     'gpt-5.6-sol|max',
     'gpt-5.6-sol|ultra',
+    'gpt-5.6-terra|xhigh',
+    'gpt-5.6-terra|max',
     'gpt-5.6-terra|ultra',
   ]);
 
@@ -117,6 +119,15 @@ function responseFor(value) {
       average_cost_usd: 2,
       cost_samples: 1,
       average_duration_minutes: 3,
+    },
+    {
+      model: 'gpt-5.6-terra',
+      effort: 'max',
+      iq: 75,
+      samples: 2,
+      average_cost_usd: 5,
+      cost_samples: 2,
+      average_duration_minutes: 4.5,
     },
   ]);
   const itemKeys = Object.keys(snapshot.items[0]).sort();
@@ -185,7 +196,7 @@ function responseFor(value) {
     assert.equal(refreshed.status, 'refreshed');
     assert.equal(fetchCalls, 1);
     assert.equal(fs.existsSync(cachePath), true);
-    assert.equal(loadRadarCache(cachePath, { minSamples: 2 }).items.length, 2);
+    assert.equal(loadRadarCache(cachePath, { minSamples: 2 }).items.length, 3);
     assert.equal(fs.readdirSync(tempRoot).some((name) => name.includes('.tmp-')), false);
 
     const fresh = await getRadarEvidence({

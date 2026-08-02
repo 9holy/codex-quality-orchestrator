@@ -30,6 +30,8 @@ const ROUTES = Object.freeze([
   Object.freeze({ model: 'gpt-5.6-sol', effort: 'xhigh' }),
   Object.freeze({ model: 'gpt-5.6-sol', effort: 'max' }),
   Object.freeze({ model: 'gpt-5.6-sol', effort: 'ultra' }),
+  Object.freeze({ model: 'gpt-5.6-terra', effort: 'xhigh' }),
+  Object.freeze({ model: 'gpt-5.6-terra', effort: 'max' }),
   Object.freeze({ model: 'gpt-5.6-terra', effort: 'ultra' }),
 ]);
 const ROUTE_KEYS = new Set(ROUTES.map(({ model, effort }) => `${model}|${effort}`));
