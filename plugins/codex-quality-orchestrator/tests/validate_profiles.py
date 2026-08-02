@@ -22,7 +22,7 @@ skill = skill_path.read_text(encoding="utf-8")
 
 assert manifest["name"] == "codex-quality-orchestrator"
 base_version, separator, cachebuster = manifest["version"].partition("+codex.")
-assert base_version == policy["policyVersion"] == "0.3.7"
+assert base_version == policy["policyVersion"] == "0.3.8"
 assert not separator or cachebuster
 assert list((PLUGIN_ROOT / "skills").rglob("SKILL.md")) == [skill_path]
 assert manifest["interface"]["defaultPrompt"] == [
@@ -31,9 +31,10 @@ assert manifest["interface"]["defaultPrompt"] == [
 ]
 assert "gpt-5.6-sol` 主控" in rule
 assert "`medium→xhigh→max→ultra`" in rule
-assert "使用最低可靠档" in rule
-assert "Sol `high` 和 Terra `xhigh` 仅保留支持，不自动选择" in rule
-assert "`xhigh` 能胜任不得用 `max`" in rule
+assert "保持当前根档位" in rule
+assert "仅在需要建议下一任务档位时使用最低可靠链" in rule
+assert "Sol `high` 和 Terra `xhigh` 不自动选择" in rule
+assert "`xhigh` 能胜任不得建议 `max`" in rule
 assert "先过能力和风险门槛，再考虑热缓存与总成本" in rule
 assert "必须优先交 `luna_worker / gpt-5.6-luna / max`" in rule
 assert "同一工作单元保持当前模型和原代理" in rule
@@ -60,7 +61,7 @@ assert policy["namedAgents"]["terra_worker"]["allowedEfforts"] == [
     "ultra",
 ]
 assert "生产数据、不可逆迁移、公共数据契约" in rule
-assert "插件不改已启动根档位" in rule
+assert "插件不改已启动根档位" not in rule
 assert len(rule.strip()) <= 1300
 capacity_message = "Selected model is at capacity. Please try a different model."
 assert capacity_message in rule

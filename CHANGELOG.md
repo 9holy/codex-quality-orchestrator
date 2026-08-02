@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.8 - 2026-08-02
+
+- Rewrite the root-effort sentence as direct instructions to Sol: keep the current root effort, and use the minimum reliable ladder only when asked to recommend the next task's effort.
+
 ## 0.3.7 - 2026-08-02
 
 - Keep short work on the current Sol and keep each work unit on its warm model/agent unless capability, correction, capacity, independence, or parallelism requires a switch.
