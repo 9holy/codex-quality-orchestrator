@@ -18,6 +18,11 @@ const canonicalPath = path.join(pluginRoot, 'references', 'RULE16.md');
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-quality-session-'));
 const codexHome = path.join(tempRoot, '.codex');
 const agentsDir = path.join(codexHome, 'agents');
+const activeContext = [
+  '[CQO_ACTIVE]',
+  '[CQO_ROUTE] 非短任务必须使用 $codex-quality-routing-team；' +
+    'Luna Max 能可靠完成、可验收且交接有净收益的执行单元必须下派，Sol 最终验收。',
+].join('\n');
 
 function installProfiles() {
   fs.mkdirSync(agentsDir, { recursive: true });
@@ -70,7 +75,7 @@ try {
   );
 
   const matched = invoke();
-  assert.equal(matched, '[CQO_ACTIVE]');
+  assert.equal(matched, activeContext);
   assert.doesNotMatch(matched, /gpt-5\.6-sol|xhigh|nested-model-must-not-win/);
 
   writeRadarCache(resolveCachePath(codexHome), {
@@ -98,12 +103,12 @@ try {
     ],
   });
   const withRadar = invoke(undefined, undefined, false);
-  assert.match(withRadar, /^\[CQO_ACTIVE\]/);
+  assert.match(withRadar, /^\[CQO_ACTIVE\]\n\[CQO_ROUTE\]/);
   assert.match(withRadar, /\[CQO_RADAR\]/);
   assert.match(withRadar, /IQ 差<3\.00 视为同级/);
   assert.match(withRadar, /新任务：Sol XHigh 优先 Terra Ultra/);
   assert.doesNotMatch(withRadar, /CQO_RADAR_STATUS|CQO_RADAR_FALLBACK|IQ=|采集时间|https:/);
-  assert.ok(withRadar.length < 600);
+  assert.ok(withRadar.length < 760);
 
   const nonce = '0123456789abcdef0123456789abcdef';
   const proofPath = path.join(tempRoot, 'session-start-proof.json');
@@ -127,7 +132,7 @@ try {
     '[profiles.unrelated]\nmodel = "nested-only"\nmodel_reasoning_effort = "ultra"\n',
     'utf8',
   );
-  assert.equal(invoke(), '[CQO_ACTIVE]');
+  assert.equal(invoke(), activeContext);
 
   fs.rmSync(path.join(agentsDir, 'luna-worker.toml'));
   const missingProfile = invoke();

@@ -1,6 +1,6 @@
 {
   "name": "codex-quality-orchestrator",
-  "version": "0.3.18+codex.20260802161257",
+  "version": "0.3.19+codex.20260802183528",
   "description": "Quality-first multi-model routing and review guardrails for Codex.",
   "author": {
     "name": "Codex Quality Orchestrator contributors"
@@ -16,13 +16,14 @@
   "interface": {
     "displayName": "Codex Quality Orchestrator",
     "shortDescription": "Quality-first routing for Codex subagents.",
-    "longDescription": "Use Sol as lead and final fallback while bounded Luna and Terra workers execute parallel work under explicit capability, ownership, retry, and verification contracts.",
+    "longDescription": "Use Sol as lead and final fallback while bounded Luna and Terra workers execute single or parallel work under explicit capability, ownership, retry, and verification contracts.",
     "developerName": "Codex Quality Orchestrator contributors",
     "category": "Developer Tools",
     "capabilities": [
       "Read"
     ],
     "defaultPrompt": [
+      "Route this task through the lowest-cost capable quality team.",
       "Audit my current model routing configuration.",
       "Verify that the orchestrator plugin and hooks are active."
     ]

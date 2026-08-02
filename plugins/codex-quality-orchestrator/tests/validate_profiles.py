@@ -16,74 +16,63 @@ policy = load_json(PLUGIN_ROOT / "routing-policy.json")
 manifest = load_json(PLUGIN_ROOT / ".codex-plugin" / "plugin.json")
 hooks = load_json(PLUGIN_ROOT / "hooks" / "hooks.json")
 rule = (PLUGIN_ROOT / "references" / "RULE16.md").read_text(encoding="utf-8")
-skill_path = PLUGIN_ROOT / "skills" / "codex-quality-orchestrator" / "SKILL.md"
-skill = skill_path.read_text(encoding="utf-8")
+maintenance_skill_path = (
+    PLUGIN_ROOT / "skills" / "codex-quality-orchestrator" / "SKILL.md"
+)
+routing_skill_path = (
+    PLUGIN_ROOT / "skills" / "codex-quality-routing-team" / "SKILL.md"
+)
+maintenance_skill = maintenance_skill_path.read_text(encoding="utf-8")
+routing_skill = routing_skill_path.read_text(encoding="utf-8")
+routing_skill_metadata = (
+    routing_skill_path.parent / "agents" / "openai.yaml"
+).read_text(encoding="utf-8")
 
 assert manifest["name"] == "codex-quality-orchestrator"
 base_version, separator, cachebuster = manifest["version"].partition("+codex.")
-assert base_version == policy["policyVersion"] == "0.3.18"
+assert base_version == policy["policyVersion"] == "0.3.19"
 assert not separator or cachebuster
-assert list((PLUGIN_ROOT / "skills").rglob("SKILL.md")) == [skill_path]
+assert sorted((PLUGIN_ROOT / "skills").glob("*/SKILL.md")) == sorted(
+    [maintenance_skill_path, routing_skill_path]
+)
 assert manifest["interface"]["defaultPrompt"] == [
+    "Route this task through the lowest-cost capable quality team.",
     "Audit my current model routing configuration.",
     "Verify that the orchestrator plugin and hooks are active.",
 ]
 assert "目标明确、低风险且可直接验证的短任务" in rule
 assert "高风险任务不算短任务" in rule
-assert "非短任务由当前 `gpt-5.6-sol` 理解和拆解" in rule
-assert "任务开始时列出已知工作单元" in rule
-assert "Luna Max 能可靠完成且结果可验证，就优先派 `luna_worker`" in rule
+assert "非短任务由当前 `gpt-5.6-sol` 使用 `$codex-quality-routing-team`" in rule
+assert "Sol 只做冻结边界所需的调研并先列出已知工作单元" in rule
+assert "有足够执行量、交接有净收益" in rule
+assert "必须优先派 `luna_worker`" in rule
+assert "单个单元即可下派，不要求并行" in rule
 assert "不能胜任或不确定就不派" in rule
-assert "Sol 整合结果、复跑验证、最终审核和兜底" in rule
-assert "能拆给 Luna 就必须下派" not in rule
-assert "Sol 不得代做" not in rule
-assert "高置信度" not in rule
-assert "失败可回滚" not in rule
-assert "能力/风险门槛" not in rule
 assert "任务开始时只在能胜任候选间使用一次新鲜 `[CQO_RADAR]` 数据确定执行者" in rule
 assert "Luna Max 能胜任时固定优先" in rule
 assert "IQ 差≥3 选高 IQ" in rule
 assert "差<3 视为同级" in rule
 assert "没有新鲜数据就由 Sol 判断" in rule
-assert "确定后按方案派发，不重复选模" in rule
+assert "确定后不重复选模" in rule
 assert "仅新增单元、边界变化、执行失败或模型不可用时重判" in rule
-assert "每次分派" not in rule
-assert "`medium→xhigh→max→ultra`" in rule
-assert "保持根档位" in rule
-assert "仅建议下一任务时用 `medium→xhigh→max→ultra`" in rule
-assert "Sol High 不进自动链" in rule
-assert "XHigh 胜任不得建议 Max" in rule
-assert "Luna 不适用时，由当前 Sol 完成" in rule
-assert "适合独立执行的单元派给能胜任的 Terra 最低档位" in rule
-assert "主控能力不足则建议下一任务使用 Sol XHigh" in rule
-assert "不进入自动路由" not in rule
-assert "仅接受显式选择" not in rule
-assert "仅当前 Sol" not in rule
-assert "Worker 结果必须由 Sol 验收" in rule
-assert "仅明确、局部的问题可交原代理修正一次" in rule
-assert "能力或质量不合格立即交回 Sol，不得继续试错" in rule
-assert "先下派 Luna" not in rule
-assert "先试 Luna" not in rule
-assert "Luna 失败后由 Sol 修" not in rule
-assert "同级先保留热模型/原代理" in rule
 assert "通常使用 1 个 Worker" in rule
+assert "仅有 2–3 个互不依赖、写入不冲突且并行收益更大的单元时组队" in rule
 assert "最多 3 个" in rule
-assert "CQO_WORK_PACKET_V1" in rule
-assert "selected_effort" in rule
-assert "每根任务" not in rule
 assert "共享文件单写者" in rule
 assert "Worker 不得创建子代理" in rule
-assert "Worker 不得下派；" not in rule
+assert "Luna 不适用时，由当前 Sol 完成" in rule
+assert "适合独立执行的单元派给能胜任的 Terra 最低档位" in rule
+assert "Worker 结果必须由 Sol 检查实际差异并复跑必要验证" in rule
+assert "仅明确、局部的问题可交原 Worker 修正一次" in rule
+assert "能力不足、越界或质量不合格立即交回 Sol" in rule
 assert "Sol 不创建执行型 Sol 子代理" in rule
 assert "仅关键高风险变更可另派 1 个 `sol_reviewer`（Sol XHigh）只读复审" in rule
-assert "Hook 只校验" not in rule
 assert policy["namedAgents"]["terra_worker"]["allowedEfforts"] == [
     "xhigh",
     "max",
     "ultra",
 ]
 assert "生产数据/契约、不可逆迁移" in rule
-assert "插件不改已启动根档位" not in rule
 assert "插件" not in rule
 assert "用户" not in rule
 assert len(rule.strip()) <= 1400
@@ -92,12 +81,21 @@ assert capacity_message in rule
 assert rule.count(capacity_message) == 1
 assert "向原代理发送“继续”一次并保留进度" in rule
 assert "再次失败交回 Sol" in rule
-assert "能力/质量失败不得这样续交" in rule
-assert '`fork_turns` 默认 `"none"`' in rule
-assert len(skill) <= 1600
-assert "唯一语义路由规范" in skill
-assert "不要在 Skill 中复述" in skill
-assert "在所有满足硬约束的方案中" not in skill
+assert "能力或质量失败不得这样续交" in rule
+assert "`fork_turns`" in rule
+assert "不传 `model`" in rule
+assert "CQO_WORK_PACKET_V1" not in rule
+assert len(maintenance_skill) <= 1600
+assert "唯一语义路由规范" in maintenance_skill
+assert "不要在 Skill 中复述" in maintenance_skill
+assert len(routing_skill) <= 1900
+assert "单个较大且边界明确" in routing_skill
+assert "不得为单个单元建立 TeamPlan" in routing_skill
+assert "不得派生产 Worker" in routing_skill
+assert "首次分派前读取 `../../routing-policy.json`" in routing_skill
+assert "不要为使用 Worker 切碎任务" in routing_skill
+assert "allow_implicit_invocation: true" in routing_skill_metadata
+assert "$codex-quality-routing-team" in routing_skill_metadata
 assert hooks["hooks"]["SessionStart"][0]["hooks"][0]["additionalContextLimit"] <= 2500
 assert hooks["hooks"]["SessionStart"][0]["hooks"][0]["commandWindows"] == (
     'node "$env:PLUGIN_ROOT\\hooks\\inject-routing-policy.cjs"'
@@ -241,10 +239,10 @@ assert policy["retiredProfiles"] == []
 assert not (PLUGIN_ROOT / "templates" / "retired" / "sol-reviewer.toml.bak").exists()
 
 assert policy["sol"]["allowedEfforts"] == ["medium", "high", "xhigh", "max", "ultra"]
-assert "`medium→xhigh→max→ultra`" in rule
 assert policy["sol"]["model"] in rule
-for agent_type in policy["namedAgents"]:
-    assert agent_type in rule
+assert "luna_worker" in rule
+assert "Terra" in rule
+assert "sol_reviewer" in rule
 
 for path in PLUGIN_ROOT.rglob("*"):
     if path.is_file() and path.suffix.lower() in {".md", ".json", ".toml", ".cjs", ".ps1"}:

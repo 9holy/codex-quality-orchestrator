@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.19 - 2026-08-03
+
+- Add an implicitly invokable daily routing skill so ordinary multi-step work can enter the Sol-led routing workflow instead of exposing only the maintenance skill.
+- Route one substantial, bounded, verifiable Luna Max unit when delegation has net benefit; require multiple units only for parallel TeamPlan execution.
+- Keep the existing four-Hook surface and add a compact SessionStart routing reminder without per-prompt token overhead.
+
 ## 0.3.18 - 2026-08-02
 
 - Preserve Cockpit Tools provider configuration while atomically restoring only this plugin's registration and approved Hook trust records.

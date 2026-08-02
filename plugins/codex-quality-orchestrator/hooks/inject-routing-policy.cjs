@@ -8,6 +8,11 @@ const { getRadarEvidence } = require('./radar-routing-evidence.cjs');
 const pluginRoot = path.resolve(__dirname, '..');
 const canonicalPath = path.join(pluginRoot, 'references', 'RULE16.md');
 const policyPath = path.join(pluginRoot, 'routing-policy.json');
+const activeContext = [
+  '[CQO_ACTIVE]',
+  '[CQO_ROUTE] 非短任务必须使用 $codex-quality-routing-team；' +
+    'Luna Max 能可靠完成、可验收且交接有净收益的执行单元必须下派，Sol 最终验收。',
+].join('\n');
 
 function codexHome() {
   return process.env.CODEX_HOME
@@ -83,7 +88,7 @@ async function main() {
         '暂停具名代理调度并公开报告，完成规则同步后再继续。',
     );
   } else {
-    notes.push('[CQO_ACTIVE]');
+    notes.push(activeContext);
   }
 
   if (missingProfiles.length > 0) {
