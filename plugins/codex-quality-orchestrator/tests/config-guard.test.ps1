@@ -73,6 +73,16 @@ param([Parameter(ValueFromRemainingArguments=$true)][string[]]$Args)
 $config = Join-Path $env:CODEX_HOME 'config.toml'
 $text = if (Test-Path -LiteralPath $config) { Get-Content -LiteralPath $config -Raw } else { '' }
 if (($Args -join ' ') -ceq 'plugin list --json') {
+  if (-not [string]::IsNullOrWhiteSpace($env:CQO_TEST_FAIL_ONCE) -and
+      -not (Test-Path -LiteralPath $env:CQO_TEST_FAIL_ONCE)) {
+    New-Item -ItemType File -Path $env:CQO_TEST_FAIL_ONCE | Out-Null
+    throw 'simulated transient plugin list failure'
+  }
+  if (-not [string]::IsNullOrWhiteSpace($env:CQO_TEST_REQUIRE_MARKETPLACE) -and
+      -not (Test-Path -LiteralPath $env:CQO_TEST_REQUIRE_MARKETPLACE)) {
+    '{"installed":[]}'
+    exit 0
+  }
   if ($text.Contains('[plugins."codex-quality-orchestrator@codex-quality-orchestrator"]')) {
     '{"installed":[{"pluginId":"codex-quality-orchestrator@codex-quality-orchestrator","installed":true,"enabled":true,"version":"0.2.0","marketplaceName":"cqo-test","marketplaceSource":{"sourceType":"local","source":"owner/repo"}}]}'
   } else {
@@ -81,16 +91,16 @@ if (($Args -join ' ') -ceq 'plugin list --json') {
   exit 0
 }
 if ($Args[0] -ceq 'plugin' -and $Args[1] -ceq 'marketplace') {
-  if (-not [string]::IsNullOrWhiteSpace($env:CQO_TEST_FAIL_ONCE) -and
-      -not (Test-Path -LiteralPath $env:CQO_TEST_FAIL_ONCE)) {
-    New-Item -ItemType File -Path $env:CQO_TEST_FAIL_ONCE | Out-Null
-    throw 'simulated transient marketplace failure'
+  if (-not [string]::IsNullOrWhiteSpace($env:CQO_TEST_REQUIRE_MARKETPLACE)) {
+    [IO.File]::WriteAllText($env:CQO_TEST_REQUIRE_MARKETPLACE, ($Args -join ' '), [Text.UTF8Encoding]::new($false))
   }
   '{"marketplaceName":"cqo-test"}'
   exit 0
 }
 if ($Args[0] -ceq 'plugin' -and $Args[1] -ceq 'add') {
-  Add-Content -LiteralPath $config -Encoding UTF8 -Value "`n[plugins.`"codex-quality-orchestrator@codex-quality-orchestrator`"]`nenabled = true"
+  if (-not $text.Contains('[plugins."codex-quality-orchestrator@codex-quality-orchestrator"]')) {
+    Add-Content -LiteralPath $config -Encoding UTF8 -Value "`n[plugins.`"codex-quality-orchestrator@codex-quality-orchestrator`"]`nenabled = true"
+  }
   [pscustomobject]@{ pluginId='codex-quality-orchestrator@codex-quality-orchestrator'; version='0.2.0'; installedPath=$env:CQO_TEST_PLUGIN_ROOT } | ConvertTo-Json -Compress
   exit 0
 }
@@ -103,13 +113,13 @@ throw "Unexpected fake codex call: $($Args -join ' ')"
   $first = ((& $guardScript -Mode Repair -CodexHome $codexHome -CodexCommand $fakeCodex) -join [Environment]::NewLine) | ConvertFrom-Json
   Assert-True $first.Healthy 'First repair was not healthy'
   Assert-True $first.Repaired 'First repair did not report a change'
-  Assert-True (@($first.Backups).Count -ge 2) 'First repair did not back up config.toml before CLI and Hook writes'
+  Assert-True (@($first.Backups).Count -ge 1) 'First repair did not back up config.toml before managed configuration writes'
   $config = Get-Content -LiteralPath $configPath -Raw
   Assert-True $config.Contains($preId) 'PreToolUse trust was not restored'
   Assert-True $config.Contains($sessionId) 'SessionStart trust was not restored'
   Assert-True $config.Contains($subagentStartId) 'SubagentStart trust was not restored'
   Assert-True $config.Contains($subagentId) 'SubagentStop trust was not restored'
-  Assert-True $config.Contains('model = "gpt-5.6-sol"') 'Append-only trust restoration replaced existing config'
+  Assert-True $config.Contains('model = "gpt-5.6-sol"') 'Managed configuration restoration replaced existing config'
 
   $config = $config.Replace("[hooks.state.`"$preId`"]", "[hooks.state.'$preId']")
   [IO.File]::WriteAllText($configPath, $config, [Text.UTF8Encoding]::new($false))
@@ -122,6 +132,42 @@ throw "Unexpected fake codex call: $($Args -join ' ')"
 
   $statePath = Join-Path $guardDir 'state.json'
   $validState = Get-Content -LiteralPath $statePath -Raw
+
+  $cockpitPrefix = @'
+model = "gpt-5.6-sol"
+model_provider = "cockpit-local"
+
+[model_providers.cockpit-local]
+name = "Cockpit Local Access"
+base_url = "http://127.0.0.1:12345/v1"
+wire_api = "responses"
+'@
+  $cockpitConfig = $cockpitPrefix + "`n`n[hooks.state.`"$subagentStartId`"]`ntrusted_hash = `"sha256:$('e' * 64)`"`n"
+  [IO.File]::WriteAllText($configPath, $cockpitConfig, [Text.UTF8Encoding]::new($false))
+  $cockpitRepair = ((& $guardScript -Mode Repair -CodexHome $codexHome -CodexCommand $fakeCodex) -join [Environment]::NewLine) | ConvertFrom-Json
+  Assert-True $cockpitRepair.Healthy 'Cockpit replacement was not repaired'
+  $cockpitAfter = Get-Content -LiteralPath $configPath -Raw
+  Assert-True $cockpitAfter.StartsWith($cockpitPrefix) 'Cockpit provider configuration was changed'
+  Assert-True $cockpitAfter.Contains("trusted_hash = `"sha256:$('d' * 64)`"") 'Stale Hook trust was not replaced with the approved hash'
+  Assert-True (-not $cockpitAfter.Contains("sha256:$('e' * 64)")) 'Stale Hook trust remained after repair'
+  Assert-True $cockpitAfter.Contains('[plugins."codex-quality-orchestrator@codex-quality-orchestrator"]') 'Plugin registration was not restored after Cockpit replacement'
+
+  $legacyState = $validState | ConvertFrom-Json
+  $legacyState.marketplaceRef = $null
+  [IO.File]::WriteAllText($statePath, ($legacyState | ConvertTo-Json -Depth 6), [Text.UTF8Encoding]::new($false))
+  $metadataRoot = Join-Path $codexHome '.tmp\marketplaces\codex-quality-orchestrator'
+  New-Item -ItemType Directory -Path $metadataRoot -Force | Out-Null
+  $metadata = [ordered]@{ source_type='local'; source='owner/repo'; ref_name='main' } | ConvertTo-Json
+  [IO.File]::WriteAllText((Join-Path $metadataRoot '.codex-marketplace-install.json'), $metadata, [Text.UTF8Encoding]::new($false))
+  [IO.File]::WriteAllText($configPath, "model = `"gpt-5.6-sol`"`n", [Text.UTF8Encoding]::new($false))
+  $marketplaceMarker = Join-Path $tempRoot 'marketplace-call.txt'
+  $env:CQO_TEST_REQUIRE_MARKETPLACE = $marketplaceMarker
+  $legacyRepair = ((& $guardScript -Mode Repair -CodexHome $codexHome -CodexCommand $fakeCodex) -join [Environment]::NewLine) | ConvertFrom-Json
+  Assert-True $legacyRepair.Healthy 'Legacy null-ref state was not repaired'
+  Assert-True ((Get-Content -LiteralPath $marketplaceMarker -Raw).Contains('--ref main')) 'Marketplace repair did not recover ref_name from install metadata'
+  Remove-Item Env:CQO_TEST_REQUIRE_MARKETPLACE
+  [IO.File]::WriteAllText($statePath, $validState, [Text.UTF8Encoding]::new($false))
+
   $tampered = $validState | ConvertFrom-Json
   $tampered.trustedHooks += [pscustomobject]@{ id='unapproved-hook'; trustedHash=('sha256:' + ('c' * 64)) }
   [IO.File]::WriteAllText($statePath, ($tampered | ConvertTo-Json -Depth 6), [Text.UTF8Encoding]::new($false))
@@ -184,12 +230,21 @@ throw "Unexpected fake codex call: $($Args -join ' ')"
   $startupDir = Join-Path $tempRoot 'startup'
   if ($runningOnWindows) {
     Assert-True ([long]$pidRecord.startTimeUtcTicks -eq $watchProcess.StartTime.ToUniversalTime().Ticks) 'Watch PID record was not bound to process start time'
+    $installMetadataRoot = Join-Path $codexHome '.tmp\marketplaces\cqo-test'
+    New-Item -ItemType Directory -Path $installMetadataRoot -Force | Out-Null
+    [IO.File]::WriteAllText(
+      (Join-Path $installMetadataRoot '.codex-marketplace-install.json'),
+      ([ordered]@{ source_type='local'; source='owner/repo'; ref_name='main' } | ConvertTo-Json),
+      [Text.UTF8Encoding]::new($false)
+    )
     $guardInstall = ((& $guardScript -Mode Install -CodexHome $codexHome -CodexCommand $fakeCodex -StartupDirectory $startupDir -NoStart) -join [Environment]::NewLine) | ConvertFrom-Json
     $watchProcess.WaitForExit(5000) | Out-Null
     Assert-True $watchProcess.HasExited 'Guard upgrade did not stop the previous Watch process'
     Assert-True (-not $guardInstall.Started) 'NoStart guard upgrade started a watcher'
     $launcher = Get-Content -LiteralPath $guardInstall.Launcher -Raw
     Assert-True $launcher.Contains("-CodexCommand `"$fakeCodex`"") 'Startup launcher did not persist the resolved Codex command'
+    $installedState = Get-Content -LiteralPath (Join-Path $guardDir 'state.json') -Raw | ConvertFrom-Json
+    Assert-True ([string]$installedState.marketplaceRef -ceq 'main') 'Guard install did not preserve marketplace ref_name metadata'
   } else {
     $watchProcess | Stop-Process -Force
     $watchProcess.WaitForExit(5000) | Out-Null
@@ -205,7 +260,7 @@ throw "Unexpected fake codex call: $($Args -join ' ')"
   & $guardScript -Mode Uninstall -CodexHome $codexHome -CodexCommand $fakeCodex -StartupDirectory $startupDir | Out-Null
   Assert-True ($null -ne (Get-Process -Id $PID -ErrorAction SilentlyContinue)) 'Uninstall killed a PID-reused unrelated process'
 
-  Write-Output 'PASS append-only repair, bound full Hook inputs, retrying Watch mode, persisted CLI path, safe Watch upgrade, PID validation, and idempotency'
+  Write-Output 'PASS Cockpit-safe merge, approved stale-trust replacement, marketplace ref recovery, retrying Watch mode, and idempotency'
 } finally {
   if ($null -ne $watchProcess -and -not $watchProcess.HasExited) {
     $watchProcess | Stop-Process -Force -ErrorAction SilentlyContinue
@@ -213,6 +268,7 @@ throw "Unexpected fake codex call: $($Args -join ' ')"
   Remove-Item Env:CODEX_HOME -ErrorAction SilentlyContinue
   Remove-Item Env:CQO_TEST_PLUGIN_ROOT -ErrorAction SilentlyContinue
   Remove-Item Env:CQO_TEST_FAIL_ONCE -ErrorAction SilentlyContinue
+  Remove-Item Env:CQO_TEST_REQUIRE_MARKETPLACE -ErrorAction SilentlyContinue
   if (Test-Path -LiteralPath $tempRoot) {
     $resolved = [IO.Path]::GetFullPath($tempRoot)
     $tempBase = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())

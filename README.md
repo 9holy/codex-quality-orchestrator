@@ -64,13 +64,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $plugin.installed
 
 ## 经常切换配置
 
-如果 CC Switch、同步工具或其他程序会整体替换 `config.toml`，可以启用配置守护器：
+如果 Cockpit Tools、CC Switch、同步工具或其他程序会整体替换 `config.toml`，可以启用配置守护器：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $plugin.installedPath 'scripts\config-guard.ps1') -Mode Install
 ```
 
-它会在配置被替换后恢复插件注册和你已经批准过的精确 Hook 信任记录。Hook 文件内容发生变化时，它不会自动信任新版本，而是停下来要求你重新审核。自动随 Windows 登录启动目前只支持 Windows。
+它只合并插件注册和四项已批准 Hook 信任，保留切换器写入的模型、Provider、端点和其他配置。切换器恢复旧信任哈希时，只要本地 Hook bundle 仍与已批准摘要完全一致，守护器会恢复已批准哈希；Hook 文件真的发生变化时则停止并要求重新审核。Marketplace 分支从安装元数据保留，不会因切换后丢失 `main`。自动随 Windows 登录启动目前只支持 Windows。
 
 ## 需要知道的边界
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.18 - 2026-08-02
+
+- Preserve Cockpit Tools provider configuration while atomically restoring only this plugin's registration and approved Hook trust records.
+- Recover marketplace `ref_name` from install metadata and safely replace stale trust hashes only when the approved Hook bundle is unchanged.
+
 ## 0.3.17 - 2026-08-02
 
 - Freeze the routing plan once per task and re-evaluate only for new units, scope changes, failures, or model unavailability.

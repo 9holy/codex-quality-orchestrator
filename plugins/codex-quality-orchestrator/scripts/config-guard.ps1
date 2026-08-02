@@ -61,6 +61,18 @@ function Get-ObjectValue {
   return $null
 }
 
+function Get-MarketplaceInstallMetadata {
+  param([string]$MarketplaceName)
+  if ([string]::IsNullOrWhiteSpace($MarketplaceName)) { return $null }
+  $path = Join-Path $CodexHome (".tmp\marketplaces\$MarketplaceName\.codex-marketplace-install.json")
+  if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
+  try {
+    return Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
+  } catch {
+    throw "Marketplace install metadata is invalid: $path"
+  }
+}
+
 function Get-HookBundleHash {
   param([string]$PluginRoot)
   $relativeFiles = @(
@@ -148,35 +160,87 @@ function Write-Utf8Atomic {
   }
 }
 
-function Add-TrustedHooks {
+function Set-TomlSectionValue {
+  param(
+    [string]$Text,
+    [string]$HeaderPattern,
+    [string]$CanonicalHeader,
+    [string]$Key,
+    [string]$Value
+  )
+  $newLine = if ($Text.Contains("`r`n")) { "`r`n" } else { "`n" }
+  $headers = [regex]::Matches($Text, $HeaderPattern)
+  if ($headers.Count -gt 1) { throw "Duplicate TOML section: $CanonicalHeader" }
+  if ($headers.Count -eq 0) {
+    $prefix = $Text.TrimEnd("`r", "`n")
+    if (-not [string]::IsNullOrEmpty($prefix)) { $prefix += $newLine + $newLine }
+    return $prefix + $CanonicalHeader + $newLine + "$Key = $Value" + $newLine
+  }
+
+  $header = $headers[0]
+  $sectionHeaderRegex = [regex]'(?m)^\[[^\r\n]+\]\s*$'
+  $nextHeader = $sectionHeaderRegex.Match($Text, $header.Index + $header.Length)
+  $sectionEnd = if ($nextHeader.Success) { $nextHeader.Index } else { $Text.Length }
+  $section = $Text.Substring($header.Index, $sectionEnd - $header.Index)
+  $keyPattern = '(?m)^' + [regex]::Escape($Key) + '\s*=.*$'
+  $keys = [regex]::Matches($section, $keyPattern)
+  if ($keys.Count -gt 1) { throw "Duplicate TOML key $Key in $CanonicalHeader" }
+  if ($keys.Count -eq 1) {
+    $keyMatch = $keys[0]
+    $updated = $section.Remove($keyMatch.Index, $keyMatch.Length).Insert($keyMatch.Index, "$Key = $Value")
+  } else {
+    $updated = $section.Insert($header.Length, $newLine + "$Key = $Value")
+  }
+  return $Text.Substring(0, $header.Index) + $updated + $Text.Substring($sectionEnd)
+}
+
+function Test-PluginRegistration {
+  if (-not (Test-Path -LiteralPath $script:configPath -PathType Leaf)) { return $false }
+  $text = [IO.File]::ReadAllText($script:configPath, [Text.UTF8Encoding]::new($false))
+  $escapedId = [regex]::Escape($pluginId)
+  $quotedId = '(?:"' + $escapedId + '"|' + "'" + $escapedId + "'" + ')'
+  $pattern = '(?ms)^\[plugins\.' + $quotedId + '\]\s*\r?\n(?:(?!^\[).)*?^enabled\s*=\s*true\s*$'
+  return [regex]::IsMatch($text, $pattern)
+}
+
+function Merge-ManagedConfig {
   param([string]$ConfigPath, [object[]]$TrustedHooks)
   $backups = @()
   for ($attempt = 1; $attempt -le 3; $attempt++) {
-    $text = [IO.File]::ReadAllText($ConfigPath, [Text.UTF8Encoding]::new($false))
-    $append = @()
+    $original = [IO.File]::ReadAllText($ConfigPath, [Text.UTF8Encoding]::new($false))
+    $text = $original
+    $escapedPluginId = [regex]::Escape($pluginId)
+    $quotedPluginId = '(?:"' + $escapedPluginId + '"|' + "'" + $escapedPluginId + "'" + ')'
+    $text = Set-TomlSectionValue -Text $text `
+      -HeaderPattern ('(?m)^\[plugins\.' + $quotedPluginId + '\]\s*$') `
+      -CanonicalHeader "[plugins.`"$pluginId`"]" -Key 'enabled' -Value 'true'
     foreach ($record in $TrustedHooks) {
       $escapedId = [regex]::Escape([string]$record.id)
       $quotedId = '(?:"' + $escapedId + '"|' + "'" + $escapedId + "'" + ')'
-      $sectionPattern = '(?m)^\[hooks\.state\.' + $quotedId + '\]\s*$'
-      if ([regex]::IsMatch($text, $sectionPattern)) {
-        $exactPattern = '(?ms)^\[hooks\.state\.' + $quotedId +
-          '\]\s*\r?\ntrusted_hash\s*=\s*"' + [regex]::Escape([string]$record.trustedHash) + '"\s*$'
-        if (-not [regex]::IsMatch($text, $exactPattern)) {
-          throw "Hook trust changed for $($record.id). Refusing to overwrite it; review the hook again in /hooks."
-        }
-        continue
-      }
-      $append += "[hooks.state.`"$($record.id)`"]`ntrusted_hash = `"$($record.trustedHash)`""
+      $text = Set-TomlSectionValue -Text $text `
+        -HeaderPattern ('(?m)^\[hooks\.state\.' + $quotedId + '\]\s*$') `
+        -CanonicalHeader "[hooks.state.`"$($record.id)`"]" -Key 'trusted_hash' `
+        -Value ('"' + [string]$record.trustedHash + '"')
     }
-    if ($append.Count -eq 0) { return $backups }
+    if ($text -ceq $original) { return $backups }
 
-    $backups += New-FileBackup $ConfigPath
-    $payload = "`n`n" + ($append -join "`n`n") + "`n"
-    [IO.File]::AppendAllText($ConfigPath, $payload, [Text.UTF8Encoding]::new($false))
-    if (Test-TrustPresent $TrustedHooks) { return $backups }
+    $latest = [IO.File]::ReadAllText($ConfigPath, [Text.UTF8Encoding]::new($false))
+    if ($latest -cne $original) {
+      Start-Sleep -Milliseconds (250 * $attempt)
+      continue
+    }
+    $backup = New-FileBackup $ConfigPath
+    if ($null -ne $backup) { $backups += $backup }
+    $latest = [IO.File]::ReadAllText($ConfigPath, [Text.UTF8Encoding]::new($false))
+    if ($latest -cne $original) {
+      Start-Sleep -Milliseconds (250 * $attempt)
+      continue
+    }
+    Write-Utf8Atomic $ConfigPath $text
+    if ((Test-PluginRegistration) -and (Test-TrustPresent $TrustedHooks)) { return $backups }
     Start-Sleep -Milliseconds (250 * $attempt)
   }
-  throw 'External config writes prevented Hook trust restoration after three append-only attempts'
+  throw 'External config writes prevented managed plugin configuration restoration after three attempts'
 }
 
 function Read-GuardState {
@@ -243,11 +307,27 @@ function Repair-Registration {
   $pluginWasMissing = $null -eq $installed
   $backups = @()
   $installedPath = [string]$state.installedPath
+  if ([string]::IsNullOrWhiteSpace($installedPath) -or
+      (Get-HookBundleHash $installedPath) -cne [string]$state.hookBundleHash) {
+    throw 'Installed Hook bundle differs from the content approved when the config guard was enabled'
+  }
+
+  $backups += @(Merge-ManagedConfig $script:configPath @($state.trustedHooks))
+  $installed = Get-InstalledPlugin
   if ($null -eq $installed) {
     $backups += New-FileBackup $script:configPath
     $arguments = @('plugin', 'marketplace', 'add', [string]$state.marketplaceSource, '--json')
-    if (-not [string]::IsNullOrWhiteSpace([string]$state.marketplaceRef)) {
-      $arguments += @('--ref', [string]$state.marketplaceRef)
+    $marketplaceRef = [string]$state.marketplaceRef
+    if ([string]::IsNullOrWhiteSpace($marketplaceRef)) {
+      $metadata = Get-MarketplaceInstallMetadata ($pluginId.Split('@')[1])
+      if ($null -ne $metadata -and
+          [string]$metadata.source_type -ceq [string]$state.marketplaceSourceType -and
+          [string]$metadata.source -ceq [string]$state.marketplaceSource) {
+        $marketplaceRef = [string]$metadata.ref_name
+      }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($marketplaceRef)) {
+      $arguments += @('--ref', $marketplaceRef)
     }
     $marketplace = Invoke-CodexJson $arguments
     $marketplaceName = [string]$marketplace.marketplaceName
@@ -263,12 +343,6 @@ function Repair-Registration {
   if ($null -eq $installed -or -not (Test-InstalledIdentity $installed $state)) {
     throw 'Installed plugin source or version does not match the approved config guard state'
   }
-  if ([string]::IsNullOrWhiteSpace($installedPath) -or
-      (Get-HookBundleHash $installedPath) -cne [string]$state.hookBundleHash) {
-    throw 'Installed Hook bundle differs from the content approved when the config guard was enabled'
-  }
-
-  $backups += @(Add-TrustedHooks $script:configPath @($state.trustedHooks))
   $verified = Get-InstalledPlugin
   if ($null -eq $verified -or -not (Test-InstalledIdentity $verified $state) -or
       -not (Test-TrustPresent @($state.trustedHooks))) {
@@ -367,13 +441,21 @@ switch ($Mode) {
     if ([string]::IsNullOrWhiteSpace($sourceType)) {
       throw 'Could not determine the marketplace source type.'
     }
+    $version = [string]$installed.version
+    $marketplaceName = [string]$installed.marketplaceName
+    $metadata = Get-MarketplaceInstallMetadata $marketplaceName
     $ref = if (-not [string]::IsNullOrWhiteSpace($MarketplaceRef)) {
       $MarketplaceRef
     } else {
-      Get-ObjectValue $installed.marketplaceSource @('ref', 'gitRef')
+      $installedRef = Get-ObjectValue $installed.marketplaceSource @('ref', 'gitRef')
+      if (-not [string]::IsNullOrWhiteSpace($installedRef)) {
+        $installedRef
+      } elseif ($null -ne $metadata) {
+        [string]$metadata.ref_name
+      } else {
+        $null
+      }
     }
-    $version = [string]$installed.version
-    $marketplaceName = [string]$installed.marketplaceName
     $cachedRoot = Join-Path $CodexHome ("plugins\cache\$marketplaceName\codex-quality-orchestrator\$version")
     $approvedRoot = if (Test-Path -LiteralPath $cachedRoot -PathType Container) {
       $cachedRoot

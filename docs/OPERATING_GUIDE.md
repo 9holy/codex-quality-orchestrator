@@ -184,7 +184,7 @@ powershell -NoProfile -ExecutionPolicy Bypass `
   -Mode Install
 ```
 
-守护器与具体配置工具无关，不修改其数据库，也不调用模型。它每秒只比较一次配置文件的时间和大小，只有发生变化才检查插件状态；缺失时使用 `codex plugin marketplace add` 和 `codex plugin add` 恢复原生注册，然后写回用户已经批准的精确 Hook 信任记录。每次写入前都会创建同目录时间戳备份。已存在但不同的 Hook 哈希不会被覆盖，定义变化后必须重新审核。未使用配置切换工具的用户不需要安装守护器。
+守护器与具体配置工具无关，不修改其数据库，也不调用模型。它每秒只比较一次配置文件的时间和大小，发生变化时先校验已批准的本地 Hook bundle，再只合并插件 `enabled=true` 和四项精确信任记录；Cockpit Tools 等切换器写入的模型、Provider、端点、认证方式及其他 TOML 原文保持不变。切换器恢复旧信任哈希时，守护器可恢复当前已批准哈希；Hook bundle 真的变化时仍停止。Marketplace 的 `ref_name` 从安装元数据保存并用于必要的原生注册恢复。每次写入前都会创建同目录时间戳备份。
 
 `Install` 自动登录启动模式目前仅支持 Windows；其他平台可以显式运行 `-Mode Repair` 做单次修复。守护器把信任记录绑定到安装时的 marketplace 来源、插件版本和 Hook 文件摘要，任一身份变化都会停止自动恢复并要求重新审核。
 
