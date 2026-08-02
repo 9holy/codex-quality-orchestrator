@@ -22,7 +22,7 @@ skill = skill_path.read_text(encoding="utf-8")
 
 assert manifest["name"] == "codex-quality-orchestrator"
 base_version, separator, cachebuster = manifest["version"].partition("+codex.")
-assert base_version == policy["policyVersion"] == "0.3.6"
+assert base_version == policy["policyVersion"] == "0.3.7"
 assert not separator or cachebuster
 assert list((PLUGIN_ROOT / "skills").rglob("SKILL.md")) == [skill_path]
 assert manifest["interface"]["defaultPrompt"] == [
@@ -30,25 +30,30 @@ assert manifest["interface"]["defaultPrompt"] == [
     "Verify that the orchestrator plugin and hooks are active.",
 ]
 assert "gpt-5.6-sol` 主控" in rule
-assert "路由预检" in rule
-assert "总算力成本最低" in rule
-assert "完整工作单元最高要求" in rule
-assert "通常使用 1 个 Worker" in rule
+assert "`medium→xhigh→max→ultra`" in rule
+assert "使用最低可靠档" in rule
+assert "Sol `high` 和 Terra `xhigh` 仅保留支持，不自动选择" in rule
+assert "`xhigh` 能胜任不得用 `max`" in rule
+assert "先过能力和风险门槛，再考虑热缓存与总成本" in rule
+assert "必须优先交 `luna_worker / gpt-5.6-luna / max`" in rule
+assert "同一工作单元保持当前模型和原代理" in rule
+assert "局部问题最多续交一次定向修正" in rule
+assert "能力不足、修正仍失败、容量再次失败或有独立/并行硬需求" in rule
+assert "当前 Sol 能可靠完成且无需独立/并行就直接处理" in rule
+assert "Terra Max 只做普通独立复核或必须并行的复杂单元" in rule
+assert "Terra Ultra 做最深独立推理" in rule
+assert "IQ 差小于 3 视为同级" in rule
+assert "同级先保留热模型/原代理" in rule
+assert "通常 1 个 Worker" in rule
 assert "最多 3 个" in rule
-assert "能可靠完成且可独立验收就必须下派，绝不上调" in rule
 assert "CQO_WORK_PACKET_V1" in rule
 assert "selected_effort" in rule
-assert "明文路由键" in rule
-assert "每根任务最多 8 次调用" in rule
+assert "每根任务 8 次" in rule
 assert "共享文件单写者" in rule
 assert "Worker 不得下派" in rule
 assert "当前 Sol 接管" in rule
 assert "不创建 Sol 子代理" in rule
-assert "按风险决定是否另派 Terra 独立复核" in rule
-assert "能可靠完成且可独立验收就必须下派，绝不上调" in rule
-assert "仅在 Luna 不适用后的语义合格候选内" in rule
-assert "gpt-5.6-luna / max" in rule
-assert "gpt-5.6-terra / xhigh|max|ultra" in rule
+assert "按风险决定独立复核" in rule
 assert policy["namedAgents"]["terra_worker"]["allowedEfforts"] == [
     "xhigh",
     "max",
@@ -56,14 +61,13 @@ assert policy["namedAgents"]["terra_worker"]["allowedEfforts"] == [
 ]
 assert "生产数据、不可逆迁移、公共数据契约" in rule
 assert "插件不改已启动根档位" in rule
-assert len(rule.strip()) <= 1500
+assert len(rule.strip()) <= 1300
 capacity_message = "Selected model is at capacity. Please try a different model."
 assert capacity_message in rule
 assert rule.count(capacity_message) == 1
-assert "触发原代理续交“继续”一次" in rule
-assert "保留上下文和进度" in rule
-assert "不重做、重拆或重启整项任务" in rule
-assert "再次失败才按预声明 `Luna→Terra→当前 Sol` 上调" in rule
+assert "触发原代理“继续”一次并保留进度" in rule
+assert "再次失败按 `Luna→Terra→当前 Sol` 上调" in rule
+assert '`fork_turns` 默认 `"none"`' in rule
 assert len(skill) <= 1600
 assert "唯一语义路由规范" in skill
 assert "不要在 Skill 中复述" in skill
@@ -124,13 +128,19 @@ assert policy["capacityRecovery"] == {
 assert policy["radarEvidence"] == {
     "enabled": True,
     "sourceUrl": "https://codexradar.com/api/intelligence-efficiency",
-    "refreshSeconds": 21600,
-    "maxStaleSeconds": 86400,
+    "refreshSeconds": 86400,
+    "maxStaleSeconds": 259200,
     "requestTimeoutMs": 1800,
     "maxResponseBytes": 12582912,
     "minSamples": 30,
     "iqTieMargin": 3.0,
     "lunaMaxAlwaysFirstWhenCapable": True,
+}
+assert policy["forkTurns"] == {
+    "required": True,
+    "defaultLiteral": "none",
+    "allowedLiterals": ["none"],
+    "allowPositiveIntegerString": True,
 }
 assert set(policy["namedAgents"]) == {"luna_worker", "terra_worker"}
 
@@ -201,11 +211,11 @@ assert retired_archive.is_file()
 assert hashlib.sha256(retired_archive.read_bytes()).hexdigest() == retired[0]["templateSha256"]
 assert not (PLUGIN_ROOT / "templates" / "agents" / "sol-reviewer.toml").exists()
 
-for effort in policy["sol"]["allowedEfforts"]:
-    assert f"`{effort}`" in rule
+assert policy["sol"]["allowedEfforts"] == ["medium", "high", "xhigh", "max", "ultra"]
+assert "`medium→xhigh→max→ultra`" in rule
 assert policy["sol"]["model"] in rule
 for agent_type in policy["namedAgents"]:
-    assert f"`{agent_type}`" in rule
+    assert agent_type in rule
 
 for path in PLUGIN_ROOT.rglob("*"):
     if path.is_file() and path.suffix.lower() in {".md", ".json", ".toml", ".cjs", ".ps1"}:

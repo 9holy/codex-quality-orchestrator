@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.7 - 2026-08-02
+
+- Keep short work on the current Sol and keep each work unit on its warm model/agent unless capability, correction, capacity, independence, or parallelism requires a switch.
+- Prefer Luna Max for substantial bounded execution; use Terra Max for ordinary independent or parallel complex work and Terra Ultra for the deepest independent reasoning.
+- Refresh full radar data every 24 hours, allow cache use for 72 hours, and inject only compact stable route relationships instead of timestamps, status, scores, or the full table.
+- Default Worker context to `fork_turns="none"`; keep Sol High and Terra XHigh supported without making them automatic routing nodes.
+
 ## 0.3.6 - 2026-08-02
 
 - Keep Luna Max as an absolute first choice whenever it can reliably complete an independently verifiable work unit; radar evidence cannot promote such work.

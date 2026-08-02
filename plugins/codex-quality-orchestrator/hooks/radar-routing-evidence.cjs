@@ -13,8 +13,8 @@ const DEFAULT_CACHE_FILE = path.join(
 const DEFAULT_CONFIG = Object.freeze({
   enabled: true,
   sourceUrl: SOURCE_URL,
-  refreshSeconds: 21600,
-  maxStaleSeconds: 86400,
+  refreshSeconds: 86400,
+  maxStaleSeconds: 259200,
   requestTimeoutMs: 1800,
   maxResponseBytes: 12582912,
   minSamples: 30,
@@ -473,6 +473,23 @@ function formatNumber(value, digits) {
   return value === null || !Number.isFinite(value) ? 'n/a' : value.toFixed(digits);
 }
 
+function findItem(items, model, effort) {
+  return items.find((item) => item.model === model && item.effort === effort) ?? null;
+}
+
+function isLowerCostPeer(preferred, other, iqTieMargin) {
+  const preferredIq = finiteNumber(preferred?.iq);
+  const otherIq = finiteNumber(other?.iq);
+  const preferredCost = nonnegativeNumber(preferred?.average_cost_usd);
+  const otherCost = nonnegativeNumber(other?.average_cost_usd);
+  return preferredIq !== null &&
+    otherIq !== null &&
+    preferredCost !== null &&
+    otherCost !== null &&
+    preferredIq + iqTieMargin >= otherIq &&
+    preferredCost < otherCost;
+}
+
 function formatRadarContext(snapshot, config = {}) {
   if (
     config?.lunaMaxAlwaysFirstWhenCapable !== undefined &&
@@ -488,25 +505,26 @@ function formatRadarContext(snapshot, config = {}) {
     DEFAULT_CONFIG.iqTieMargin,
     0,
   );
-  const lines = [
-    '[CQO_RADAR_EVIDENCE]',
-    `来源：${SOURCE_URL}`,
-    `采集时间：${normalized.collected_at}`,
-    'Luna Max 能可靠完成且可独立验收时必须选择，绝不上调；雷达数据不得改变此门槛。',
-    `仅 Luna Max 不适用后比较语义合格的 Sol/Terra 候选；IQ 差小于稳定区间（${formatNumber(iqTieMargin, 2)}）视为近似持平，优先预计总成本低者。`,
-  ];
-  for (const item of normalized.items) {
-    const label = item.model === 'gpt-5.6-luna' && item.effort === 'max'
-      ? 'Luna Max'
-      : `${item.model} ${item.effort}`;
-    lines.push(
-      `${label}：IQ=${formatNumber(item.iq, 2)}；样本=${item.samples}；` +
-      `平均成本=${formatNumber(item.average_cost_usd, 6)}；` +
-      `平均分钟=${formatNumber(item.average_duration_minutes, 2)}；` +
-      `成本样本=${item.cost_samples}`,
-    );
+  const item = (model, effort) => findItem(normalized.items, model, effort);
+  const relations = [];
+  if (isLowerCostPeer(item('gpt-5.6-luna', 'max'), item('gpt-5.6-terra', 'max'), iqTieMargin)) {
+    relations.push('可验收执行：Luna Max 优先 Terra Max');
   }
-  lines.push('[/CQO_RADAR_EVIDENCE]');
+  if (isLowerCostPeer(item('gpt-5.6-sol', 'medium'), item('gpt-5.6-terra', 'max'), iqTieMargin)) {
+    relations.push('同角色：Sol Medium 优先 Terra Max');
+  }
+  if (isLowerCostPeer(item('gpt-5.6-sol', 'medium'), item('gpt-5.6-sol', 'high'), iqTieMargin)) {
+    relations.push('Sol：Medium 优先 High');
+  }
+  if (isLowerCostPeer(item('gpt-5.6-sol', 'xhigh'), item('gpt-5.6-sol', 'max'), iqTieMargin)) {
+    relations.push('Sol：XHigh 优先 Max');
+  }
+  const lines = [
+    '[CQO_RADAR]',
+    `只比较已通过 Rule 16 能力/风险门槛的候选；IQ 差<${formatNumber(iqTieMargin, 2)} 视为同级，同级先保留热模型/原代理，再选低预计总成本。`,
+  ];
+  if (relations.length > 0) lines.push(`当前数据：${relations.join('；')}。`);
+  lines.push('[/CQO_RADAR]');
   return lines.join('\n');
 }
 

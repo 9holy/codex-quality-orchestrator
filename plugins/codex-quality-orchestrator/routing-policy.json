@@ -1,6 +1,6 @@
 {
   "schemaVersion": 5,
-  "policyVersion": "0.3.6",
+  "policyVersion": "0.3.7",
   "toolNames": [
     "spawn_agent",
     "Agent",
@@ -69,8 +69,8 @@
   "radarEvidence": {
     "enabled": true,
     "sourceUrl": "https://codexradar.com/api/intelligence-efficiency",
-    "refreshSeconds": 21600,
-    "maxStaleSeconds": 86400,
+    "refreshSeconds": 86400,
+    "maxStaleSeconds": 259200,
     "requestTimeoutMs": 1800,
     "maxResponseBytes": 12582912,
     "minSamples": 30,
@@ -104,6 +104,7 @@
   ],
   "forkTurns": {
     "required": true,
+    "defaultLiteral": "none",
     "allowedLiterals": [
       "none"
     ],

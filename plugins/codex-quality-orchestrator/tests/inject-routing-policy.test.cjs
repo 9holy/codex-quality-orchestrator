@@ -80,7 +80,7 @@ try {
       {
         model: 'gpt-5.6-luna',
         effort: 'max',
-        iq: 83.04,
+        iq: 85.71,
         samples: 112,
         average_cost_usd: 0.47,
         cost_samples: 112,
@@ -99,11 +99,11 @@ try {
   });
   const withRadar = invoke(undefined, undefined, false);
   assert.match(withRadar, /^\[CQO_ACTIVE\]/);
-  assert.match(withRadar, /\[CQO_RADAR_STATUS:fresh-cache\]/);
-  assert.match(withRadar, /Luna Max 能可靠完成且可独立验收时必须选择，绝不上调/);
-  assert.match(withRadar, /稳定区间（3\.00）/);
-  assert.match(withRadar, /gpt-5\.6-terra max：IQ=88\.39/);
-  assert.ok(withRadar.length < 1400);
+  assert.match(withRadar, /\[CQO_RADAR\]/);
+  assert.match(withRadar, /IQ 差<3\.00 视为同级/);
+  assert.match(withRadar, /可验收执行：Luna Max 优先 Terra Max/);
+  assert.doesNotMatch(withRadar, /CQO_RADAR_STATUS|CQO_RADAR_FALLBACK|IQ=|采集时间|https:/);
+  assert.ok(withRadar.length < 600);
 
   const nonce = '0123456789abcdef0123456789abcdef';
   const proofPath = path.join(tempRoot, 'session-start-proof.json');

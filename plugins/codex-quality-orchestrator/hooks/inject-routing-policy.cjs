@@ -105,11 +105,7 @@ async function main() {
     });
     radarStatus = radar.status;
     if (radar.context) {
-      notes.push(`[CQO_RADAR_STATUS:${radar.status}]\n${radar.context}`);
-    } else if (radar.status !== 'disabled') {
-      notes.push(
-        `[CQO_RADAR_FALLBACK:${radar.status}] 无可用的新鲜雷达证据，按 Rule 16 静态路由。`,
-      );
+      notes.push(radar.context);
     }
   } else if (process.env.CQO_RADAR_DISABLE === '1') {
     radarStatus = 'disabled';

@@ -18,8 +18,8 @@ const NOW = Date.parse('2026-08-02T00:00:00.000Z');
 const config = {
   enabled: true,
   sourceUrl: SOURCE_URL,
-  refreshSeconds: 6 * 60 * 60,
-  maxStaleSeconds: 24 * 60 * 60,
+  refreshSeconds: 24 * 60 * 60,
+  maxStaleSeconds: 72 * 60 * 60,
   requestTimeoutMs: 50,
   maxResponseBytes: 1024 * 1024,
   minSamples: 2,
@@ -143,14 +143,40 @@ function responseFor(value) {
   const serialized = JSON.stringify(snapshot);
   assert.doesNotMatch(serialized, /attacker-controlled|nickname|task-a|gpt-5\.5/);
 
-  const context = formatRadarContext(snapshot);
-  assert.match(context, /Luna Max 能可靠完成且可独立验收时必须选择，绝不上调/);
-  assert.match(context, /仅 Luna Max 不适用后比较/);
-  assert.match(context, /IQ 差小于稳定区间（3\.00）视为近似持平/);
-  assert.match(context, /Luna Max：IQ=75\.00/);
-  assert.ok(context.length < 1400);
-  assert.doesNotMatch(context, /attacker-controlled|untrusted/);
-  assert.match(formatRadarContext(snapshot, { iqTieMargin: 7 }), /稳定区间（7\.00）/);
+  const routingSnapshot = {
+    source: SOURCE_URL,
+    collected_at: '2026-08-02T00:00:00.000Z',
+    items: [
+      ['gpt-5.6-luna', 'max', 85.71, 0.47],
+      ['gpt-5.6-sol', 'medium', 89.73, 3.96],
+      ['gpt-5.6-sol', 'high', 88.39, 5.22],
+      ['gpt-5.6-sol', 'xhigh', 99.11, 6.56],
+      ['gpt-5.6-sol', 'max', 100.45, 9.57],
+      ['gpt-5.6-terra', 'max', 88.39, 4.07],
+    ].map(([model, effort, iq, average_cost_usd]) => ({
+      model,
+      effort,
+      iq,
+      samples: 112,
+      average_cost_usd,
+      cost_samples: 112,
+      average_duration_minutes: 20,
+    })),
+  };
+  const context = formatRadarContext(routingSnapshot);
+  assert.match(context, /^\[CQO_RADAR\]/);
+  assert.match(context, /IQ 差<3\.00 视为同级/);
+  assert.match(context, /可验收执行：Luna Max 优先 Terra Max/);
+  assert.match(context, /同角色：Sol Medium 优先 Terra Max/);
+  assert.match(context, /Sol：Medium 优先 High/);
+  assert.match(context, /Sol：XHigh 优先 Max/);
+  assert.ok(context.length < 420);
+  assert.doesNotMatch(context, /attacker-controlled|untrusted|https:|采集时间|CQO_RADAR_STATUS|IQ=|0\.47/);
+  assert.equal(
+    context,
+    formatRadarContext({ ...routingSnapshot, collected_at: '2026-08-03T00:00:00.000Z' }),
+  );
+  assert.match(formatRadarContext(routingSnapshot, { iqTieMargin: 7 }), /IQ 差<7\.00/);
 
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'cqo-radar-'));
   const cachePath = path.join(tempRoot, 'radar.json');
@@ -179,17 +205,18 @@ function responseFor(value) {
       cachePath,
       config,
       fetchImpl: async () => { throw new Error('network must not be used for fresh cache'); },
-      nowMs: NOW + 5 * 60 * 60 * 1000,
+      nowMs: NOW + 23 * 60 * 60 * 1000,
     });
     assert.equal(fresh.status, 'fresh-cache');
     assert.equal(fetchCalls, 1);
+    assert.equal(fresh.context, refreshed.context);
 
     const stale = await getRadarEvidence({
       codexHome: tempRoot,
       cachePath,
       config,
       fetchImpl: async () => { throw new Error('offline'); },
-      nowMs: NOW + 7 * 60 * 60 * 1000,
+      nowMs: NOW + 25 * 60 * 60 * 1000,
     });
     assert.equal(stale.status, 'stale-cache');
     assert.notEqual(stale.context, '');
@@ -199,7 +226,7 @@ function responseFor(value) {
       cachePath,
       config,
       fetchImpl: async () => { throw new Error('offline'); },
-      nowMs: NOW + 25 * 60 * 60 * 1000,
+      nowMs: NOW + 73 * 60 * 60 * 1000,
     });
     assert.equal(expired.status, 'unavailable');
     assert.equal(expired.context, '');
@@ -252,7 +279,7 @@ function responseFor(value) {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   }
 
-  process.stdout.write('PASS sanitized radar aggregation, priority context, and cache lifecycle\n');
+  process.stdout.write('PASS sanitized radar aggregation, stable routing hints, and cache lifecycle\n');
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;
