@@ -153,9 +153,16 @@ function registerDispatch(payload, packet, policy) {
       return `波次 ${packet.wave_id} 的 slot=${packet.worker_slot} 已被占用。`;
     }
 
-    const activeCount = session.attempts.filter((item) =>
+    const activeAttempts = session.attempts.filter((item) =>
       ['pending', 'active'].includes(item.status),
-    ).length;
+    );
+    const activeCount = activeAttempts.length;
+    if (
+      (packet.selected_agent === 'sol_reviewer' && activeCount > 0) ||
+      activeAttempts.some((item) => item.agentType === 'sol_reviewer')
+    ) {
+      return 'sol_reviewer 必须与生产 Worker 分开执行。';
+    }
     if (activeCount >= policy.team.maxWorkersPerWave) {
       return `当前已有 ${activeCount} 个 Worker 在运行或等待，达到并发上限。`;
     }

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.12 - 2026-08-02
+
+- Replace the ambiguous `Worker must not dispatch` wording with an explicit ban on Workers creating or delegating to subagents.
+- Allow one isolated read-only Sol XHigh reviewer only for critical high-risk changes while continuing to ban Sol execution subagents.
+
 ## 0.3.11 - 2026-08-02
 
 - Make Sol planning, Luna Max execution, and Sol final audit the primary route; return Luna failures to the current Sol before any Terra call.

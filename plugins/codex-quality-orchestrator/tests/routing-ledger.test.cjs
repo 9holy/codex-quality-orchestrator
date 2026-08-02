@@ -62,7 +62,7 @@ try {
   assert.match(
     registerDispatch(payload('missing-first', 1), packet('unit-b', {
       selected_agent: 'terra_worker',
-      selected_effort: 'xhigh',
+      selected_effort: 'ultra',
       fallback_agent: 'sol_controller',
       worker_attempt: 2,
     }), policy),
@@ -82,7 +82,7 @@ try {
   assert.match(
     registerDispatch(payload('fallback', 3), packet('unit-c', {
       selected_agent: 'terra_worker',
-      selected_effort: 'xhigh',
+      selected_effort: 'ultra',
       fallback_agent: 'sol_controller',
       worker_attempt: 2,
     }), policy),
@@ -155,6 +155,29 @@ try {
       worker_slot: 1,
     }), policy),
     /slot=1 已被占用/,
+  );
+
+  assert.equal(registerDispatch(payload('review-after-work', 1), packet('work-first'), policy), null);
+  assert.match(
+    registerDispatch(payload('review-after-work', 2), packet('review-second', {
+      selected_agent: 'sol_reviewer',
+      selected_effort: 'xhigh',
+      fallback_agent: 'sol_controller',
+      wave_id: 'wave-review',
+    }), policy),
+    /必须与生产 Worker 分开执行/,
+  );
+  assert.equal(registerDispatch(payload('work-after-review', 1), packet('review-first', {
+    selected_agent: 'sol_reviewer',
+    selected_effort: 'xhigh',
+    fallback_agent: 'sol_controller',
+    wave_id: 'wave-review',
+  }), policy), null);
+  assert.match(
+    registerDispatch(payload('work-after-review', 2), packet('work-second', {
+      wave_id: 'wave-work',
+    }), policy),
+    /必须与生产 Worker 分开执行/,
   );
 
   for (let index = 1; index <= 80; index += 1) {

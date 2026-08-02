@@ -14,7 +14,7 @@ Luna Max 能可靠完成且可独立验收时绝不上调，雷达数据不得�
 
 对每个非短任务，Sol 在执行前按完整工作单元判定能力、风险和并行收益。边界冻结、清晰、可独立验收的实现、测试、扫描和批量工作交给 Luna Max；Luna 不适用时先由当前 Sol 接管。只有当前 Sol 能力不足、且深推理子问题可独立下派时才交 Terra Ultra；最终审核、架构、高风险、生产数据、跨代理最终集成与最终裁决保留给 Sol。
 
-同一工作单元的执行者和最低能力层级保持稳定，只在实质边界变化、上下文越界、有限修正失败或链路不可用时向上升级。无法安全拆分、Luna/Terra 不能可靠胜任、有限修正仍失败或全局集成必须由主控处理时，当前 Sol 直接接管该工作单元或整项任务，不创建 Sol 子代理。
+同一工作单元的执行者和最低能力层级保持稳定，只在实质边界变化、上下文越界、有限修正失败或链路不可用时向上升级。无法安全拆分、Luna/Terra 不能可靠胜任、有限修正仍失败或全局集成必须由主控处理时，当前 Sol 直接接管，不创建执行型 Sol 子代理。只有关键高风险变更需要独立性时才使用一次只读 Sol XHigh reviewer。
 
 容量错误是唯一同级续交例外：子代理最后消息包含精确文本 `Selected model is at capacity. Please try a different model.` 时，`SubagentStop` 首次自动向原子代理提交“继续”，保留原上下文与进度；`stop_hook_active` 防止第二次续交。未创建成功时才以原参数重试同一工作包一次。第二次仍失败就交回当前 Sol，只有当前 Sol 能力不足时才改派 Terra Ultra；不重做已完成工作、不重新拆分或重启整项任务。
 
@@ -39,11 +39,14 @@ flowchart TD
     P -->|否| R[建议下一任务使用 Sol XHigh]
     Q --> K
     J --> K[Sol 检查实际差异并复跑验证]
-    K --> N[Sol 最终验收]
+    K --> S{关键高风险变更?}
+    S -->|是| T[Sol XHigh reviewer 只读复审]
+    S -->|否| N[Sol 最终验收]
+    T --> N
     H --> N
 ```
 
-通常每波只使用 1 个 Worker。只有至少两个工作单元可以安全并行，且收益高于额外算力和协调成本时才使用 2–3 个，最多 3 个；Luna 可以在三个互不冲突的清晰执行单元上占满并发。每次调用的 `task_name` 使用 `<模型档位>__<单元>__w<波次>__s<槽位>of<波次大小>__a<尝试>` 明文路由键，`message` 携带给 Worker 阅读的冻结 `CQO_WORK_PACKET_V1` JSON 工作单，由 Sol 负责共享文件单写者。Worker 不得继续下派。
+通常每波只使用 1 个 Worker。只有至少两个工作单元可以安全并行，且收益高于额外算力和协调成本时才使用 2–3 个，最多 3 个；Luna 可以在三个互不冲突的清晰执行单元上占满并发。每次调用的 `task_name` 使用 `<模型档位>__<单元>__w<波次>__s<槽位>of<波次大小>__a<尝试>` 明文路由键，`message` 携带给 Worker 阅读的冻结 `CQO_WORK_PACKET_V1` JSON 工作单，由 Sol 负责共享文件单写者。Worker 不得创建或下派子代理。
 
 工作单至少固定 `work_unit_id`、目标、范围、写入路径、验收、验证、任务意图、写权限、所选代理、档位、预声明 fallback、当前 attempt、波次、槽位和备份要求。宿主会在 Hook 前加密 `message`，所以 Sol 负责工作单内容的语义正确性；Hook 只检查明文路由键、调用参数和预声明兜底。会话账本记录唯一工作单元、波次槽位、生命周期、并发和单元尝试次数，但不设置根任务累计调用上限，也不检查实际文件写入，不能替代 Sol 的整合验收。
 
@@ -76,25 +79,27 @@ OpenAI 的 Codex 模型指南把 `gpt-5.6-sol / medium` 作为默认 Power 设�
 | Sol 复杂主控 | `gpt-5.6-sol` | `xhigh` | 复杂规划、跨模块整合和严格验收 |
 | Sol 高风险 | `gpt-5.6-sol` | `max` | 架构、安全、公共接口、生产数据、不可逆迁移、公共数据契约、疑难问题和最终裁决 |
 | Sol 系统性主控 | `gpt-5.6-sol` | `ultra` | 可有效并行的系统性多波次任务，不作为 Worker |
-| Terra | `gpt-5.6-terra` | 固定调用 `ultra` | 当前 Sol 能力不足时，可独立下派的最深推理单元 |
 | Luna | `gpt-5.6-luna` | 固定 `max` | 边界冻结、清晰、可独立验收的实现、已定位问题的修复、测试、扫描和批量工作 |
+| Terra | `gpt-5.6-terra` | 固定调用 `ultra` | 当前 Sol 能力不足时，可独立下派的最深推理单元 |
+| Sol reviewer | `gpt-5.6-sol` | 固定 `xhigh` | 关键高风险变更的一次独立只读复审 |
 
 `gpt-5.5`、裸 Terra、裸 Luna 和未登记模型禁止下派。
 
 ### 3.1 禁止范围
 
-Luna 不处理消歧、诊断、架构、安全、公共接口、生产数据或最终裁决。Terra 不处理生产数据、不可逆迁移、公共数据契约或最终质量裁决；收到关键只读复核工作包时不得写入文件。Sol 子代理一律禁止。
+Luna 不处理消歧、诊断、架构、安全、公共接口、生产数据或最终裁决。Terra 不处理生产数据、不可逆迁移、公共数据契约或最终质量裁决。Sol reviewer 不执行生产工作、不写文件、不创建子代理、不作最终裁决；其他 Sol 子代理禁止。
 
 ### 3.2 调用契约
 
-具名代理的模型由 TOML 固定，调用时不能用 `model` 覆盖。Terra 只允许 `ultra`，Luna 固定 `max`：
+具名代理的模型由 TOML 固定，调用时不能用 `model` 覆盖。Terra 只允许 `ultra`，Luna 固定 `max`，reviewer 固定 `xhigh`：
 
 ```text
 terra_worker: agent_type + reasoning_effort(ultra) + fork_turns
 luna_worker: agent_type + fork_turns
+sol_reviewer: agent_type + fork_turns
 ```
 
-`fork_turns` 默认 `"none"`，仅确实需要少量历史时使用正整数数字字符串。Luna 不得覆盖固定推理档位；Terra 必须显式传入 `ultra`。
+`fork_turns` 默认 `"none"`，仅确实需要少量历史时使用正整数数字字符串。Luna 和 reviewer 不得覆盖固定推理档位；Terra 必须显式传入 `ultra`。
 
 ## 4. Hook 的职责
 
@@ -102,7 +107,7 @@ luna_worker: agent_type + fork_turns
 
 - 加载插件内的 Rule 16。
 - 检查全局 `AGENTS.md` 的 Rule 16 是否一致。
-- 检查 Terra 和 Luna 配置是否缺失。
+- 检查 Terra、Luna 和只读 Sol reviewer 配置是否缺失。
 - 规则匹配且代理配置完整时只输出 `[CQO_ACTIVE]`；不重复注入 Rule 16，也不报告可能被任务选择器覆盖的根默认值。
 - 发现冲突或缺失时公开报告，不静默修复或回退。
 
@@ -124,11 +129,11 @@ luna_worker: agent_type + fork_turns
 
 ### SubagentStart
 
-仅匹配 `luna_worker` 和 `terra_worker`，把原生 `agent_id` 绑定到已通过 PreToolUse 的 pending 工作单并标为 active。会话账本按宿主 `session_id` 隔离，最多允许 3 个 pending/active Worker、每个工作单元 2 次尝试；不设置根任务累计 Worker 调用上限。同一波次槽位不可分配给不同工作单元，第二次尝试必须等待第一次结束并使用预声明 fallback。
+匹配 `luna_worker`、`terra_worker` 和 `sol_reviewer`，把原生 `agent_id` 绑定到已通过 PreToolUse 的 pending 工作单并标为 active。会话账本按宿主 `session_id` 隔离，最多允许 3 个 pending/active 代理、每个工作单元 2 次尝试；不设置根任务累计调用上限。Reviewer 必须单独执行且只允许首次派发。同一波次槽位不可分配给不同工作单元，第二次尝试必须等待第一次结束并使用预声明 fallback。
 
 ### SubagentStop
 
-仅匹配 `luna_worker` 和 `terra_worker`。首次检测到精确容量消息且 `stop_hook_active=false` 时返回 `decision=block` 与提示“继续”，由 Codex 自动在原子代理上下文创建一次续交；第二次不再拦截，交回主控升级。
+匹配三个具名代理。首次检测到精确容量消息且 `stop_hook_active=false` 时返回 `decision=block` 与提示“继续”，由 Codex 自动在原子代理上下文创建一次续交；第二次不再拦截，交回主控升级。
 
 启动或认证错误可能在宿主发出 `SubagentStop` 前终止。主控确认代理已终止后，运行插件根目录的 `hooks/release-failed-dispatch.cjs <原 task_name>`；脚本只在当前 `CODEX_THREAD_ID` 中把对应 pending/active 记录标为 failed，随后才允许预声明 fallback。它不缩短正常长任务 TTL，也不能用于仍在运行的 Worker。
 
@@ -146,7 +151,7 @@ powershell -NoProfile -ExecutionPolicy Bypass `
 codex plugin list --json
 ```
 
-安装器写入范围中的代理配置只有 `%CODEX_HOME%\agents` 中的两个 Worker；升级时安全退役插件管理的 `sol_reviewer`，并把插件状态引用的旧 `.toml` 备份迁移为不可加载的 `.toml.bak`：
+安装器只管理 `%CODEX_HOME%\agents` 中的 Luna/Terra Worker 和只读 Sol reviewer，并把旧状态引用的 `.toml` 备份迁移为不可加载的 `.toml.bak`：
 
 - 缺少文件时创建，并记录为插件所有。
 - 内容与模板相同的外部文件默认保留，不声明所有权；插件自有文件的模板内容变化会先备份再刷新。

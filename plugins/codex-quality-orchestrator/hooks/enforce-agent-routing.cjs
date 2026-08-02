@@ -116,9 +116,12 @@ function parseRouteTaskName(value, agentType, selectedEffort, policy) {
   }
   if (
     workerAttempt > policy.team.maxWorkerAttemptsPerWorkUnit ||
-    (agentType === 'luna_worker' && workerAttempt !== 1)
+    (['luna_worker', 'sol_reviewer'].includes(agentType) && workerAttempt !== 1)
   ) {
     return { error: 'task_name 的 Worker 尝试次数无效。' };
+  }
+  if (agentType === 'sol_reviewer' && (waveSize !== 1 || workerSlot !== 1)) {
+    return { error: 'sol_reviewer 必须单独执行，不得并发派发。' };
   }
 
   return {
@@ -211,8 +214,8 @@ function validate(payload, policy, canonical) {
   }
 
   deny(
-    `${policy.sol.model} 只允许作为当前主控直接执行和兜底，` +
-      '不得创建 Sol 子代理；请使用已登记的 Luna/Terra Worker。',
+    `禁止未登记的 ${policy.sol.model} 子代理；` +
+      '生产执行使用 Luna/Terra，关键高风险只读复审使用 sol_reviewer。',
   );
 }
 

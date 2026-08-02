@@ -62,7 +62,9 @@ function expectDeny(name, input, rawInput) {
 
 function routeName(id, overrides = {}) {
   const agentType = overrides.agentType ?? 'luna_worker';
-  const effort = overrides.effort ?? (agentType === 'luna_worker' ? 'max' : 'ultra');
+  const effort = overrides.effort ?? (
+    agentType === 'luna_worker' ? 'max' : agentType === 'sol_reviewer' ? 'xhigh' : 'ultra'
+  );
   const routeLabel = `${agentType.replace(/_worker$/, '')}_${effort}`;
   const wave = overrides.wave ?? 1;
   const slot = overrides.slot ?? 1;
@@ -72,7 +74,9 @@ function routeName(id, overrides = {}) {
 }
 
 function workerInput(agentType, input = {}, route = {}) {
-  const effort = input.reasoning_effort ?? (agentType === 'luna_worker' ? 'max' : 'ultra');
+  const effort = input.reasoning_effort ?? (
+    agentType === 'luna_worker' ? 'max' : agentType === 'sol_reviewer' ? 'xhigh' : 'ultra'
+  );
   return {
     agent_type: agentType,
     fork_turns: '1',
@@ -101,6 +105,7 @@ try {
     fork_turns: 'none',
   }, { id: 'terra_ultra' }));
   expectAllow('luna-profile', workerInput('luna_worker'));
+  expectAllow('sol-reviewer', workerInput('sol_reviewer', { fork_turns: 'none' }));
   expectAllow('hyphenated-unit', workerInput('luna_worker', {}, { id: 'luna-audit-01' }));
   expectAllow('encrypted-host-message', workerInput('luna_worker', {}, { id: 'encrypted_message' }));
   expectAllow(
@@ -120,7 +125,10 @@ try {
   expectDeny('terra-xhigh', workerInput('terra_worker', { reasoning_effort: 'xhigh' }));
   expectDeny('terra-max', workerInput('terra_worker', { reasoning_effort: 'max' }));
   expectDeny('luna-effort-override', workerInput('luna_worker', { reasoning_effort: 'high' }));
-  expectDeny('retired-reviewer', { agent_type: 'sol_reviewer', fork_turns: '1' });
+  expectDeny('reviewer-effort-override', workerInput('sol_reviewer', { reasoning_effort: 'max' }));
+  expectDeny('reviewer-model-override', workerInput('sol_reviewer', { model: 'gpt-5.6-sol' }));
+  expectDeny('reviewer-parallel', workerInput('sol_reviewer', {}, { id: 'review_parallel', size: 2 }));
+  expectDeny('reviewer-attempt-two', workerInput('sol_reviewer', {}, { id: 'review_retry', attempt: 2 }));
   expectDeny('default-agent', { agent_type: 'default', fork_turns: '1' });
   expectDeny('fork-all', workerInput('luna_worker', { fork_turns: 'all' }));
   expectDeny('invalid-json', null, '{not-json');

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import hashlib
 import pathlib
 import tomllib
 
@@ -22,7 +21,7 @@ skill = skill_path.read_text(encoding="utf-8")
 
 assert manifest["name"] == "codex-quality-orchestrator"
 base_version, separator, cachebuster = manifest["version"].partition("+codex.")
-assert base_version == policy["policyVersion"] == "0.3.11"
+assert base_version == policy["policyVersion"] == "0.3.12"
 assert not separator or cachebuster
 assert list((PLUGIN_ROOT / "skills").rglob("SKILL.md")) == [skill_path]
 assert manifest["interface"]["defaultPrompt"] == [
@@ -56,15 +55,20 @@ assert "CQO_WORK_PACKET_V1" in rule
 assert "selected_effort" in rule
 assert "每根任务" not in rule
 assert "共享文件单写者" in rule
-assert "Worker 不得下派" in rule
-assert "Sol 不创建 Sol 子代理" in rule
+assert "Worker 不得创建或下派子代理" in rule
+assert "Worker 不得下派；" not in rule
+assert "Sol 不创建执行型 Sol 子代理" in rule
+assert "仅关键高风险变更需要独立复审时" in rule
+assert "`sol_reviewer / gpt-5.6-sol / xhigh` 只读审核" in rule
+assert "与生产 Worker 分开" in rule
+assert "一次一个" in rule
 assert "Hook 只校验" not in rule
 assert policy["namedAgents"]["terra_worker"]["allowedEfforts"] == [
     "ultra",
 ]
 assert "生产数据、不可逆迁移、公共数据契约" in rule
 assert "插件不改已启动根档位" not in rule
-assert len(rule.strip()) <= 1300
+assert len(rule.strip()) <= 1500
 capacity_message = "Selected model is at capacity. Please try a different model."
 assert capacity_message in rule
 assert rule.count(capacity_message) == 1
@@ -84,18 +88,19 @@ assert hooks["hooks"]["PreToolUse"][0]["hooks"][0]["commandWindows"] == (
     'node "$env:PLUGIN_ROOT\\hooks\\enforce-agent-routing.cjs"'
 )
 assert hooks["hooks"]["SubagentStart"][0]["matcher"] == (
-    "^(luna_worker|terra_worker)$"
+    "^(luna_worker|terra_worker|sol_reviewer)$"
 )
 assert hooks["hooks"]["SubagentStart"][0]["hooks"][0]["commandWindows"] == (
     'node "$env:PLUGIN_ROOT\\hooks\\track-subagent-start.cjs"'
 )
 assert hooks["hooks"]["SubagentStop"][0]["matcher"] == (
-    "^(luna_worker|terra_worker)$"
+    "^(luna_worker|terra_worker|sol_reviewer)$"
 )
 assert hooks["hooks"]["SubagentStop"][0]["hooks"][0]["commandWindows"] == (
     'node "$env:PLUGIN_ROOT\\hooks\\continue-capacity-subagent.cjs"'
 )
-assert policy["sol"]["spawnAllowed"] is False
+assert "executionSubagentsAllowed" not in policy["sol"]
+assert "spawnAllowed" not in policy["sol"]
 assert policy["schemaVersion"] == 5
 assert policy["sol"]["defaultCoordinatorEffort"] == "medium"
 assert policy["sol"]["complexCoordinatorEffort"] == "xhigh"
@@ -113,13 +118,14 @@ assert policy["team"] == {
 assert policy["workPacket"] == {
     "marker": "CQO_WORK_PACKET_V1",
     "required": True,
-    "hostVisibleTaskNamePattern": "^(luna_max|terra_ultra)__([a-z0-9][a-z0-9_-]{2,39})__w([1-9]\\d{0,2})__s([1-3])of([1-3])__a([12])$",
+    "hostVisibleTaskNamePattern": "^(luna_max|terra_ultra|sol_reviewer_xhigh)__([a-z0-9][a-z0-9_-]{2,39})__w([1-9]\\d{0,2})__s([1-3])of([1-3])__a([12])$",
     "hostVisibleTaskNameExample": "terra_ultra__unit_name__w1__s1of2__a1",
     "allowedTaskIntents": ["mutate", "inspect", "verify"],
     "allowedMutationAuthorities": ["none", "declared_paths"],
     "allowedFallbacks": {
         "luna_worker": ["sol_controller", "terra_worker"],
         "terra_worker": ["sol_controller"],
+        "sol_reviewer": ["sol_controller"],
     },
 }
 assert policy["capacityRecovery"] == {
@@ -145,7 +151,7 @@ assert policy["forkTurns"] == {
     "allowedLiterals": ["none"],
     "allowPositiveIntegerString": True,
 }
-assert set(policy["namedAgents"]) == {"luna_worker", "terra_worker"}
+assert set(policy["namedAgents"]) == {"luna_worker", "terra_worker", "sol_reviewer"}
 
 routing_hook = (PLUGIN_ROOT / "hooks" / "enforce-agent-routing.cjs").read_text(
     encoding="utf-8"
@@ -206,18 +212,16 @@ assert "固定使用 ultra，不接受 xhigh 或 max" in terra_instructions
 assert "xhigh 用于常规判断" not in terra_instructions
 assert "普通独立复核" not in terra_instructions
 
-retired = policy["retiredProfiles"]
-assert retired == [
-    {
-        "agentType": "sol_reviewer",
-        "profileFile": "sol-reviewer.toml",
-        "templateSha256": "55c19086f24511a0a4ac88c4860c4c14e67cfacfb8e48eb45dcb3d1204895c11",
-    }
-]
-retired_archive = PLUGIN_ROOT / "templates" / "retired" / "sol-reviewer.toml.bak"
-assert retired_archive.is_file()
-assert hashlib.sha256(retired_archive.read_bytes()).hexdigest() == retired[0]["templateSha256"]
-assert not (PLUGIN_ROOT / "templates" / "agents" / "sol-reviewer.toml").exists()
+reviewer_instructions = tomllib.loads(
+    (PLUGIN_ROOT / "templates" / "agents" / "sol-reviewer.toml").read_text(
+        encoding="utf-8"
+    )
+)["developer_instructions"]
+assert "仅独立复审关键高风险变更" in reviewer_instructions
+for forbidden in ("不得修改文件", "执行生产工作", "创建子代理", "作最终裁决"):
+    assert forbidden in reviewer_instructions
+assert policy["retiredProfiles"] == []
+assert not (PLUGIN_ROOT / "templates" / "retired" / "sol-reviewer.toml.bak").exists()
 
 assert policy["sol"]["allowedEfforts"] == ["medium", "high", "xhigh", "max", "ultra"]
 assert "`medium→xhigh→max→ultra`" in rule
@@ -229,4 +233,4 @@ for path in PLUGIN_ROOT.rglob("*"):
     if path.is_file() and path.suffix.lower() in {".md", ".json", ".toml", ".cjs", ".ps1"}:
         assert "[TODO:" not in path.read_text(encoding="utf-8"), path
 
-print("PASS team routing, capacity continuation, retired profile, and agent contracts")
+print("PASS team routing, capacity continuation, reviewer isolation, and agent contracts")

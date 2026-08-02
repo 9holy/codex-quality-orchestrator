@@ -18,18 +18,19 @@ $installScript = Join-Path $pluginRoot 'scripts\install.ps1'
 $uninstallScript = Join-Path $pluginRoot 'scripts\uninstall.ps1'
 $templateDir = Join-Path $pluginRoot 'templates\agents'
 $lunaTemplate = Join-Path $templateDir 'luna-worker.toml'
+$profileCount = @(Get-ChildItem -LiteralPath $templateDir -Filter '*.toml' -File).Count
 $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ('codex-quality-orchestrator-install-' + [guid]::NewGuid().ToString('N'))
 
 try {
   $freshHome = Join-Path $tempRoot 'fresh\.codex'
   $first = ((& $installScript -CodexHome $freshHome) -join [Environment]::NewLine) | ConvertFrom-Json
   Assert-True $first.Verified 'First install was not verified'
-  Assert-True (@($first.Results | Where-Object { $_.Status -eq 'install' -and $_.Ownership -eq 'created' }).Count -eq 2) 'First install did not own two created profiles'
+  Assert-True (@($first.Results | Where-Object { $_.Status -eq 'install' -and $_.Ownership -eq 'created' }).Count -eq $profileCount) 'First install did not own every created profile'
   Assert-True (Test-Path -LiteralPath (Join-Path $freshHome '.codex-quality-orchestrator.install-state.json')) 'First install did not write ownership state'
   Assert-True ($first.Rule16.Status -ceq 'created') 'First install did not create canonical Rule 16'
 
   $second = ((& $installScript -CodexHome $freshHome) -join [Environment]::NewLine) | ConvertFrom-Json
-  Assert-True (@($second.Results | Where-Object { $_.Status -eq 'kept' -and $_.Ownership -eq 'created' }).Count -eq 2) 'Second install did not retain ownership'
+  Assert-True (@($second.Results | Where-Object { $_.Status -eq 'kept' -and $_.Ownership -eq 'created' }).Count -eq $profileCount) 'Second install did not retain ownership'
   Assert-True ($second.Rule16.Status -ceq 'kept') 'Second install did not retain canonical Rule 16'
 
   $freshAgents = Join-Path $freshHome 'AGENTS.md'
@@ -60,7 +61,7 @@ try {
   Assert-True ((Get-FileHash -LiteralPath $freshLuna -Algorithm SHA256).Hash -ceq (Get-FileHash -LiteralPath $lunaTemplate -Algorithm SHA256).Hash) 'Profile refresh did not install the current template'
 
   $freshRemoved = ((& $uninstallScript -CodexHome $freshHome) -join [Environment]::NewLine) | ConvertFrom-Json
-  Assert-True (@($freshRemoved.Results | Where-Object { $_.Status -eq 'removed' }).Count -eq 2) 'Fresh uninstall did not remove two owned profiles'
+  Assert-True (@($freshRemoved.Results | Where-Object { $_.Status -eq 'removed' }).Count -eq $profileCount) 'Fresh uninstall did not remove every owned profile'
   Assert-True (@(Get-ChildItem -LiteralPath (Join-Path $freshHome 'agents') -Filter '*.toml' -File).Count -eq 0) 'Fresh uninstall left owned profiles'
   Assert-True (-not (Test-Path -LiteralPath (Join-Path $freshHome '.codex-quality-orchestrator.install-state.json'))) 'Fresh uninstall left ownership state'
 
@@ -78,17 +79,17 @@ try {
     $externalHashes[$profile.Name] = (Get-FileHash -LiteralPath $profile.FullName -Algorithm SHA256).Hash
   }
   $externalInstall = ((& $installScript -CodexHome $externalHome) -join [Environment]::NewLine) | ConvertFrom-Json
-  Assert-True (@($externalInstall.Results | Where-Object { $_.Status -eq 'kept' -and $_.Ownership -eq 'external' }).Count -eq 2) 'Compatible external profiles were incorrectly claimed'
+  Assert-True (@($externalInstall.Results | Where-Object { $_.Status -eq 'kept' -and $_.Ownership -eq 'external' }).Count -eq $profileCount) 'Compatible external profiles were incorrectly claimed'
   Assert-True ((Get-FileHash -LiteralPath $externalLuna -Algorithm SHA256).Hash -ceq $externalHashes['luna-worker.toml']) 'Compatible external profile was overwritten'
   Assert-True (-not (Test-Path -LiteralPath (Join-Path $externalHome '.codex-quality-orchestrator.install-state.json'))) 'Compatible external profiles created ownership state'
   $externalUninstall = ((& $uninstallScript -CodexHome $externalHome) -join [Environment]::NewLine) | ConvertFrom-Json
-  Assert-True (@($externalUninstall.Results | Where-Object { $_.Status -eq 'preserved-not-owned' }).Count -eq 2) 'Uninstall did not preserve external profiles'
-  Assert-True (@(Get-ChildItem -LiteralPath $externalAgents -Filter '*.toml' -File).Count -eq 2) 'Uninstall removed an external profile'
+  Assert-True (@($externalUninstall.Results | Where-Object { $_.Status -eq 'preserved-not-owned' }).Count -eq $profileCount) 'Uninstall did not preserve external profiles'
+  Assert-True (@(Get-ChildItem -LiteralPath $externalAgents -Filter '*.toml' -File).Count -eq $profileCount) 'Uninstall removed an external profile'
 
   $adoptedInstall = ((& $installScript -CodexHome $externalHome -Force) -join [Environment]::NewLine) | ConvertFrom-Json
-  Assert-True (@($adoptedInstall.Results | Where-Object { $_.Status -eq 'replace' -and $_.Ownership -eq 'replaced' }).Count -eq 2) 'Force install did not adopt two compatible external profiles'
+  Assert-True (@($adoptedInstall.Results | Where-Object { $_.Status -eq 'replace' -and $_.Ownership -eq 'replaced' }).Count -eq $profileCount) 'Force install did not adopt every compatible external profile'
   $adoptedUninstall = ((& $uninstallScript -CodexHome $externalHome) -join [Environment]::NewLine) | ConvertFrom-Json
-  Assert-True (@($adoptedUninstall.Results | Where-Object { $_.Status -eq 'restored-original' }).Count -eq 2) 'Force uninstall did not restore adopted profiles'
+  Assert-True (@($adoptedUninstall.Results | Where-Object { $_.Status -eq 'restored-original' }).Count -eq $profileCount) 'Force uninstall did not restore adopted profiles'
   foreach ($profile in Get-ChildItem -LiteralPath $externalAgents -Filter '*.toml' -File) {
     Assert-True ((Get-FileHash -LiteralPath $profile.FullName -Algorithm SHA256).Hash -ceq $externalHashes[$profile.Name]) "Force uninstall restored the wrong external profile: $($profile.Name)"
   }
@@ -114,7 +115,7 @@ try {
   Assert-True ($replaced.Count -eq 1) 'Force install did not record replacement ownership'
   Assert-True (-not [string]::IsNullOrWhiteSpace($replaced[0].Backup)) 'Force install did not create a backup'
   $forceUninstall = ((& $uninstallScript -CodexHome $forceHome) -join [Environment]::NewLine) | ConvertFrom-Json
-  Assert-True (@($forceUninstall.Results | Where-Object { $_.Status -eq 'removed' }).Count -eq 1) 'Force uninstall did not remove one created profile'
+  Assert-True (@($forceUninstall.Results | Where-Object { $_.Status -eq 'removed' }).Count -eq ($profileCount - 1)) 'Force uninstall did not remove created profiles'
   Assert-True (@($forceUninstall.Results | Where-Object { $_.Status -eq 'restored-original' }).Count -eq 1) 'Force uninstall did not restore the replaced profile'
   Assert-True ((Get-FileHash -LiteralPath $forceLuna -Algorithm SHA256).Hash -ceq $originalHash) 'Force uninstall restored the wrong profile content'
   Assert-True (@(Get-ChildItem -LiteralPath $forceAgents -Filter '*.toml' -File).Count -eq 1) 'Force uninstall left unexpected profiles'
@@ -137,8 +138,8 @@ try {
   $legacyAgents = Join-Path $legacyHome 'agents'
   $legacyBackupDir = Join-Path $legacyAgents 'sol-reviewer.toml-20260801-000000000'
   New-Item -ItemType Directory -Path $legacyBackupDir -Force | Out-Null
-  $retiredTemplate = Join-Path $pluginRoot 'templates\retired\sol-reviewer.toml.bak'
-  Copy-Item -LiteralPath $retiredTemplate -Destination (Join-Path $legacyAgents 'sol-reviewer.toml')
+  $reviewerTemplate = Join-Path $templateDir 'sol-reviewer.toml'
+  Copy-Item -LiteralPath $reviewerTemplate -Destination (Join-Path $legacyAgents 'sol-reviewer.toml')
   $originalReviewer = "name = `"sol_reviewer`"`nmodel = `"gpt-5.6-sol`"`n# original external profile`n"
   [IO.File]::WriteAllText((Join-Path $legacyBackupDir 'sol-reviewer.toml'), $originalReviewer, [Text.UTF8Encoding]::new($false))
   $legacyState = [ordered]@{
@@ -152,12 +153,13 @@ try {
   } | ConvertTo-Json -Depth 5
   [IO.File]::WriteAllText((Join-Path $legacyHome '.codex-quality-orchestrator.install-state.json'), $legacyState + [Environment]::NewLine, [Text.UTF8Encoding]::new($false))
   $legacyInstall = ((& $installScript -CodexHome $legacyHome) -join [Environment]::NewLine) | ConvertFrom-Json
-  Assert-True (@($legacyInstall.Results | Where-Object { $_.Status -eq 'retired-restored-original' }).Count -eq 1) 'Upgrade did not retire and restore the replaced Sol reviewer'
-  Assert-True ([IO.File]::ReadAllText((Join-Path $legacyAgents 'sol-reviewer.toml'), [Text.UTF8Encoding]::new($false)) -ceq $originalReviewer) 'Upgrade restored the wrong external Sol reviewer'
+  Assert-True (@($legacyInstall.Results | Where-Object { $_.Agent -eq 'sol_reviewer' -and $_.Status -eq 'kept' -and $_.Ownership -eq 'replaced' }).Count -eq 1) 'Upgrade did not reactivate the managed Sol reviewer'
+  Assert-True ((Get-FileHash -LiteralPath (Join-Path $legacyAgents 'sol-reviewer.toml') -Algorithm SHA256).Hash -ceq (Get-FileHash -LiteralPath $reviewerTemplate -Algorithm SHA256).Hash) 'Upgrade changed the active Sol reviewer'
   Assert-True (Test-Path -LiteralPath (Join-Path $legacyBackupDir 'sol-reviewer.toml.bak') -PathType Leaf) 'Legacy loadable backup was not converted to .bak'
   Assert-True (-not (Test-Path -LiteralPath (Join-Path $legacyBackupDir 'sol-reviewer.toml') -PathType Leaf)) 'Legacy loadable backup still shadows an agent profile'
   $legacyStateAfter = Get-Content -LiteralPath (Join-Path $legacyHome '.codex-quality-orchestrator.install-state.json') -Raw -Encoding UTF8 | ConvertFrom-Json
-  Assert-True (-not ($legacyStateAfter.profiles.PSObject.Properties.Name -contains 'sol-reviewer.toml')) 'Retired Sol reviewer remained plugin-owned'
+  Assert-True ($legacyStateAfter.profiles.PSObject.Properties.Name -contains 'sol-reviewer.toml') 'Reactivated Sol reviewer lost ownership state'
+  Assert-True ([string]$legacyStateAfter.profiles.'sol-reviewer.toml'.backupFile -like '*.toml.bak') 'Reactivated reviewer did not retain a non-loadable restore backup'
 
   $lockedHome = Join-Path $tempRoot 'locked\.codex'
   New-Item -ItemType Directory -Path $lockedHome -Force | Out-Null
@@ -175,7 +177,7 @@ try {
   }
   Assert-True ($lockErrorType -ceq 'System.IO.IOException') 'Installer read state or targets before acquiring the install lock'
 
-  Write-Output 'PASS ownership-aware install, retired-profile migration, non-loadable backups, lock ordering, and guarded uninstall'
+  Write-Output 'PASS ownership-aware install, reviewer reactivation, non-loadable backups, lock ordering, and guarded uninstall'
 } finally {
   if (Test-Path -LiteralPath $tempRoot) {
     $resolved = [IO.Path]::GetFullPath($tempRoot)

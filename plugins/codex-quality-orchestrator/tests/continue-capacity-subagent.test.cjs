@@ -39,6 +39,20 @@ try {
     reason: '继续',
   });
 
+  const reviewer = invoke({
+    session_id: 'capacity-reviewer',
+    agent_id: 'capacity-reviewer-agent',
+    hook_event_name: 'SubagentStop',
+    agent_type: 'sol_reviewer',
+    stop_hook_active: false,
+    last_assistant_message: capacityMessage,
+  });
+  assert.equal(reviewer.status, 0, reviewer.stderr);
+  assert.deepEqual(JSON.parse(reviewer.stdout), {
+    decision: 'block',
+    reason: '继续',
+  });
+
   const doubleBom = invoke(
   {
     session_id: 'capacity-double-bom',
