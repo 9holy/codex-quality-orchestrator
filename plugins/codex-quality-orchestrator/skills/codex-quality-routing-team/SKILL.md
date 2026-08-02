@@ -6,6 +6,6 @@ description: 为普通非短任务执行质量优先的 Sol、Luna、Terra 路�
 # Codex 质量路由团队
 
 1. 以当前上下文中的 Rule 16 为唯一语义规则；已加载时不得再次读取或复述。仅缺失时读取 `../../references/RULE16.md`。根代理不是 `gpt-5.6-sol` 时不启动团队。
-2. 按 Rule 16 列出工作单元并确定 Luna 是否适用。首次实际分派前读取 `../../routing-policy.json`，严格执行 `namedAgents`、`workPacket`、`forkTurns` 和容量恢复契约。调用 `spawn_agent` 必须显式传 `agent_type` 和 `fork_turns`；默认 `fork_turns:"none"`，仅确需继承上下文时按契约传正整数字符串；`terra_worker` 另传 `reasoning_effort`，均不传 `model`。`message` 必须含 `[CQO_WORK_PACKET_V1]` 以及目标、范围、写路径、验收、验证、权限、备份、`selected_agent`、`selected_effort` 和 `fallback`。
+2. 按 Rule 16 列出工作单元并确定 Luna 是否适用。首次分派前读取 `../../routing-policy.json` 并严格执行。调用 `spawn_agent` 显式传 `agent_type` 和 `fork_turns`；默认 `fork_turns:"none"`，仅确需继承上下文时传正整数字符串；`terra_worker` 另传 `reasoning_effort`，均不传 `model`。`message` 前两行固定为 `[CQO_WORK_PACKET_V1]` 和 `route: <model> / <effort>`；值分别取 `namedAgents[selected_agent].model` 和实际 `selected_effort`。其余内容含目标、范围、写路径、验收、验证、权限、备份、`selected_agent`、`selected_effort` 和 `fallback`。
 3. Luna 适用或只有一个能胜任候选时不读取 Radar。仅 Luna 不适用且同时存在多个能胜任候选时，从当前 Skill 路径解析并运行一次 `node ../../hooks/radar-routing-evidence.cjs`；只在这些候选间使用返回的 `[CQO_RADAR]`，没有新鲜数据就由 Sol 判断。
 4. 分派、并行、重试、验收和兜底完全执行 Rule 16，不增加第二套路由规则。

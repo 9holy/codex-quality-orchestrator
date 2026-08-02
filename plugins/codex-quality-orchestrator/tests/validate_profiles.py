@@ -94,11 +94,13 @@ assert "不要在 Skill 中复述" in maintenance_skill
 assert len(routing_skill) <= 1900
 assert "单个较大且边界明确" in routing_skill
 assert "已加载时不得再次读取或复述" in routing_skill
-assert "首次实际分派前读取 `../../routing-policy.json`" in routing_skill
-assert "调用 `spawn_agent` 必须显式传 `agent_type` 和 `fork_turns`" in routing_skill
+assert "首次分派前读取 `../../routing-policy.json`" in routing_skill
+assert "调用 `spawn_agent` 显式传 `agent_type` 和 `fork_turns`" in routing_skill
 assert '默认 `fork_turns:"none"`' in routing_skill
 assert "`terra_worker` 另传 `reasoning_effort`" in routing_skill
 assert "均不传 `model`" in routing_skill
+assert "`message` 前两行固定为 `[CQO_WORK_PACKET_V1]` 和 `route: <model> / <effort>`" in routing_skill
+assert "`namedAgents[selected_agent].model` 和实际 `selected_effort`" in routing_skill
 assert "Luna 适用或只有一个能胜任候选时不读取 Radar" in routing_skill
 assert "node ../../hooks/radar-routing-evidence.cjs" in routing_skill
 assert "不得为单个单元建立 TeamPlan" not in routing_skill
