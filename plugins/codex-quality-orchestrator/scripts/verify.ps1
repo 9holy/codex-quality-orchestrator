@@ -22,12 +22,14 @@ foreach ($relative in $jsonFiles) {
 
 $nodeFiles = @(
   'hooks\inject-routing-policy.cjs',
+  'hooks\radar-routing-evidence.cjs',
   'hooks\enforce-agent-routing.cjs',
   'hooks\routing-ledger.cjs',
   'hooks\release-failed-dispatch.cjs',
   'hooks\track-subagent-start.cjs',
   'hooks\continue-capacity-subagent.cjs',
   'tests\inject-routing-policy.test.cjs',
+  'tests\radar-routing-evidence.test.cjs',
   'tests\enforce-agent-routing.test.cjs',
   'tests\routing-ledger.test.cjs',
   'tests\continue-capacity-subagent.test.cjs'
@@ -90,6 +92,9 @@ if ($LASTEXITCODE -ne 0) { throw 'Routing ledger test failed' }
 & $node (Join-Path $pluginRoot 'tests\inject-routing-policy.test.cjs')
 if ($LASTEXITCODE -ne 0) { throw 'Session hook contract test failed' }
 
+& $node (Join-Path $pluginRoot 'tests\radar-routing-evidence.test.cjs')
+if ($LASTEXITCODE -ne 0) { throw 'Radar routing evidence test failed' }
+
 & $node (Join-Path $pluginRoot 'tests\continue-capacity-subagent.test.cjs')
 if ($LASTEXITCODE -ne 0) { throw 'Capacity continuation hook test failed' }
 
@@ -110,6 +115,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Config guard test failed' }
   RoutingMatrix = 'PASS'
   RoutingLedger = 'PASS'
   SessionContract = 'PASS'
+  RadarEvidence = 'PASS'
   CapacityContinuation = 'PASS'
   Installer = 'PASS'
   ConfigGuard = 'PASS'

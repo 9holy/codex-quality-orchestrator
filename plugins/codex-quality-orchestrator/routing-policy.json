@@ -1,6 +1,6 @@
 {
   "schemaVersion": 5,
-  "policyVersion": "0.3.5",
+  "policyVersion": "0.3.6",
   "toolNames": [
     "spawn_agent",
     "Agent",
@@ -65,6 +65,17 @@
       "terra_worker",
       "sol_controller"
     ]
+  },
+  "radarEvidence": {
+    "enabled": true,
+    "sourceUrl": "https://codexradar.com/api/intelligence-efficiency",
+    "refreshSeconds": 21600,
+    "maxStaleSeconds": 86400,
+    "requestTimeoutMs": 1800,
+    "maxResponseBytes": 12582912,
+    "minSamples": 30,
+    "iqTieMargin": 3.0,
+    "lunaMaxAlwaysFirstWhenCapable": true
   },
   "namedAgents": {
     "terra_worker": {

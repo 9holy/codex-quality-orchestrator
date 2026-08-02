@@ -22,7 +22,7 @@ skill = skill_path.read_text(encoding="utf-8")
 
 assert manifest["name"] == "codex-quality-orchestrator"
 base_version, separator, cachebuster = manifest["version"].partition("+codex.")
-assert base_version == policy["policyVersion"] == "0.3.5"
+assert base_version == policy["policyVersion"] == "0.3.6"
 assert not separator or cachebuster
 assert list((PLUGIN_ROOT / "skills").rglob("SKILL.md")) == [skill_path]
 assert manifest["interface"]["defaultPrompt"] == [
@@ -35,7 +35,7 @@ assert "总算力成本最低" in rule
 assert "完整工作单元最高要求" in rule
 assert "通常使用 1 个 Worker" in rule
 assert "最多 3 个" in rule
-assert "Luna 能可靠胜任且可独立验收的单元必须下派" in rule
+assert "能可靠完成且可独立验收就必须下派，绝不上调" in rule
 assert "CQO_WORK_PACKET_V1" in rule
 assert "selected_effort" in rule
 assert "明文路由键" in rule
@@ -45,6 +45,8 @@ assert "Worker 不得下派" in rule
 assert "当前 Sol 接管" in rule
 assert "不创建 Sol 子代理" in rule
 assert "按风险决定是否另派 Terra 独立复核" in rule
+assert "能可靠完成且可独立验收就必须下派，绝不上调" in rule
+assert "仅在 Luna 不适用后的语义合格候选内" in rule
 assert "gpt-5.6-luna / max" in rule
 assert "gpt-5.6-terra / xhigh|max|ultra" in rule
 assert policy["namedAgents"]["terra_worker"]["allowedEfforts"] == [
@@ -118,6 +120,17 @@ assert policy["capacityRecovery"] == {
     "automaticContinuationPrompt": "继续",
     "maxAutomaticContinuationsPerSubagent": 1,
     "escalationOrder": ["luna_worker", "terra_worker", "sol_controller"],
+}
+assert policy["radarEvidence"] == {
+    "enabled": True,
+    "sourceUrl": "https://codexradar.com/api/intelligence-efficiency",
+    "refreshSeconds": 21600,
+    "maxStaleSeconds": 86400,
+    "requestTimeoutMs": 1800,
+    "maxResponseBytes": 12582912,
+    "minSamples": 30,
+    "iqTieMargin": 3.0,
+    "lunaMaxAlwaysFirstWhenCapable": True,
 }
 assert set(policy["namedAgents"]) == {"luna_worker", "terra_worker"}
 

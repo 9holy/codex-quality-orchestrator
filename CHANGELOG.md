@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.6 - 2026-08-02
+
+- Keep Luna Max as an absolute first choice whenever it can reliably complete an independently verifiable work unit; radar evidence cannot promote such work.
+- Add a sanitized Codex Radar IQ, cost, duration, sample-count, and freshness snapshot for comparing only the remaining semantically eligible Terra/Sol routes.
+- Cache radar evidence for six hours, reject it after twenty-four hours or insufficient samples, and fall back to the static routing policy without blocking work.
+
 ## 0.3.5 - 2026-08-02
 
 - Use one Worker normally and expand to two or three only when independent parallel work saves more than it costs; keep three as the mechanical concurrency cap.

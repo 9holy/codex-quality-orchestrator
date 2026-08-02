@@ -5,6 +5,11 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+const {
+  SOURCE_URL,
+  resolveCachePath,
+  writeRadarCache,
+} = require('../hooks/radar-routing-evidence.cjs');
 
 const pluginRoot = path.resolve(__dirname, '..');
 const hookPath = path.join(pluginRoot, 'hooks', 'inject-routing-policy.cjs');
@@ -23,10 +28,12 @@ function installProfiles() {
   }
 }
 
-function invoke(runtimeSmokeNonce, runtimeSmokeProofPath) {
+function invoke(runtimeSmokeNonce, runtimeSmokeProofPath, radarDisabled = true) {
   const env = { ...process.env, CODEX_HOME: codexHome };
   delete env.CQO_RUNTIME_SMOKE_NONCE;
   delete env.CQO_RUNTIME_SMOKE_PROOF_PATH;
+  delete env.CQO_RADAR_DISABLE;
+  if (radarDisabled) env.CQO_RADAR_DISABLE = '1';
   if (runtimeSmokeNonce !== undefined) {
     env.CQO_RUNTIME_SMOKE_NONCE = runtimeSmokeNonce;
   }
@@ -66,6 +73,38 @@ try {
   assert.equal(matched, '[CQO_ACTIVE]');
   assert.doesNotMatch(matched, /gpt-5\.6-sol|xhigh|nested-model-must-not-win/);
 
+  writeRadarCache(resolveCachePath(codexHome), {
+    source: SOURCE_URL,
+    collected_at: new Date().toISOString(),
+    items: [
+      {
+        model: 'gpt-5.6-luna',
+        effort: 'max',
+        iq: 83.04,
+        samples: 112,
+        average_cost_usd: 0.47,
+        cost_samples: 112,
+        average_duration_minutes: 31.47,
+      },
+      {
+        model: 'gpt-5.6-terra',
+        effort: 'max',
+        iq: 88.39,
+        samples: 112,
+        average_cost_usd: 4.07,
+        cost_samples: 112,
+        average_duration_minutes: 30.7,
+      },
+    ],
+  });
+  const withRadar = invoke(undefined, undefined, false);
+  assert.match(withRadar, /^\[CQO_ACTIVE\]/);
+  assert.match(withRadar, /\[CQO_RADAR_STATUS:fresh-cache\]/);
+  assert.match(withRadar, /Luna Max 能可靠完成且可独立验收时必须选择，绝不上调/);
+  assert.match(withRadar, /稳定区间（3\.00）/);
+  assert.match(withRadar, /gpt-5\.6-terra max：IQ=88\.39/);
+  assert.ok(withRadar.length < 1400);
+
   const nonce = '0123456789abcdef0123456789abcdef';
   const proofPath = path.join(tempRoot, 'session-start-proof.json');
   assert.match(invoke(nonce, proofPath), new RegExp(`\\[CQO_RUNTIME_SMOKE:${nonce}\\]`));
@@ -75,6 +114,7 @@ try {
     nonce,
     rule16Status: 'match',
     missingProfiles: [],
+    radarStatus: 'disabled',
   });
   const outsideProofPath = path.join(os.homedir(), '.cqo-runtime-smoke-outside-proof.json');
   fs.rmSync(outsideProofPath, { force: true });

@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { getRadarEvidence } = require('./radar-routing-evidence.cjs');
 
 const pluginRoot = path.resolve(__dirname, '..');
 const canonicalPath = path.join(pluginRoot, 'references', 'RULE16.md');
@@ -44,6 +45,7 @@ function writeRuntimeSmokeProof(nonce, details) {
         nonce,
         rule16Status: details.rule16Status,
         missingProfiles: details.missingProfiles,
+        radarStatus: details.radarStatus,
       })}\n`,
       { encoding: 'utf8', flag: 'wx' },
     );
@@ -54,7 +56,7 @@ function writeRuntimeSmokeProof(nonce, details) {
   return proofPath;
 }
 
-function main() {
+async function main() {
   const canonical = fs.readFileSync(canonicalPath, 'utf8').trim();
   const policy = JSON.parse(fs.readFileSync(policyPath, 'utf8'));
   const home = codexHome();
@@ -91,12 +93,35 @@ function main() {
     );
   }
 
+  let radarStatus = 'skipped';
+  if (
+    rule16Status === 'match' &&
+    missingProfiles.length === 0 &&
+    process.env.CQO_RADAR_DISABLE !== '1'
+  ) {
+    const radar = await getRadarEvidence({
+      codexHome: home,
+      config: policy.radarEvidence,
+    });
+    radarStatus = radar.status;
+    if (radar.context) {
+      notes.push(`[CQO_RADAR_STATUS:${radar.status}]\n${radar.context}`);
+    } else if (radar.status !== 'disabled') {
+      notes.push(
+        `[CQO_RADAR_FALLBACK:${radar.status}] 无可用的新鲜雷达证据，按 Rule 16 静态路由。`,
+      );
+    }
+  } else if (process.env.CQO_RADAR_DISABLE === '1') {
+    radarStatus = 'disabled';
+  }
+
   if (/^[a-f0-9]{32}$/.test(runtimeSmokeNonce ?? '')) {
     notes.push(`[CQO_RUNTIME_SMOKE:${runtimeSmokeNonce}]`);
     try {
       writeRuntimeSmokeProof(runtimeSmokeNonce, {
         rule16Status,
         missingProfiles,
+        radarStatus,
       });
       notes.push('[CQO_RUNTIME_SMOKE_PROOF_WRITTEN]');
     } catch (error) {
@@ -114,9 +139,7 @@ function main() {
   );
 }
 
-try {
-  main();
-} catch (error) {
+main().catch((error) => {
   process.stdout.write(
     `${JSON.stringify({
       hookSpecificOutput: {
@@ -127,4 +150,4 @@ try {
       },
     })}\n`,
   );
-}
+});
