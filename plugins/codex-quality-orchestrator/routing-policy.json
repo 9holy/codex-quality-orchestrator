@@ -13,7 +13,7 @@
   },
   "capacityRecovery": {
     "message": "Selected model is at capacity. Please try a different model.",
-    "automaticContinuationPrompt": "继续"
+    "automaticContinuationPrompt": "\u7ee7\u7eed"
   },
   "radarEvidence": {
     "enabled": true,

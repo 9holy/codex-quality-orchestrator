@@ -1,10 +1,10 @@
-## Rule 16 — 默认多模型质量团队
+## Rule 16 - Default Multi-Model Quality Team
 
-- 目标明确、低风险且可直接验证的短任务由当前主代理完成；高风险任务不算短任务。
-- 非短任务由当前 `gpt-5.6-sol` 使用 `$codex-quality-routing-team` 理解、拆解、分派、整合、验收和兜底。先列出工作单元；Luna Max 能可靠完成、结果可验证且下派有净收益的单元必须优先派 `luna_worker`，不能胜任或不确定就由 Sol 处理。
-- 不得为使用 Luna 强行拆分模糊或高风险工作。需求模糊、根因未确定的诊断、架构、安全、公共接口、生产数据或契约、不可逆操作和最终裁决留给 Sol；Luna 不适用的独立单元才派给能胜任的 Terra 最低档位。仅关键高风险变更可另派一个 `sol_reviewer` 只读复审。
-- 通常使用一个 Worker；仅有二至三个互不依赖、写入不冲突且并行收益更大的单元时并行，最多三个。共享文件只允许一个写入者，Worker 不得创建子代理。
-- Luna 适用或只有一个能胜任候选时不读取 Radar。仅当 Luna 不适用且有多个能胜任候选时读取一次新鲜 `[CQO_RADAR]`：IQ 差至少 3 选高 IQ，差小于 3 视为同级；同级优先保留热模型或原代理，再选预计总成本更低者。确定后仅在单元、边界、可用性或执行结果变化时重判。
-- Sol 必须检查 Worker 的实际差异并复跑必要验证。明确的局部问题可交原 Worker 修正一次；能力不足、越界或质量不合格立即由 Sol 接管。
-- 遇到精确消息 `Selected model is at capacity. Please try a different model.`，向原代理发送“继续”一次并保留进度；再次失败交回 Sol。能力或质量失败不得续交。
-- 保持当前根模型和推理档位；除 `sol_reviewer` 外不创建 Sol 子代理。分派时严格执行 `$codex-quality-routing-team` 的代理、工作包、任务名和 `fork_turns` 契约，不传 `model`。
+- The root handles clear, low-risk, directly verifiable short work; high-risk work is never short.
+- For non-short work, a `gpt-5.6-sol` root uses `$codex-quality-routing-team` to understand, decompose, dispatch, integrate, verify, and fall back. List bounded units first. When Luna Max can reliably complete a verifiable unit and delegation has net benefit, MUST choose `luna_worker`; when Luna capability is uncertain, keep the unit on Sol.
+- Never manufacture Luna units from ambiguous or high-risk work. Sol keeps ambiguous requirements, unresolved diagnosis, architecture, security, public interfaces, production data or contracts, irreversible operations, and final decisions. Only when Luna is unsuitable, dispatch another independent unit to the lowest capable Terra effort. Use at most one read-only `sol_reviewer` for a critical high-risk review.
+- Normally use one Worker. Use two or three only for independent units with no write conflict and a real parallel benefit; never exceed three. A shared file has one writer. Workers never delegate.
+- Do not read Radar when Luna is suitable or only one capable candidate exists. Otherwise compare the Sol root and capable Terra efforts with one fresh `[CQO_RADAR]`: IQ gap >= 3 chooses higher IQ; a smaller gap is a tie, resolved by keeping the hot model or original agent, then lower expected total cost. Reconsider only when unit, boundary, availability, or result changes.
+- Sol MUST inspect the Worker's actual result or diff and rerun necessary checks. One clear local defect may return to the same Worker once; capability failure, scope violation, or poor quality returns immediately to Sol.
+- On the exact message `Selected model is at capacity. Please try a different model.`, the SubagentStop Hook resumes that same agent once without restarting its work. A second capacity failure returns to Sol. Never resume capability or quality failures.
+- Preserve the root model and reasoning effort. Except for `sol_reviewer`, do not create Sol subagents. Follow the named-agent, task-name, work-packet, and `fork_turns` contract from `$codex-quality-routing-team`; never pass `model`.

@@ -52,12 +52,19 @@ for agent_type, config in policy["namedAgents"].items():
         assert "acceptance criterion" in instructions
         assert "instead of guessing" in instructions
 
-assert "Luna Max 能可靠完成" in rule
-assert "必须优先派 `luna_worker`" in rule
-assert "保持当前根模型和推理档位" in rule
+assert "Luna Max can reliably complete" in rule
+assert "MUST choose `luna_worker`" in rule
+assert "Preserve the root model and reasoning effort" in rule
 assert "[CQO_WORK_PACKET_V1]" not in rule
 assert "[CQO_WORK_PACKET_V1]" in routing
-assert "唯一语义路由规范" in maintenance
+assert "sole semantic routing rule" in maintenance
+for model_path in [
+    ROOT / "references" / "RULE16.md",
+    ROOT / "routing-policy.json",
+    ROOT / "skills" / "codex-quality-orchestrator" / "SKILL.md",
+    ROOT / "skills" / "codex-quality-routing-team" / "SKILL.md",
+]:
+    assert model_path.read_bytes().isascii(), f"model-facing file is not ASCII: {model_path}"
 for removed in [
     ROOT / "hooks" / "routing-ledger.cjs",
     ROOT / "hooks" / "release-failed-dispatch.cjs",

@@ -57,7 +57,7 @@ try {
   fs.writeFileSync(path.join(codexHome, 'AGENTS.md'), '## Rule 16 — stale\n');
   const refreshed = invoke();
   assert.match(refreshed, /^\[CQO_RULE16_REFRESHED\]/);
-  assert.match(refreshed, /默认多模型质量团队/);
+  assert.match(refreshed, /Default Multi-Model Quality Team/);
   assert.doesNotMatch(refreshed, /暂停具名代理|全局 Rule 16 与插件规则不一致/);
 
   fs.rmSync(path.join(codexHome, 'AGENTS.md'));
