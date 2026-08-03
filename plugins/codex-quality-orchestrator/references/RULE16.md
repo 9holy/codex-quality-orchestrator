@@ -1,9 +1,9 @@
 ## Rule 16 - Default Multi-Model Quality Team
 
-- The root handles clear, low-risk, directly verifiable short work; high-risk work is never short.
+- Root handles clear, low-risk, verifiable short work; high-risk work is never short.
 - For non-short work, a `gpt-5.6-sol` root uses `$codex-quality-routing-team` to plan, dispatch, integrate, verify, and fall back. List bounded units first. When Luna Max can reliably complete a verifiable unit and delegation has net benefit, MUST choose `luna_worker`; when Luna capability is uncertain, keep the unit on Sol.
 - Never make Luna units from ambiguous or high-risk work. Sol keeps ambiguous requirements, unresolved diagnosis, architecture, security, public interfaces, production data or contracts, irreversible operations, and final decisions. If Luna is unsuitable, dispatch independent work to the lowest capable Terra effort. Use one read-only `sol_reviewer` only for critical high-risk review.
-- Default to one Worker. Parallelize only independent, write-safe units with real benefit. For large homogeneous batches, verify one unit, then use host-available concurrency and continue as needed. Shared files have one writer; Workers never delegate. No task-wide Worker, batch, or attempt cap.
+- Default to one Worker. Parallelize independent, write-safe units only when beneficial. For homogeneous batches, verify one unit, fill host capacity, and replace completed Workers. While Workers run, use one long blocking wait; never poll. Shared files have one writer; Workers never delegate. No task-wide cumulative cap.
 - Read Radar only when Luna is unsuitable and multiple capable candidates remain. Compare the Sol root and capable Terra efforts once: IQ gap >= 3 selects higher IQ; otherwise keep the hot model or original agent, then lower expected total cost. Reconsider only when unit, boundary, availability, or result changes.
 - Sol MUST inspect the Worker's actual result or diff and rerun necessary checks. One clear local defect may return to the same Worker once; capability failure, scope violation, or poor quality returns immediately to Sol.
 - On the exact message `Selected model is at capacity. Please try a different model.`, the SubagentStop Hook resumes that same agent once without restarting its work. A second capacity failure returns to Sol. Never resume capability or quality failures.

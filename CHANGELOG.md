@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.2 - 2026-08-03
+
+- Use one long native agent wait that wakes early on Worker updates instead of polling agent status or repeating short waits.
+- Refill host capacity after completed batch units without adding a queue, ledger, or new Hook.
+
 ## 0.4.1 - 2026-08-03
 
 - Replace the fixed three-Worker ceiling with host-capacity-aware concurrency for verified homogeneous batches.

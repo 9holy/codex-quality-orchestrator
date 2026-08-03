@@ -20,8 +20,9 @@ for (const text of [
   'lowest capable Terra effort',
   "Sol MUST inspect the Worker's actual result or diff",
   'Preserve the root model and reasoning effort',
-  'For large homogeneous batches, verify one unit, then use host-available concurrency',
-  'No task-wide Worker, batch, or attempt cap',
+  'For homogeneous batches, verify one unit, fill host capacity, and replace completed Workers',
+  'While Workers run, use one long blocking wait; never poll',
+  'No task-wide cumulative cap',
 ]) assert.match(rule, new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
 
 assert.match(skill, /For `spawn_agent`, always pass `agent_type`, `task_name`, and `fork_turns`/);
@@ -31,7 +32,9 @@ assert.match(skill, /Never pass `model` for a named agent/);
 assert.match(skill, /\[CQO_WORK_PACKET_V1\]/);
 for (const field of ['route:', 'goal:', 'scope:', 'acceptance:']) assert.match(skill, new RegExp(field));
 assert.match(skill, /node \.\.\/\.\.\/scripts\/radar-routing-evidence\.cjs/);
-assert.match(skill, /verify one representative unit before scaling to host-available concurrency/);
+assert.match(skill, /call `wait_agent` once with `timeout_ms:3600000`/);
+assert.match(skill, /Never poll `list_agents` or repeat short waits/);
+assert.match(skill, /verify one unit, then fill host capacity and replace completed Workers/);
 assert.doesNotMatch(skill, /two or three|never exceed three/);
 assert.doesNotMatch(rule, /two or three|never exceed three/);
 assert.doesNotMatch(skill, /Ledger|wave|slot|attempt|fallback/);
