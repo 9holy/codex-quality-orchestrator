@@ -2,7 +2,6 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { trackSubagentStop } = require('./routing-ledger.cjs');
 
 const policyPath = path.resolve(__dirname, '..', 'routing-policy.json');
 
@@ -11,22 +10,16 @@ async function main() {
   for await (const chunk of process.stdin) chunks.push(chunk);
   const raw = Buffer.concat(chunks).toString('utf8').replace(/^\uFEFF+/, '');
   const payload = JSON.parse(raw);
+  if (payload?.hook_event_name !== 'SubagentStop' || payload.stop_hook_active === true) return;
 
-  if (payload?.hook_event_name !== 'SubagentStop') return;
   const policy = JSON.parse(fs.readFileSync(policyPath, 'utf8'));
-  const shouldContinue =
-    payload.stop_hook_active !== true &&
-    typeof payload.last_assistant_message === 'string' &&
-    payload.last_assistant_message.includes(policy.capacityRecovery.message);
-  trackSubagentStop(payload, policy, shouldContinue);
-  if (!shouldContinue) return;
+  if (typeof payload.last_assistant_message !== 'string' ||
+      payload.last_assistant_message.trim() !== policy.capacityRecovery.message) return;
 
-  process.stdout.write(
-    `${JSON.stringify({
-      decision: 'block',
-      reason: policy.capacityRecovery.automaticContinuationPrompt,
-    })}\n`,
-  );
+  process.stdout.write(`${JSON.stringify({
+    decision: 'block',
+    reason: policy.capacityRecovery.automaticContinuationPrompt,
+  })}\n`);
 }
 
 main().catch((error) => {

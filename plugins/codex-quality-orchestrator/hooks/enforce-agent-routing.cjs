@@ -3,39 +3,24 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { registerDispatch } = require('./routing-ledger.cjs');
 
-const pluginRoot = path.resolve(__dirname, '..');
-const policyPath = path.join(pluginRoot, 'routing-policy.json');
-const canonicalPath = path.join(pluginRoot, 'references', 'RULE16.md');
+const policyPath = path.resolve(__dirname, '..', 'routing-policy.json');
 const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
 
 function deny(reason) {
-  process.stdout.write(
-    `${JSON.stringify({
-      hookSpecificOutput: {
-        hookEventName: 'PreToolUse',
-        permissionDecision: 'deny',
-        permissionDecisionReason: reason,
-      },
-    })}\n`,
-  );
+  process.stdout.write(`${JSON.stringify({
+    hookSpecificOutput: {
+      hookEventName: 'PreToolUse',
+      permissionDecision: 'deny',
+      permissionDecisionReason: reason,
+    },
+  })}\n`);
 }
 
 function codexHome() {
   return process.env.CODEX_HOME
     ? path.resolve(process.env.CODEX_HOME)
     : path.join(os.homedir(), '.codex');
-}
-
-function extractRule16(text) {
-  const marker = '## Rule 16';
-  const start = text.indexOf(marker);
-  if (start < 0) return null;
-
-  const section = text.slice(start);
-  const nextRule = section.slice(marker.length).search(/^## Rule \d+/m);
-  return (nextRule < 0 ? section : section.slice(0, marker.length + nextRule)).trim();
 }
 
 function parseTomlString(text, key) {
@@ -45,9 +30,7 @@ function parseTomlString(text, key) {
 
 function validateInstalledProfile(agentType, config) {
   const profilePath = path.join(codexHome(), 'agents', config.profileFile);
-  if (!fs.existsSync(profilePath)) {
-    return `${agentType} 的代理配置不存在：${profilePath}。`;
-  }
+  if (!fs.existsSync(profilePath)) return `${agentType} 的代理配置不存在：${profilePath}。`;
 
   const text = fs.readFileSync(profilePath, 'utf8');
   if (parseTomlString(text, 'name') !== agentType) {
@@ -57,28 +40,17 @@ function validateInstalledProfile(agentType, config) {
     return `${agentType} 未固定为 ${config.model}。`;
   }
 
-  const configuredEffort = parseTomlString(text, 'model_reasoning_effort');
-  if (config.effortMode === 'required' && configuredEffort !== null) {
-    return `${agentType} 的推理档位必须由调用参数选择，不得在 TOML 中固定。`;
+  const effort = parseTomlString(text, 'model_reasoning_effort');
+  if (config.effortMode === 'required' && effort !== null) {
+    return `${agentType} 的推理档位必须由调用参数选择。`;
   }
-  if (config.effortMode === 'fixed' && configuredEffort !== config.fixedEffort) {
-    return `${agentType} 必须在 TOML 中固定为 ${config.fixedEffort}。`;
+  if (config.effortMode === 'fixed' && effort !== config.fixedEffort) {
+    return `${agentType} 必须固定为 ${config.fixedEffort}。`;
   }
-  if (
-    config.sandboxMode &&
-    parseTomlString(text, 'sandbox_mode') !== config.sandboxMode
-  ) {
+  if (config.sandboxMode && parseTomlString(text, 'sandbox_mode') !== config.sandboxMode) {
     return `${agentType} 必须使用 sandbox_mode=${config.sandboxMode}。`;
   }
   return null;
-}
-
-function hasGlobalRuleConflict(canonical) {
-  const globalPath = path.join(codexHome(), 'AGENTS.md');
-  if (!fs.existsSync(globalPath)) return false;
-
-  const installed = extractRule16(fs.readFileSync(globalPath, 'utf8'));
-  return installed !== null && installed !== canonical;
 }
 
 function validForkTurns(value, config) {
@@ -87,146 +59,80 @@ function validForkTurns(value, config) {
   return config.allowPositiveIntegerString && /^[1-9]\d*$/.test(value);
 }
 
-function nonemptyString(value) {
-  return typeof value === 'string' && value.trim().length > 0;
+function selectedEffort(input, agentType, config) {
+  if (config.effortMode === 'required') {
+    if (typeof input.reasoning_effort !== 'string' ||
+        !config.allowedEfforts.includes(input.reasoning_effort)) {
+      return { error: `${agentType} 只允许 reasoning_effort=${config.allowedEfforts.join('、')}。` };
+    }
+    return { effort: input.reasoning_effort };
+  }
+  if (hasOwn(input, 'reasoning_effort')) {
+    return { error: `${agentType} 已固定推理档位，不得在调用中覆盖。` };
+  }
+  return { effort: config.fixedEffort };
 }
 
-function parseRouteTaskName(value, agentType, selectedEffort, policy) {
-  const match = nonemptyString(value)
-    ? value.match(new RegExp(policy.workPacket.hostVisibleTaskNamePattern))
-    : null;
-  if (!match) {
-    return {
-      error: `task_name 必须使用 ${policy.workPacket.hostVisibleTaskNameExample} 格式。`,
-    };
-  }
-
-  const expectedRouteLabel = `${agentType.replace(/_worker$/, '')}_${selectedEffort}`;
-  if (match[1] !== expectedRouteLabel) {
-    return {
-      error: `task_name 的模型档位前缀必须是 ${expectedRouteLabel}。`,
-    };
-  }
-
-  const waveSize = Number(match[5]);
-  const workerSlot = Number(match[4]);
-  const workerAttempt = Number(match[6]);
-  if (waveSize > policy.team.maxWorkersPerWave || workerSlot > waveSize) {
-    return { error: 'task_name 的波次槽位超出允许范围。' };
-  }
-  if (
-    workerAttempt > policy.team.maxWorkerAttemptsPerWorkUnit ||
-    (['luna_worker', 'sol_reviewer'].includes(agentType) && workerAttempt !== 1)
-  ) {
-    return { error: 'task_name 的 Worker 尝试次数无效。' };
-  }
-  if (agentType === 'sol_reviewer' && (waveSize !== 1 || workerSlot !== 1)) {
-    return { error: 'sol_reviewer 必须单独执行，不得并发派发。' };
-  }
-
-  return {
-    packet: {
-      work_unit_id: match[2],
-      wave_id: `wave-${match[3]}`,
-      wave_size: waveSize,
-      worker_slot: workerSlot,
-      worker_attempt: workerAttempt,
-      selected_agent: agentType,
-      selected_effort: selectedEffort,
-      fallback_agent: policy.workPacket.allowedFallbacks[agentType][0],
-    },
-  };
+function routeLabel(agentType, effort) {
+  if (agentType === 'luna_worker') return 'luna_max';
+  if (agentType === 'terra_worker') return `terra_${effort}`;
+  return 'sol_reviewer_xhigh';
 }
 
-function validate(payload, policy, canonical) {
+function validate(payload, policy) {
   if (!policy.toolNames.includes(payload?.tool_name)) return;
-
   const input = payload.tool_input;
-  if (!input || typeof input !== 'object' || Array.isArray(input)) {
-    deny('代理路由参数必须是 JSON 对象。');
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return;
+
+  const agentType = input.agent_type;
+  if (typeof agentType !== 'string' || !hasOwn(policy.namedAgents, agentType)) return;
+  if (typeof input.message !== 'string' || input.message.trim().length === 0) {
+    deny(`${agentType} 缺少工作包 message。`);
     return;
   }
-
   if (!validForkTurns(input.fork_turns, policy.forkTurns)) {
     deny('fork_turns 必须显式设置为 "none" 或正整数字符串。');
     return;
   }
-
-  if (hasGlobalRuleConflict(canonical)) {
-    deny('全局 Rule 16 与插件规则不一致，已暂停代理调度。');
+  if (hasOwn(input, 'model')) {
+    deny(`${agentType} 已由代理配置固定模型，不得在调用中覆盖。`);
     return;
   }
 
-  if (hasOwn(input, 'agent_type')) {
-    const config = policy.namedAgents[input.agent_type];
-    if (!config) {
-      deny(`禁止使用未登记的具名代理 ${input.agent_type ?? 'null'}。`);
-      return;
-    }
-    if (hasOwn(input, 'model')) {
-      deny(`${input.agent_type} 已由代理配置固定模型，不得在调用中覆盖。`);
-      return;
-    }
-    if (!nonemptyString(input.message)) {
-      deny('代理调用缺少 message。');
-      return;
-    }
-
-    const profileError = validateInstalledProfile(input.agent_type, config);
-    if (profileError) {
-      deny(profileError);
-      return;
-    }
-
-    let selectedEffort;
-    if (config.effortMode === 'required') {
-      if (
-        typeof input.reasoning_effort !== 'string' ||
-        !config.allowedEfforts.includes(input.reasoning_effort)
-      ) {
-        deny(
-          `${input.agent_type} 只允许 reasoning_effort=` +
-            `${config.allowedEfforts.join(' 或 ')}。`,
-        );
-        return;
-      }
-      selectedEffort = input.reasoning_effort;
-    } else if (hasOwn(input, 'reasoning_effort')) {
-      deny(`${input.agent_type} 已由代理配置固定推理档位，不得在调用中覆盖。`);
-      return;
-    } else {
-      selectedEffort = config.fixedEffort;
-    }
-
-    const route = parseRouteTaskName(
-      input.task_name,
-      input.agent_type,
-      selectedEffort,
-      policy,
-    );
-    if (route.error) {
-      deny(route.error);
-      return;
-    }
-    const ledgerError = registerDispatch(payload, route.packet, policy);
-    if (ledgerError) deny(ledgerError);
+  const config = policy.namedAgents[agentType];
+  const profileError = validateInstalledProfile(agentType, config);
+  if (profileError) {
+    deny(profileError);
+    return;
+  }
+  const effortResult = selectedEffort(input, agentType, config);
+  if (effortResult.error) {
+    deny(effortResult.error);
     return;
   }
 
-  deny(
-    `禁止未登记的 ${policy.sol.model} 子代理；` +
-      '生产执行使用 Luna/Terra，关键高风险只读复审使用 sol_reviewer。',
-  );
+  const label = routeLabel(agentType, effortResult.effort);
+  const taskMatch = typeof input.task_name === 'string'
+    ? input.task_name.match(new RegExp(policy.workPacket.hostVisibleTaskNamePattern))
+    : null;
+  if (!taskMatch) {
+    deny(`task_name 必须使用 ${policy.workPacket.hostVisibleTaskNameExample} 格式。`);
+    return;
+  }
+  if (taskMatch[1] !== label) {
+    deny(`task_name 的路由前缀必须是 ${label}。`);
+    return;
+  }
+
 }
 
 (async () => {
   try {
     const policy = JSON.parse(fs.readFileSync(policyPath, 'utf8'));
-    const canonical = fs.readFileSync(canonicalPath, 'utf8').trim();
     const chunks = [];
     for await (const chunk of process.stdin) chunks.push(chunk);
     const raw = Buffer.concat(chunks).toString('utf8').replace(/^\uFEFF+/, '');
-    validate(JSON.parse(raw), policy, canonical);
+    validate(JSON.parse(raw), policy);
   } catch (error) {
     deny(`代理路由 Hook 失败：${error.message}`);
   }

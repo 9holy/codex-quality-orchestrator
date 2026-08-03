@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0 - 2026-08-03
+
+- Rebuild routing around three small Hooks: conditional Rule 16 loading, CQO-only visible call validation, and one exact in-place capacity continuation.
+- Remove the session ledger, SubagentStart Hook, wave/slot/attempt names, manual release command, fixed attempt budgets, and dead fallback chain.
+- Let unrelated agents and Skills pass through PreToolUse while continuing to validate CQO profiles, Terra effort, fork context, and visible route names.
+- Keep worker packets short and model-facing; acknowledge that the host encrypts packet messages before PreToolUse, so Hooks validate only observable mechanical fields.
+- Replace long agent instructions with bounded, verifiable worker contracts based on the native Luna template.
+- Keep SessionStart silent when the installed Rule 16 already matches, preventing repeated CQO activation context.
+- Move Radar from the Hook directory to an optional script and retain its cached, candidate-only use.
+- Preserve Cockpit and CC Switch configuration by restoring only the plugin registration and three approved Hook hashes.
+
 ## 0.3.19 - 2026-08-03
 
 - Add an implicitly invokable daily routing skill so ordinary multi-step work can enter the Sol-led routing workflow instead of exposing only the maintenance skill.

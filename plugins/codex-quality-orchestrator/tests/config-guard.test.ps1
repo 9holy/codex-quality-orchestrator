@@ -12,9 +12,6 @@ function Get-HookBundleHash {
     'hooks\hooks.json',
     'hooks\inject-routing-policy.cjs',
     'hooks\enforce-agent-routing.cjs',
-    'hooks\routing-ledger.cjs',
-    'hooks\release-failed-dispatch.cjs',
-    'hooks\track-subagent-start.cjs',
     'hooks\continue-capacity-subagent.cjs',
     'routing-policy.json',
     'references\RULE16.md'
@@ -41,7 +38,6 @@ $fakeCodex = Join-Path $tempRoot 'fake-codex.ps1'
 $pluginId = 'codex-quality-orchestrator@codex-quality-orchestrator'
 $preId = "$pluginId`:hooks/hooks.json:pre_tool_use:0:0"
 $sessionId = "$pluginId`:hooks/hooks.json:session_start:0:0"
-$subagentStartId = "$pluginId`:hooks/hooks.json:subagent_start:0:0"
 $subagentId = "$pluginId`:hooks/hooks.json:subagent_stop:0:0"
 $watchProcess = $null
 $runningOnWindows = [Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
@@ -62,7 +58,6 @@ try {
     trustedHooks = @(
       [ordered]@{ id=$preId; trustedHash=('sha256:' + ('a' * 64)) },
       [ordered]@{ id=$sessionId; trustedHash=('sha256:' + ('b' * 64)) },
-      [ordered]@{ id=$subagentStartId; trustedHash=('sha256:' + ('d' * 64)) },
       [ordered]@{ id=$subagentId; trustedHash=('sha256:' + ('c' * 64)) }
     )
   } | ConvertTo-Json -Depth 6
@@ -131,7 +126,6 @@ throw "Unexpected fake codex call: $($Args -join ' ')"
   $config = Get-Content -LiteralPath $configPath -Raw
   Assert-True $config.Contains($preId) 'PreToolUse trust was not restored'
   Assert-True $config.Contains($sessionId) 'SessionStart trust was not restored'
-  Assert-True $config.Contains($subagentStartId) 'SubagentStart trust was not restored'
   Assert-True $config.Contains($subagentId) 'SubagentStop trust was not restored'
   Assert-True $config.Contains('model = "gpt-5.6-sol"') 'Managed configuration restoration replaced existing config'
 
@@ -156,13 +150,13 @@ name = "Cockpit Local Access"
 base_url = "http://127.0.0.1:12345/v1"
 wire_api = "responses"
 '@
-  $cockpitConfig = $cockpitPrefix + "`n`n[hooks.state.`"$subagentStartId`"]`ntrusted_hash = `"sha256:$('e' * 64)`"`n"
+  $cockpitConfig = $cockpitPrefix + "`n`n[hooks.state.`"$subagentId`"]`ntrusted_hash = `"sha256:$('e' * 64)`"`n"
   [IO.File]::WriteAllText($configPath, $cockpitConfig, [Text.UTF8Encoding]::new($false))
   $cockpitRepair = ((& $guardScript -Mode Repair -CodexHome $codexHome -CodexCommand $fakeCodex) -join [Environment]::NewLine) | ConvertFrom-Json
   Assert-True $cockpitRepair.Healthy 'Cockpit replacement was not repaired'
   $cockpitAfter = Get-Content -LiteralPath $configPath -Raw
   Assert-True $cockpitAfter.StartsWith($cockpitPrefix) 'Cockpit provider configuration was changed'
-  Assert-True $cockpitAfter.Contains("trusted_hash = `"sha256:$('d' * 64)`"") 'Stale Hook trust was not replaced with the approved hash'
+  Assert-True $cockpitAfter.Contains("trusted_hash = `"sha256:$('c' * 64)`"") 'Stale Hook trust was not replaced with the approved hash'
   Assert-True (-not $cockpitAfter.Contains("sha256:$('e' * 64)")) 'Stale Hook trust remained after repair'
   Assert-True $cockpitAfter.Contains('[plugins."codex-quality-orchestrator@codex-quality-orchestrator"]') 'Plugin registration was not restored after Cockpit replacement'
 

@@ -56,7 +56,7 @@ try {
   if ([int]$proof.schemaVersion -ne 1 -or
       [string]$proof.hookEventName -ne 'SessionStart' -or
       [string]$proof.nonce -ne $nonce -or
-      [string]$proof.rule16Status -notin @('injected', 'match', 'mismatch')) {
+      [string]$proof.rule16Status -notin @('injected', 'match', 'refreshed')) {
     throw 'SessionStart Hook proof is invalid or belongs to a different smoke run'
   }
 } finally {
@@ -80,9 +80,6 @@ if ($proof -eq $null) {
   throw 'SessionStart Hook proof was not produced'
 }
 
-if ([string]$proof.rule16Status -eq 'mismatch') {
-  throw 'Plugin loaded, but the global Rule 16 conflicts with the plugin policy'
-}
 if (@($proof.missingProfiles).Count -gt 0) {
   throw 'Plugin loaded, but one or more named agent profiles are missing'
 }

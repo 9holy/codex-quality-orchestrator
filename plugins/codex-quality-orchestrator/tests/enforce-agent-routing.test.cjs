@@ -9,8 +9,7 @@ const { spawnSync } = require('node:child_process');
 const pluginRoot = path.resolve(__dirname, '..');
 const hookPath = path.join(pluginRoot, 'hooks', 'enforce-agent-routing.cjs');
 const templateDir = path.join(pluginRoot, 'templates', 'agents');
-const canonicalPath = path.join(pluginRoot, 'references', 'RULE16.md');
-const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-quality-orchestrator-'));
+const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'cqo-routing-'));
 const codexHome = path.join(tempRoot, '.codex');
 const agentsDir = path.join(codexHome, 'agents');
 let invocation = 0;
@@ -18,31 +17,23 @@ let invocation = 0;
 function installProfiles() {
   fs.mkdirSync(agentsDir, { recursive: true });
   for (const file of fs.readdirSync(templateDir)) {
-    const source = path.join(templateDir, file);
-    if (!file.endsWith('.toml') || !fs.statSync(source).isFile()) continue;
-    fs.copyFileSync(source, path.join(agentsDir, file));
+    if (file.endsWith('.toml')) fs.copyFileSync(path.join(templateDir, file), path.join(agentsDir, file));
   }
 }
 
-function payloadFor(sessionId, toolUseId, input) {
+function payload(input, toolName = 'collaborationspawn_agent') {
+  invocation += 1;
   return JSON.stringify({
-    session_id: sessionId,
-    turn_id: `turn-${toolUseId}`,
-    tool_use_id: toolUseId,
-    tool_name: 'collaborationspawn_agent',
+    session_id: `session-${invocation}`,
+    tool_use_id: `tool-${invocation}`,
+    tool_name: toolName,
     tool_input: input,
   });
 }
 
-function invoke(input, rawInput) {
-  invocation += 1;
-  const payload = rawInput ?? payloadFor(
-    `routing-test-${invocation}`,
-    `tool-${invocation}`,
-    input,
-  );
+function invoke(input, options = {}) {
   const result = spawnSync(process.execPath, [hookPath], {
-    input: Buffer.from(payload, 'utf8'),
+    input: options.raw ?? payload(input, options.toolName),
     encoding: 'utf8',
     env: { ...process.env, CODEX_HOME: codexHome },
   });
@@ -50,135 +41,90 @@ function invoke(input, rawInput) {
   return result.stdout.trim();
 }
 
-function expectAllow(name, input, rawInput) {
-  assert.equal(invoke(input, rawInput), '', `${name} should be allowed`);
+function expectAllow(name, input, options) {
+  assert.equal(invoke(input, options), '', `${name} should be allowed`);
 }
 
-function expectDeny(name, input, rawInput) {
-  const output = invoke(input, rawInput);
+function expectDeny(name, input, options) {
+  const output = invoke(input, options);
   assert.notEqual(output, '', `${name} should be denied`);
   assert.equal(JSON.parse(output).hookSpecificOutput.permissionDecision, 'deny');
 }
 
-function routeName(id, overrides = {}) {
-  const agentType = overrides.agentType ?? 'luna_worker';
-  const effort = overrides.effort ?? (
-    agentType === 'luna_worker' ? 'max' : agentType === 'sol_reviewer' ? 'xhigh' : 'ultra'
-  );
-  const routeLabel = `${agentType.replace(/_worker$/, '')}_${effort}`;
-  const wave = overrides.wave ?? 1;
-  const slot = overrides.slot ?? 1;
-  const size = overrides.size ?? 1;
-  const attempt = overrides.attempt ?? 1;
-  return `${routeLabel}__${id}__w${wave}__s${slot}of${size}__a${attempt}`;
+function label(agentType, effort) {
+  if (agentType === 'luna_worker') return 'luna_max';
+  if (agentType === 'terra_worker') return `terra_${effort}`;
+  return 'sol_reviewer_xhigh';
 }
 
-function workerInput(agentType, input = {}, route = {}) {
-  const effort = input.reasoning_effort ?? (
-    agentType === 'luna_worker' ? 'max' : agentType === 'sol_reviewer' ? 'xhigh' : 'ultra'
+function workerInput(agentType, overrides = {}) {
+  const effort = overrides.reasoning_effort ?? (
+    agentType === 'terra_worker' ? 'xhigh' : agentType === 'luna_worker' ? 'max' : 'xhigh'
   );
-  return {
+  const input = {
     agent_type: agentType,
-    fork_turns: '1',
-    task_name: routeName(route.id ?? `${agentType}_task`, {
-      ...route,
-      agentType,
-      effort,
-    }),
+    fork_turns: 'none',
+    task_name: `${label(agentType, effort)}__unit_${invocation + 1}`,
     message: 'gAAAA-host-encrypted-subagent-message',
-    ...input,
+    ...overrides,
   };
+  if (agentType === 'terra_worker' && !Object.hasOwn(overrides, 'reasoning_effort')) {
+    input.reasoning_effort = effort;
+  }
+  return input;
 }
 
 try {
   installProfiles();
 
-  for (const effort of ['medium', 'high', 'xhigh', 'max', 'ultra']) {
-    expectDeny(`sol-child-${effort}`, {
-      model: 'gpt-5.6-sol',
-      reasoning_effort: effort,
-      fork_turns: '1',
-    });
-  }
+  expectAllow('luna-max', workerInput('luna_worker'));
+  expectAllow('reviewer-xhigh', workerInput('sol_reviewer'));
   for (const effort of ['xhigh', 'max', 'ultra']) {
     expectAllow(`terra-${effort}`, workerInput('terra_worker', {
       reasoning_effort: effort,
-      fork_turns: 'none',
-    }, { id: `terra_${effort}` }));
+      task_name: `terra_${effort}__unit_${effort}`,
+    }));
   }
-  expectAllow('luna-profile', workerInput('luna_worker'));
-  expectAllow('sol-reviewer', workerInput('sol_reviewer', { fork_turns: 'none' }));
-  expectAllow('hyphenated-unit', workerInput('luna_worker', {}, { id: 'luna-audit-01' }));
-  expectAllow('encrypted-host-message', workerInput('luna_worker', {}, { id: 'encrypted_message' }));
-  expectAllow(
-    'double-bom',
-    null,
-    `\uFEFF\uFEFF${payloadFor(
-      'routing-test-double-bom',
-      'tool-double-bom',
-      workerInput('luna_worker', {}, { id: 'double_bom' }),
-    )}`,
-  );
+  expectAllow('positive-fork', workerInput('luna_worker', { fork_turns: '2' }));
+  expectAllow('dotted-tool-name', workerInput('luna_worker'), { toolName: 'collaboration.spawn_agent' });
+  expectAllow('double-bom', null, { raw: `\uFEFF\uFEFF${payload(workerInput('luna_worker'))}` });
 
-  expectDeny('gpt-5.5', { model: 'gpt-5.5', reasoning_effort: 'high', fork_turns: '1' });
-  expectDeny('bare-terra', { model: 'gpt-5.6-terra', reasoning_effort: 'max', fork_turns: '1' });
-  expectDeny('bare-luna', { model: 'gpt-5.6-luna', reasoning_effort: 'max', fork_turns: '1' });
-  expectDeny('terra-high', workerInput('terra_worker', { reasoning_effort: 'high' }));
-  expectDeny('luna-effort-override', workerInput('luna_worker', { reasoning_effort: 'high' }));
-  expectDeny('reviewer-effort-override', workerInput('sol_reviewer', { reasoning_effort: 'max' }));
-  expectDeny('reviewer-model-override', workerInput('sol_reviewer', { model: 'gpt-5.6-sol' }));
-  expectDeny('reviewer-parallel', workerInput('sol_reviewer', {}, { id: 'review_parallel', size: 2 }));
-  expectDeny('reviewer-attempt-two', workerInput('sol_reviewer', {}, { id: 'review_retry', attempt: 2 }));
-  expectDeny('default-agent', { agent_type: 'default', fork_turns: '1' });
-  expectDeny('fork-all', workerInput('luna_worker', { fork_turns: 'all' }));
-  expectDeny('invalid-json', null, '{not-json');
+  expectAllow('unrelated-named-agent', {
+    agent_type: 'default', fork_turns: 'all', task_name: 'other_task', message: 'other skill',
+  });
+  expectAllow('unrelated-bare-model', {
+    model: 'gpt-5.5', reasoning_effort: 'high', fork_turns: '1', message: 'other skill',
+  });
+  expectAllow('unrelated-tool', workerInput('luna_worker'), { toolName: 'read_file' });
+
   expectDeny('missing-message', workerInput('luna_worker', { message: '' }));
-  expectDeny('invalid-route-name', workerInput('luna_worker', { task_name: 'plain_name' }));
-  expectDeny('mismatched-route-effort', workerInput('terra_worker', {
-    reasoning_effort: 'ultra',
-    task_name: routeName('wrong_effort', {
-      agentType: 'terra_worker',
-      effort: 'max',
-    }),
+  expectDeny('missing-fork', workerInput('luna_worker', { fork_turns: undefined }));
+  expectDeny('fork-all', workerInput('luna_worker', { fork_turns: 'all' }));
+  expectDeny('model-override', workerInput('luna_worker', { model: 'gpt-5.6-luna' }));
+  expectDeny('luna-effort-override', workerInput('luna_worker', { reasoning_effort: 'xhigh' }));
+  expectDeny('reviewer-effort-override', workerInput('sol_reviewer', { reasoning_effort: 'max' }));
+  expectDeny('terra-high', workerInput('terra_worker', { reasoning_effort: 'high' }));
+  expectDeny('bad-task-name', workerInput('luna_worker', { task_name: 'plain_name' }));
+  expectDeny('wrong-task-route', workerInput('terra_worker', {
+    reasoning_effort: 'ultra', task_name: 'terra_max__wrong_effort',
   }));
-  expectDeny('mismatched-route-agent', workerInput('terra_worker', {
-    reasoning_effort: 'ultra',
-    task_name: routeName('wrong_agent'),
-  }));
-  expectDeny('invalid-wave-slot', workerInput('luna_worker', {}, { id: 'bad_slot', slot: 3, size: 2 }));
-  expectDeny('luna-attempt-two', workerInput('luna_worker', {}, { id: 'luna_retry', attempt: 2 }));
-  expectDeny('terra-attempt-two-without-first', workerInput(
-    'terra_worker',
-    { reasoning_effort: 'ultra' },
-    { id: 'terra_retry', attempt: 2 },
-  ));
 
-  const duplicate = workerInput('luna_worker', {}, { id: 'duplicate_unit' });
-  expectAllow('first-dispatch', null, payloadFor('duplicate-session', 'duplicate-1', duplicate));
-  expectDeny('duplicate-dispatch', null, payloadFor('duplicate-session', 'duplicate-2', duplicate));
+  const duplicate = workerInput('luna_worker', { task_name: 'luna_max__repeatable_unit' });
+  expectAllow('first-same-name', duplicate);
+  expectAllow('second-same-name', duplicate);
 
   fs.rmSync(path.join(agentsDir, 'luna-worker.toml'));
   expectDeny('missing-profile', workerInput('luna_worker'));
   installProfiles();
-
-  fs.appendFileSync(
-    path.join(agentsDir, 'terra-worker.toml'),
-    '\nmodel_reasoning_effort = "ultra"\n',
-    'utf8',
-  );
-  expectDeny('terra-pinned-effort', workerInput('terra_worker', { reasoning_effort: 'ultra' }));
+  fs.appendFileSync(path.join(agentsDir, 'terra-worker.toml'), '\nmodel_reasoning_effort = "max"\n');
+  expectDeny('terra-pinned-effort', workerInput('terra_worker', { reasoning_effort: 'max' }));
   installProfiles();
 
-  fs.writeFileSync(path.join(codexHome, 'AGENTS.md'), '## Rule 16 - stale\n', 'utf8');
-  expectDeny('global-rule-conflict', workerInput('luna_worker'));
-  fs.writeFileSync(
-    path.join(codexHome, 'AGENTS.md'),
-    fs.readFileSync(canonicalPath, 'utf8'),
-    'utf8',
-  );
-  expectAllow('canonical-global-rule', workerInput('luna_worker', {}, { id: 'canonical_rule' }));
+  fs.writeFileSync(path.join(codexHome, 'AGENTS.md'), '## Rule 16 — project override\n');
+  expectAllow('rule-text-does-not-block', workerInput('luna_worker'));
+  expectDeny('invalid-json', null, { raw: '{not-json' });
 
-  process.stdout.write('PASS host-visible routing key and worker contract matrix\n');
+  process.stdout.write('PASS CQO-only visible routing contract and unrelated-agent pass-through\n');
 } finally {
   fs.rmSync(tempRoot, { recursive: true, force: true });
 }

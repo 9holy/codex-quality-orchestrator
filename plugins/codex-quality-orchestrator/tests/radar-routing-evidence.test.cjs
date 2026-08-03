@@ -15,7 +15,7 @@ const {
   loadRadarCache,
   resolveCachePath,
   writeRadarCache,
-} = require('../hooks/radar-routing-evidence.cjs');
+} = require('../scripts/radar-routing-evidence.cjs');
 
 const NOW = Date.parse('2026-08-02T00:00:00.000Z');
 const config = {
@@ -198,7 +198,7 @@ function responseFor(value) {
     delete cliEnv.CQO_RADAR_DISABLE;
     const cli = spawnSync(
       process.execPath,
-      [path.resolve(__dirname, '..', 'hooks', 'radar-routing-evidence.cjs')],
+      [path.resolve(__dirname, '..', 'scripts', 'radar-routing-evidence.cjs')],
       { encoding: 'utf8', env: cliEnv },
     );
     assert.equal(cli.status, 0, cli.stderr);

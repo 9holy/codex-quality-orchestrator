@@ -1,6 +1,6 @@
 {
   "name": "codex-quality-orchestrator",
-  "version": "0.3.19+codex.20260802202820",
+  "version": "0.4.0+codex.20260803064452",
   "description": "Quality-first multi-model routing and review guardrails for Codex.",
   "author": {
     "name": "Codex Quality Orchestrator contributors"
@@ -16,7 +16,7 @@
   "interface": {
     "displayName": "Codex Quality Orchestrator",
     "shortDescription": "Quality-first routing for Codex subagents.",
-    "longDescription": "Use Sol as lead and final fallback while bounded Luna and Terra workers execute single or parallel work under explicit capability, ownership, retry, and verification contracts.",
+    "longDescription": "Use Sol to plan and verify, prefer Luna Max for capable bounded work, and use Terra only for independent work that needs deeper reasoning.",
     "developerName": "Codex Quality Orchestrator contributors",
     "category": "Developer Tools",
     "capabilities": [

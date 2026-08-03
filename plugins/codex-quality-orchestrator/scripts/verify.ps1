@@ -22,17 +22,13 @@ foreach ($relative in $jsonFiles) {
 
 $nodeFiles = @(
   'hooks\inject-routing-policy.cjs',
-  'hooks\radar-routing-evidence.cjs',
   'hooks\enforce-agent-routing.cjs',
-  'hooks\routing-ledger.cjs',
-  'hooks\release-failed-dispatch.cjs',
-  'hooks\track-subagent-start.cjs',
   'hooks\continue-capacity-subagent.cjs',
+  'scripts\radar-routing-evidence.cjs',
   'tests\inject-routing-policy.test.cjs',
   'tests\routing-skill.test.cjs',
   'tests\radar-routing-evidence.test.cjs',
   'tests\enforce-agent-routing.test.cjs',
-  'tests\routing-ledger.test.cjs',
   'tests\continue-capacity-subagent.test.cjs'
 )
 foreach ($relative in $nodeFiles) {
@@ -87,9 +83,6 @@ if (Test-Path -LiteralPath $marketplacePath -PathType Leaf) {
 & $node (Join-Path $pluginRoot 'tests\enforce-agent-routing.test.cjs')
 if ($LASTEXITCODE -ne 0) { throw 'Routing hook matrix test failed' }
 
-& $node (Join-Path $pluginRoot 'tests\routing-ledger.test.cjs')
-if ($LASTEXITCODE -ne 0) { throw 'Routing ledger test failed' }
-
 & $node (Join-Path $pluginRoot 'tests\inject-routing-policy.test.cjs')
 if ($LASTEXITCODE -ne 0) { throw 'Session hook contract test failed' }
 
@@ -117,7 +110,6 @@ if ($LASTEXITCODE -ne 0) { throw 'Config guard test failed' }
   Profiles = 'PASS'
   Marketplace = $marketplaceStatus
   RoutingMatrix = 'PASS'
-  RoutingLedger = 'PASS'
   SessionContract = 'PASS'
   RoutingSkill = 'PASS'
   RadarEvidence = 'PASS'
