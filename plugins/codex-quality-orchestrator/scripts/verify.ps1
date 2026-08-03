@@ -27,6 +27,7 @@ $nodeFiles = @(
   'scripts\radar-routing-evidence.cjs',
   'tests\inject-routing-policy.test.cjs',
   'tests\routing-skill.test.cjs',
+  'tests\routing-semantics.test.cjs',
   'tests\radar-routing-evidence.test.cjs',
   'tests\enforce-agent-routing.test.cjs',
   'tests\continue-capacity-subagent.test.cjs'
@@ -88,6 +89,9 @@ if ($LASTEXITCODE -ne 0) { throw 'Session hook contract test failed' }
 
 & $node (Join-Path $pluginRoot 'tests\routing-skill.test.cjs')
 if ($LASTEXITCODE -ne 0) { throw 'Routing skill trigger contract test failed' }
+
+& $node (Join-Path $pluginRoot 'tests\routing-semantics.test.cjs')
+if ($LASTEXITCODE -ne 0) { throw 'Routing semantic contract test failed' }
 
 & $node (Join-Path $pluginRoot 'tests\radar-routing-evidence.test.cjs')
 if ($LASTEXITCODE -ne 0) { throw 'Radar routing evidence test failed' }

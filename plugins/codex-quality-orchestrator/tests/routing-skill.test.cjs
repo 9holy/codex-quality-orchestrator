@@ -14,34 +14,38 @@ for (const text of ['multi-step implementation', 'cross-file changes', 'located 
   assert.match(skill, new RegExp(text));
 }
 for (const text of [
-  'Luna Max can reliably complete',
   'MUST choose `luna_worker`',
-  'when Luna capability is uncertain, keep the unit on Sol',
-  'lowest capable Terra effort',
-  "Sol MUST inspect the Worker's actual result or diff",
+  'Never trial uncertain work on Luna',
+  'Luna being unsuitable never selects Terra',
+  'Use Radar once at most per root task',
+  'Freeze each route',
+  'Sol MUST inspect every Worker result or diff',
   'Preserve the root model and reasoning effort',
   'For homogeneous batches, verify one unit, fill host capacity, and replace completed Workers',
-  'While Workers run, use one long blocking wait; never poll',
+  'Use one blocking wait; never poll',
   'No task-wide cumulative cap',
+  'Selected model is at capacity. Please try a different model.',
 ]) assert.match(rule, new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
 
 assert.match(skill, /For `spawn_agent`, always pass `agent_type`, `task_name`, and `fork_turns`/);
 assert.match(skill, /Default to `fork_turns:"none"`/);
-assert.match(skill, /Also pass `reasoning_effort` for `terra_worker`/);
+assert.match(skill, /Pass `reasoning_effort` for `terra_worker`/);
 assert.match(skill, /Never pass `model` for a named agent/);
 assert.match(skill, /\[CQO_WORK_PACKET_V1\]/);
-for (const field of ['route:', 'goal:', 'scope:', 'acceptance:']) assert.match(skill, new RegExp(field));
+for (const field of ['route:', 'goal:', 'scope:', 'acceptance:', 'fallback:']) assert.match(skill, new RegExp(field));
 assert.match(skill, /node \.\.\/\.\.\/scripts\/radar-routing-evidence\.cjs/);
+assert.match(skill, /do not run it again/);
+assert.match(skill, /Freeze the selected route/);
 assert.match(skill, /call `wait_agent` once with `timeout_ms:3600000`/);
 assert.match(skill, /Never poll `list_agents` or repeat short waits/);
 assert.match(skill, /verify one unit, then fill host capacity and replace completed Workers/);
 assert.doesNotMatch(skill, /two or three|never exceed three/);
 assert.doesNotMatch(rule, /two or three|never exceed three/);
-assert.doesNotMatch(skill, /Ledger|wave|slot|attempt|fallback/);
+assert.doesNotMatch(skill, /Ledger|wave|slot|attempt/);
 assert.ok(Buffer.from(skill).every((byte) => byte < 128));
 assert.ok(Buffer.from(rule).every((byte) => byte < 128));
-assert.ok(Buffer.byteLength(skill, 'utf8') < 2400);
-assert.ok(Buffer.byteLength(rule, 'utf8') < 2200);
+assert.ok(Buffer.byteLength(skill, 'utf8') < 3400);
+assert.ok(Buffer.byteLength(rule, 'utf8') < 2400);
 assert.match(metadata, /allow_implicit_invocation: true/);
 assert.match(metadata, /\$codex-quality-routing-team/);
 process.stdout.write('PASS concise semantic routing and minimal worker packet\n');

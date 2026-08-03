@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0 - 2026-08-04
+
+- Restore the complete quality-first routing baseline after the 0.4 simplification: Sol owns decisions and integration, Luna Max remains the mandatory first capable Worker, and Luna unsuitability no longer selects Terra automatically.
+- Add a lightweight in-context plan with unit ownership, dependencies, acceptance, integration order, one-time Radar evidence, and frozen per-unit routes without restoring a ledger or fixed task limits.
+- Add requirement traceability and semantic regression checks for Luna trial dispatch, automatic Terra promotion, repeated Radar selection, and contradictory documentation.
+- Keep the existing three minimal Hooks, host-capacity scaling, passive waits, one-shot capacity continuation, named-agent profiles, and configuration guard unchanged.
+
 ## 0.4.2 - 2026-08-03
 
 - Use one long native agent wait that wakes early on Worker updates instead of polling agent status or repeating short waits.
