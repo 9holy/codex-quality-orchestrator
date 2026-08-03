@@ -6,7 +6,7 @@ description: Apply quality-first Sol, Luna, and Terra routing to non-short work 
 # Codex Quality Routing Team
 
 1. Follow Rule 16 already present in context. If it is missing, read `../../references/RULE16.md`. Do not start a team or claim Sol control when the root agent is not `gpt-5.6-sol`.
-2. List bounded, independently verifiable work units, then apply Rule 16 to each. Before the first dispatch, read `../../routing-policy.json` once. Normally use one Worker; use two or three only for independent units with no write conflict and a real parallel benefit.
+2. List bounded, independently verifiable work units, then apply Rule 16 to each. Before the first dispatch, read `../../routing-policy.json` once. Normally use one Worker. Parallelize only independent, write-safe units with real benefit. For a large homogeneous batch, verify one representative unit before scaling to host-available concurrency and continue with more units as needed.
 3. For `spawn_agent`, always pass `agent_type`, `task_name`, and `fork_turns`. Default to `fork_turns:"none"`; use a positive integer string only when inherited context is necessary. Also pass `reasoning_effort` for `terra_worker`. Never pass `model` for a named agent.
 4. Name tasks `<route>__<unit>`, for example `luna_max__update_tests`. Use this minimal nonempty message and state every allowed read/write path in `scope`:
 

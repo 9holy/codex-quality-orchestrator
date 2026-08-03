@@ -15,7 +15,7 @@ routing = (ROOT / "skills" / "codex-quality-routing-team" / "SKILL.md").read_tex
 
 base_version = manifest["version"].partition("+codex.")[0]
 assert manifest["name"] == "codex-quality-orchestrator"
-assert base_version == policy["policyVersion"] == "0.4.0"
+assert base_version == policy["policyVersion"] == "0.4.1"
 assert policy["schemaVersion"] == 6
 assert set(policy) == {
     "schemaVersion", "policyVersion", "toolNames", "workPacket",
@@ -55,6 +55,9 @@ for agent_type, config in policy["namedAgents"].items():
 assert "Luna Max can reliably complete" in rule
 assert "MUST choose `luna_worker`" in rule
 assert "Preserve the root model and reasoning effort" in rule
+assert "For large homogeneous batches, verify one unit, then use host-available concurrency" in rule
+assert "No task-wide Worker, batch, or attempt cap" in rule
+assert "two or three" not in rule and "never exceed three" not in rule
 assert "[CQO_WORK_PACKET_V1]" not in rule
 assert "[CQO_WORK_PACKET_V1]" in routing
 assert "sole semantic routing rule" in maintenance

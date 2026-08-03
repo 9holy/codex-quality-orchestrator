@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.1 - 2026-08-03
+
+- Replace the fixed three-Worker ceiling with host-capacity-aware concurrency for verified homogeneous batches.
+- Keep one Worker as the default, require independent write-safe units for parallel work, and remove task-wide Worker, batch, and attempt caps without weakening per-unit failure controls.
+
 ## 0.4.0 - 2026-08-03
 
 - Rebuild routing around three small Hooks: conditional Rule 16 loading, CQO-only visible call validation, and one exact in-place capacity continuation.
