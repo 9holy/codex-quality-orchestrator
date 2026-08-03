@@ -19,6 +19,9 @@ $hookIds = @(
   "$pluginId`:hooks/hooks.json:session_start:0:0",
   "$pluginId`:hooks/hooks.json:subagent_stop:0:0"
 )
+$retiredHookIds = @(
+  "$pluginId`:hooks/hooks.json:subagent_start:0:0"
+)
 
 function Resolve-CodexHome {
   param([string]$Value)
@@ -202,6 +205,18 @@ function Set-TomlSectionValue {
   return $Text.Substring(0, $header.Index) + $updated + $Text.Substring($sectionEnd)
 }
 
+function Remove-TomlSection {
+  param([string]$Text, [string]$HeaderPattern)
+  $headers = [regex]::Matches($Text, $HeaderPattern)
+  if ($headers.Count -gt 1) { throw "Duplicate TOML section matching $HeaderPattern" }
+  if ($headers.Count -eq 0) { return $Text }
+
+  $header = $headers[0]
+  $nextHeader = ([regex]'(?m)^\[[^\r\n]+\]\s*$').Match($Text, $header.Index + $header.Length)
+  $sectionEnd = if ($nextHeader.Success) { $nextHeader.Index } else { $Text.Length }
+  return $Text.Remove($header.Index, $sectionEnd - $header.Index)
+}
+
 function Test-PluginRegistration {
   if (-not (Test-Path -LiteralPath $script:configPath -PathType Leaf)) { return $false }
   $text = [IO.File]::ReadAllText($script:configPath, [Text.UTF8Encoding]::new($false))
@@ -222,6 +237,12 @@ function Merge-ManagedConfig {
     $text = Set-TomlSectionValue -Text $text `
       -HeaderPattern ('(?m)^\[plugins\.' + $quotedPluginId + '\]\s*$') `
       -CanonicalHeader "[plugins.`"$pluginId`"]" -Key 'enabled' -Value 'true'
+    foreach ($retiredHookId in $retiredHookIds) {
+      $escapedId = [regex]::Escape($retiredHookId)
+      $quotedId = '(?:"' + $escapedId + '"|' + "'" + $escapedId + "'" + ')'
+      $text = Remove-TomlSection -Text $text `
+        -HeaderPattern ('(?m)^\[hooks\.state\.' + $quotedId + '\]\s*$')
+    }
     foreach ($record in $TrustedHooks) {
       $escapedId = [regex]::Escape([string]$record.id)
       $quotedId = '(?:"' + $escapedId + '"|' + "'" + $escapedId + "'" + ')'

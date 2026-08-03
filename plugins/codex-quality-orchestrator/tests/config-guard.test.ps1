@@ -39,12 +39,14 @@ $pluginId = 'codex-quality-orchestrator@codex-quality-orchestrator'
 $preId = "$pluginId`:hooks/hooks.json:pre_tool_use:0:0"
 $sessionId = "$pluginId`:hooks/hooks.json:session_start:0:0"
 $subagentId = "$pluginId`:hooks/hooks.json:subagent_stop:0:0"
+$retiredSubagentStartId = "$pluginId`:hooks/hooks.json:subagent_start:0:0"
 $watchProcess = $null
 $runningOnWindows = [Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
 
 try {
   New-Item -ItemType Directory -Path $guardDir -Force | Out-Null
-  [IO.File]::WriteAllText($configPath, "model = `"gpt-5.6-sol`"`n", [Text.UTF8Encoding]::new($false))
+  $initialConfig = "model = `"gpt-5.6-sol`"`n`n[hooks.state.`"$retiredSubagentStartId`"]`ntrusted_hash = `"sha256:$('d' * 64)`"`nenabled = true`n"
+  [IO.File]::WriteAllText($configPath, $initialConfig, [Text.UTF8Encoding]::new($false))
   $state = [ordered]@{
     schemaVersion = 1
     pluginId = $pluginId
@@ -127,6 +129,7 @@ throw "Unexpected fake codex call: $($Args -join ' ')"
   Assert-True $config.Contains($preId) 'PreToolUse trust was not restored'
   Assert-True $config.Contains($sessionId) 'SessionStart trust was not restored'
   Assert-True $config.Contains($subagentId) 'SubagentStop trust was not restored'
+  Assert-True (-not $config.Contains($retiredSubagentStartId)) 'Retired SubagentStart trust was not removed'
   Assert-True $config.Contains('model = "gpt-5.6-sol"') 'Managed configuration restoration replaced existing config'
 
   $config = $config.Replace("[hooks.state.`"$preId`"]", "[hooks.state.'$preId']")
@@ -150,7 +153,7 @@ name = "Cockpit Local Access"
 base_url = "http://127.0.0.1:12345/v1"
 wire_api = "responses"
 '@
-  $cockpitConfig = $cockpitPrefix + "`n`n[hooks.state.`"$subagentId`"]`ntrusted_hash = `"sha256:$('e' * 64)`"`n"
+  $cockpitConfig = $cockpitPrefix + "`n`n[hooks.state.`"$retiredSubagentStartId`"]`ntrusted_hash = `"sha256:$('d' * 64)`"`n`n[hooks.state.`"$subagentId`"]`ntrusted_hash = `"sha256:$('e' * 64)`"`n"
   [IO.File]::WriteAllText($configPath, $cockpitConfig, [Text.UTF8Encoding]::new($false))
   $cockpitRepair = ((& $guardScript -Mode Repair -CodexHome $codexHome -CodexCommand $fakeCodex) -join [Environment]::NewLine) | ConvertFrom-Json
   Assert-True $cockpitRepair.Healthy 'Cockpit replacement was not repaired'
@@ -158,6 +161,7 @@ wire_api = "responses"
   Assert-True $cockpitAfter.StartsWith($cockpitPrefix) 'Cockpit provider configuration was changed'
   Assert-True $cockpitAfter.Contains("trusted_hash = `"sha256:$('c' * 64)`"") 'Stale Hook trust was not replaced with the approved hash'
   Assert-True (-not $cockpitAfter.Contains("sha256:$('e' * 64)")) 'Stale Hook trust remained after repair'
+  Assert-True (-not $cockpitAfter.Contains($retiredSubagentStartId)) 'Retired Hook trust remained after Cockpit repair'
   Assert-True $cockpitAfter.Contains('[plugins."codex-quality-orchestrator@codex-quality-orchestrator"]') 'Plugin registration was not restored after Cockpit replacement'
 
   $legacyState = $validState | ConvertFrom-Json
@@ -273,7 +277,7 @@ wire_api = "responses"
   & $guardScript -Mode Uninstall -CodexHome $codexHome -CodexCommand $fakeCodex -StartupDirectory $startupDir | Out-Null
   Assert-True ($null -ne (Get-Process -Id $PID -ErrorAction SilentlyContinue)) 'Uninstall killed a PID-reused unrelated process'
 
-  Write-Output 'PASS Cockpit-safe merge, approved stale-trust replacement, marketplace ref recovery, retrying Watch mode, and idempotency'
+  Write-Output 'PASS Cockpit-safe merge, retired Hook cleanup, approved trust restoration, marketplace recovery, retrying Watch mode, and idempotency'
 } finally {
   if ($null -ne $watchProcess -and -not $watchProcess.HasExited) {
     $watchProcess | Stop-Process -Force -ErrorAction SilentlyContinue
