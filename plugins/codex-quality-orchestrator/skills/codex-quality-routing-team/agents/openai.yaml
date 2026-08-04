@@ -1,6 +1,6 @@
 interface:
   display_name: "Codex 质量路由团队"
-  short_description: "Sol 拆解，Luna 优先执行，Sol 最终验收"
+  short_description: "Sol 拆解，按判断负荷分派，Sol 最终验收"
   default_prompt: "使用 $codex-quality-routing-team 拆分并路由这个任务，由 Sol 最终验收。"
 policy:
   allow_implicit_invocation: true

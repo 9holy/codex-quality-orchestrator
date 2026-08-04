@@ -15,8 +15,8 @@ routing = (ROOT / "skills" / "codex-quality-routing-team" / "SKILL.md").read_tex
 
 base_version = manifest["version"].partition("+codex.")[0]
 assert manifest["name"] == "codex-quality-orchestrator"
-assert base_version == policy["policyVersion"] == "0.5.0"
-assert policy["schemaVersion"] == 6
+assert base_version == policy["policyVersion"] == "0.6.0"
+assert policy["schemaVersion"] == 7
 assert set(policy) == {
     "schemaVersion", "policyVersion", "toolNames", "workPacket",
     "capacityRecovery", "radarEvidence", "namedAgents", "retiredProfiles", "forkTurns",
@@ -25,14 +25,15 @@ assert "team" not in policy and "sol" not in policy
 assert "allowedFallbacks" not in json.dumps(policy)
 assert "maxWorkerAttempts" not in json.dumps(policy)
 assert policy["workPacket"] == {
-    "hostVisibleTaskNamePattern": "^(luna_max|terra_(?:xhigh|max|ultra)|sol_reviewer_xhigh)__([a-z0-9][a-z0-9_]{1,47})$",
+    "hostVisibleTaskNamePattern": "^(luna_max|sol_medium|terra_(?:xhigh|max|ultra)|sol_reviewer_xhigh)__([a-z0-9][a-z0-9_]{1,47})$",
     "hostVisibleTaskNameExample": "luna_max__unit_name",
 }
 assert policy["capacityRecovery"] == {
     "message": "Selected model is at capacity. Please try a different model.",
     "automaticContinuationPrompt": "继续",
 }
-assert set(policy["namedAgents"]) == {"luna_worker", "terra_worker", "sol_reviewer"}
+assert set(policy["namedAgents"]) == {"luna_worker", "sol_medium_worker", "terra_worker", "sol_reviewer"}
+assert policy["namedAgents"]["sol_medium_worker"]["fixedEffort"] == "medium"
 assert policy["namedAgents"]["terra_worker"]["allowedEfforts"] == ["xhigh", "max", "ultra"]
 assert set(hooks["hooks"]) == {"SessionStart", "PreToolUse", "SubagentStop"}
 assert "SubagentStart" not in hooks["hooks"]
@@ -54,7 +55,8 @@ for agent_type, config in policy["namedAgents"].items():
 
 assert "MUST choose `luna_worker`" in rule
 assert "Never trial uncertain work on Luna" in rule
-assert "Luna being unsuitable never selects Terra" in rule
+assert "use `sol_medium_worker` for bounded, moderate-judgment" in rule
+assert "deep reasoning alone never selects it" in rule
 assert "Use Radar once at most per root task" in rule
 assert "Freeze each route" in rule
 assert "Selected model is at capacity. Please try a different model." in rule

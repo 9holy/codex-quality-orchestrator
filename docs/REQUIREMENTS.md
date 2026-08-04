@@ -9,10 +9,10 @@
 | Q01 | 质量门槛优先；只在能可靠胜任的候选中优化总成本 | Rule 16、Routing Skill |
 | Q02 | 当前 Sol 保持根模型和档位，负责规划、拆解、所有权、整合、验收、裁决和兜底 | Rule 16 |
 | Q03 | 清晰、低风险、可直接验证的短任务由当前主代理处理 | Rule 16 |
-| Q04 | Luna Max 能可靠完成且下派有净收益时必须第一优先 | Rule 16、Policy |
+| Q04 | 冻结、低判断、可机械验证的单元若 Luna Max 能可靠完成且下派有净收益，必须第一优先 | Rule 16、Policy |
 | Q05 | 不把 Luna 用作试错、草稿或先做后修模型，不为调用 Luna 强拆模糊、耦合或高风险决策 | Rule 16 |
 | Q06 | 高风险决策留给 Sol；边界和验收冻结后，其中安全的证据或执行单元仍可下派 | Rule 16 |
-| Q07 | Luna 不适用不等于选择 Terra；先比较当前 Sol 与能胜任的 Terra，Terra 仅在有明确优势时使用最低可靠档 | Rule 16、Routing Skill |
+| Q07 | Luna 不适用后，适合独立下派的常规判断单元优先 Sol Medium；Terra 仅在相对合格 Sol Medium 或当前 Sol 有明确任务优势时使用最低可靠档 | Rule 16、Routing Skill |
 | Q08 | Terra 支持 XHigh、Max、Ultra；Sol Reviewer 固定 XHigh 只读且仅用于关键高风险独立复审 | Policy、代理模板 |
 | Q09 | 保持当前 Sol 根档位；Medium、High、XHigh、Max、Ultra 的用途只作选择任务档位或下一任务建议，不在运行中改写根档位 | 路由矩阵 |
 | Q10 | IQ 差至少 3 才因质量换高 IQ；同级先保留热模型或原代理，再比较预计总成本 | Rule 16、Radar |
@@ -34,14 +34,14 @@
 
 | 编号 | 不可丢失的要求 | 落点 |
 |---|---|---|
-| M01 | Luna 固定 Max；Terra 调用时选 XHigh/Max/Ultra；具名代理不传 `model` | Policy、Hook |
+| M01 | Luna 固定 Max；Sol Worker 固定 Medium；Terra 调用时选 XHigh/Max/Ultra；具名代理不传 `model` | Policy、Hook |
 | M02 | `task_name` 明文显示预期代理和档位，`fork_turns` 显式为 `none` 或正整数字符串 | Policy、Hook |
 | M03 | 工作包冻结目标、范围、路径所有权、验收和回到当前 Sol 的接管方式 | Routing Skill |
 | M04 | 精确容量消息只让同一代理在原上下文继续一次，不重启或重做；第二次交回 Sol 重新路由 | Rule 16、SubagentStop Hook |
 | M05 | 禁止静默降级；任务名、工作包和代理自述不能单独证明实际后台模型 | 维护 Skill、README |
 | M06 | 只保留 SessionStart、PreToolUse、SubagentStop 三个最小 Hook，不恢复 Ledger、固定并发或累计尝试上限 | Hook、Policy |
 | M07 | 配置守护只恢复插件注册和已批准 Hook 哈希，保留 Cockpit、CC Switch 写入的认证、Provider、端点和模型配置 | Config Guard |
-| M08 | 不创建执行型 Sol 子代理；只允许一个关键高风险只读 Reviewer | Rule 16 |
+| M08 | 只允许执行型 `sol_medium_worker` 和关键高风险只读 `sol_reviewer` 两种 Sol 子代理 | Rule 16、Policy |
 
 ## 明确排除
 

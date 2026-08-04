@@ -53,13 +53,15 @@ function expectDeny(name, input, options) {
 
 function label(agentType, effort) {
   if (agentType === 'luna_worker') return 'luna_max';
+  if (agentType === 'sol_medium_worker') return 'sol_medium';
   if (agentType === 'terra_worker') return `terra_${effort}`;
   return 'sol_reviewer_xhigh';
 }
 
 function workerInput(agentType, overrides = {}) {
   const effort = overrides.reasoning_effort ?? (
-    agentType === 'terra_worker' ? 'xhigh' : agentType === 'luna_worker' ? 'max' : 'xhigh'
+    agentType === 'terra_worker' ? 'xhigh' : agentType === 'luna_worker' ? 'max' :
+      agentType === 'sol_medium_worker' ? 'medium' : 'xhigh'
   );
   const input = {
     agent_type: agentType,
@@ -78,6 +80,7 @@ try {
   installProfiles();
 
   expectAllow('luna-max', workerInput('luna_worker'));
+  expectAllow('sol-medium', workerInput('sol_medium_worker'));
   expectAllow('reviewer-xhigh', workerInput('sol_reviewer'));
   for (const effort of ['xhigh', 'max', 'ultra']) {
     expectAllow(`terra-${effort}`, workerInput('terra_worker', {
@@ -102,6 +105,7 @@ try {
   expectDeny('fork-all', workerInput('luna_worker', { fork_turns: 'all' }));
   expectDeny('model-override', workerInput('luna_worker', { model: 'gpt-5.6-luna' }));
   expectDeny('luna-effort-override', workerInput('luna_worker', { reasoning_effort: 'xhigh' }));
+  expectDeny('sol-medium-effort-override', workerInput('sol_medium_worker', { reasoning_effort: 'high' }));
   expectDeny('reviewer-effort-override', workerInput('sol_reviewer', { reasoning_effort: 'max' }));
   expectDeny('terra-high', workerInput('terra_worker', { reasoning_effort: 'high' }));
   expectDeny('bad-task-name', workerInput('luna_worker', { task_name: 'plain_name' }));

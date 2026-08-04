@@ -75,6 +75,7 @@ function selectedEffort(input, agentType, config) {
 
 function routeLabel(agentType, effort) {
   if (agentType === 'luna_worker') return 'luna_max';
+  if (agentType === 'sol_medium_worker') return 'sol_medium';
   if (agentType === 'terra_worker') return `terra_${effort}`;
   return 'sol_reviewer_xhigh';
 }

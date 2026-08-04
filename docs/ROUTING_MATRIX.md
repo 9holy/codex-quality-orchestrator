@@ -2,7 +2,7 @@
 
 ## 主控
 
-当前 `gpt-5.6-sol` 负责理解、拆解、分派、整合、验收和兜底。插件保持任务创建时已经选择的根档位，不自动把 Medium、High、XHigh、Max 或 Ultra 相互切换，也不创建执行型 Sol 子代理。
+当前 `gpt-5.6-sol` 负责理解、拆解、分派、整合、验收和兜底。插件保持任务创建时已经选择的根档位，不自动把 Medium、High、XHigh、Max 或 Ultra 相互切换。
 
 | 根档位 | 合理用途 |
 |---|---|
@@ -16,8 +16,9 @@
 
 | 代理 | 固定模型 | 档位 | 使用条件 |
 |---|---|---|---|
-| `luna_worker` | `gpt-5.6-luna` | `max` | 目标、范围和验收明确，Luna 能可靠独立完成；满足时第一优先 |
-| `terra_worker` | `gpt-5.6-terra` | `xhigh/max/ultra` | Luna 不适用，且相比当前 Sol 具有明确能力、上下文、并发或总成本优势；选择最低可靠档 |
+| `luna_worker` | `gpt-5.6-luna` | `max` | 决策冻结、判断负荷低、可机械验证且能可靠完成；满足时第一优先 |
+| `sol_medium_worker` | `gpt-5.6-sol` | `medium` | 边界明确、需要适度判断、可独立验证，且下派或并行有净收益 |
+| `terra_worker` | `gpt-5.6-terra` | `xhigh/max/ultra` | 相比合格 Sol Medium 或当前 Sol 有明确的任务特定优势；选择最低可靠档 |
 | `sol_reviewer` | `gpt-5.6-sol` | `xhigh` | 关键高风险变更的一次只读复审 |
 
 Worker 不得越过工作包范围、做无关修改或创建子代理。目标或验收不清楚时停止猜测并交还 Sol。所有 Worker 结果都由当前 Sol 验收。
@@ -26,13 +27,14 @@ Worker 不得越过工作包范围、做无关修改或创建子代理。目标�
 
 1. 短任务由当前主代理完成。
 2. 非短任务先形成轻量计划，固定单元、路径所有权、依赖、验收和集成顺序。
-3. 逐单元先判断 Luna Max 是否可靠胜任。
-4. Luna 胜任就直接使用，不读取 Radar，也不上调 Terra 或 Sol 子代理。
-5. Luna 不适用时默认保留当前 Sol；只有合格 Terra 确有优势时使用其最低可靠档。
-6. 当前 Sol 与多个 Terra 路由都合格但难以选择时，一个根任务只读取一次 Radar；IQ 差小于 3 时先保留热模型或原代理，再比较预计总成本。
-7. 路由确定后冻结；只有单元、边界、可用性或结果变化时重判，不重复读取 Radar。
-8. 关键高风险变更需要独立性时增加一次只读 Reviewer。
-9. Sol 检查实际差异、复跑验证并作最终裁决。
+3. 逐单元先判断它是否属于冻结、低判断、可机械验证的 Luna 工作。
+4. Luna 可靠胜任就直接使用，不读取 Radar。
+5. Luna 不适用时，需要适度判断且适合独立下派的单元优先 Sol Medium；耦合、顺序或无并行收益的工作留给当前 Sol。
+6. Terra 不是升级层；只有存在明确的质量、上下文、并发或总成本优势时才选。深推理本身不是理由。
+7. 多个合格 Sol/Terra 路由仍难以选择时，一个根任务只读取一次 Radar；IQ 差小于 3 时先保留热模型或原代理，再比较预计总成本。
+8. 路由确定后冻结；只有单元、边界、可用性或结果变化时重判，不重复读取 Radar。
+9. 关键高风险变更需要独立性时增加一次只读 Reviewer。
+10. Sol 检查实际差异、复跑验证并作最终裁决。
 
 ## 并行
 
@@ -42,6 +44,7 @@ Worker 不得越过工作包范围、做无关修改或创建子代理。目标�
 
 ```text
 luna_worker: agent_type + task_name(luna_max__unit) + fork_turns
+sol_medium_worker: agent_type + task_name(sol_medium__unit) + fork_turns
 terra_worker: agent_type + reasoning_effort(xhigh|max|ultra) + task_name(terra_<effort>__unit) + fork_turns
 sol_reviewer: agent_type + task_name(sol_reviewer_xhigh__unit) + fork_turns
 ```

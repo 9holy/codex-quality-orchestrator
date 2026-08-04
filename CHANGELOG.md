@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0
+
+- Restrict Luna Max to frozen, low-judgment work with mechanical verification.
+- Add a fixed Sol Medium Worker for bounded, independently verifiable work that needs moderate judgment and benefits from delegation or parallelism.
+- Make Terra a task-specific advantage route rather than a deep-reasoning escalation step.
+
 ## 0.5.0 - 2026-08-04
 
 - Restore the complete quality-first routing baseline after the 0.4 simplification: Sol owns decisions and integration, Luna Max remains the mandatory first capable Worker, and Luna unsuitability no longer selects Terra automatically.

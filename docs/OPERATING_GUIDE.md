@@ -4,12 +4,13 @@
 
 1. 短任务由当前主代理直接完成。
 2. 非短任务由当前 Sol 形成轻量内存计划，列出单元、目标、路径所有权、依赖、验收和集成顺序。
-3. Luna Max 能可靠完成且下派有净收益时必须优先使用 Luna；不能把能力不确定的工作交给 Luna 试做。
-4. Luna 不适用时默认由当前 Sol 处理。只有独立单元在能力、上下文、并发或预计总成本上由 Terra 明显占优时，才选择 Terra 最低可靠档。
-5. 路由选择在当前根任务内冻结。单元、边界、可用性或结果不变时不重判。
-6. 通常使用一个 Worker；仅互不依赖、写入不冲突且确有收益的单元并行。大量同质批处理先验收一个代表性单元，再填满宿主可用容量，完成一个就补充一个；不设置任务级累计上限。
-7. Worker 运行且 Sol 没有可独立推进的工作时，使用一次最长一小时的原生阻塞等待；结果、失败或求助会提前唤醒，禁止主动轮询和重复短等待。
-8. Sol 按计划顺序检查实际差异、复跑必要验证、整合并作最终裁决。
+3. 仅当工作决策已冻结、判断负荷低、可机械验证且 Luna Max 能可靠完成时优先使用 Luna；不能交给 Luna 试做。
+4. Luna 不适用时，边界明确、需要适度判断且适合独立下派的单元优先使用 Sol Medium。耦合、顺序或无并行收益的工作留给当前 Sol。
+5. Terra 只在具体任务上相比合格 Sol Medium 或当前 Sol 有明确质量、上下文、并发或总成本优势时使用最低可靠档；深推理本身不选择 Terra。
+6. 路由选择在当前根任务内冻结。单元、边界、可用性或结果不变时不重判。
+7. 通常使用一个 Worker；仅互不依赖、写入不冲突且确有收益的单元并行。大量同质批处理先验收一个代表性单元，再填满宿主可用容量，完成一个就补充一个；不设置任务级累计上限。
+8. Worker 运行且 Sol 没有可独立推进的工作时，使用一次最长一小时的原生阻塞等待；结果、失败或求助会提前唤醒，禁止主动轮询和重复短等待。
+9. Sol 按计划顺序检查实际差异、复跑必要验证、整合并作最终裁决。
 
 架构、安全、公共接口、生产数据、不可逆操作、模糊需求和根因未定的决策不为了节省成本强行下派；边界和验收明确后，其中安全的证据或执行单元仍可下派。关键高风险变更需要独立复审时，才使用一次只读 `sol_reviewer`。
 
@@ -24,12 +25,13 @@ route: <model> / <effort>
 接管: 失败时回到当前 Sol，保留已完成工作
 ```
 
-默认 `fork_turns:"none"`；只有 Worker 确实需要少量历史上下文时才传正整数字符串。调用具名代理时不传 `model`。Terra 必须显式传 `xhigh`、`max` 或 `ultra`；Luna 和 Reviewer 的档位由 TOML 固定。
+默认 `fork_turns:"none"`；只有 Worker 确实需要少量历史上下文时才传正整数字符串。调用具名代理时不传 `model`。Terra 必须显式传 `xhigh`、`max` 或 `ultra`；Luna、Sol Medium 和 Reviewer 的档位由 TOML 固定。
 
 宿主会加密工作包正文后再交给 PreToolUse，因此 Hook 不解析 `message` 内容。Sol 负责工作包语义；Hook 通过下面的明文任务名校验实际代理和档位：
 
 ```text
 luna_max__unit_name
+sol_medium__unit_name
 terra_xhigh__unit_name
 terra_max__unit_name
 terra_ultra__unit_name
@@ -44,11 +46,11 @@ sol_reviewer_xhigh__unit_name
 
 ### PreToolUse
 
-只在调用 `luna_worker`、`terra_worker` 或 `sol_reviewer` 时检查：
+只在调用 `luna_worker`、`sol_medium_worker`、`terra_worker` 或 `sol_reviewer` 时检查：
 
 - 代理配置是否存在并固定正确模型
 - Terra 档位是否为 `xhigh/max/ultra`
-- Luna 和 Reviewer 是否被非法覆盖档位
+- Luna、Sol Medium 和 Reviewer 是否被非法覆盖档位
 - 是否传入 `model`
 - `fork_turns` 是否有效
 - 可见任务名是否与代理和实际档位一致
@@ -67,7 +69,7 @@ Selected model is at capacity. Please try a different model.
 
 ## 4. Radar
 
-Luna 适用、候选唯一或 Sol 判断明确时不运行 Radar。仅 Luna 不适用且当前 Sol 与多个 Terra 路由都能胜任时，在一个根任务内运行一次：
+Luna 适用、候选唯一或 Sol 判断明确时不运行 Radar。仅多个合格 Sol/Terra 路由仍难以选择时，在一个根任务内运行一次：
 
 ```powershell
 node <plugin-root>\scripts\radar-routing-evidence.cjs
@@ -77,7 +79,7 @@ node <plugin-root>\scripts\radar-routing-evidence.cjs
 
 ## 5. 安装与升级
 
-运行 `scripts/install.ps1` 安装三个代理配置和 Rule 16。安装器先获取锁，再检查所有目标；冲突时默认停止，`-Force` 才会在备份后替换。代理备份使用 `.toml.bak`，不会被 Codex 当成第二个角色加载。
+运行 `scripts/install.ps1` 安装四个代理配置和 Rule 16。安装器先获取锁，再检查所有目标；冲突时默认停止，`-Force` 才会在备份后替换。代理备份使用 `.toml.bak`，不会被 Codex 当成第二个角色加载。
 
 升级后必须重新审核三个 Hook，因为可信哈希随实现变化。旧任务不会自动加载新 Skill 和代理定义，应新建任务验证。
 
@@ -98,7 +100,7 @@ node <plugin-root>\scripts\radar-routing-evidence.cjs
 - 完整 `verify.ps1` 通过
 - 临时 `CODEX_HOME` 中安装、重复安装和冲突恢复通过
 - Cockpit 风格配置整体替换后，非插件配置保持不变且三个 Hook 恢复
-- 当前安装只有三个唯一角色和三个可信 Hook
+- 当前安装只有四个唯一角色和三个可信 Hook
 - 真实 SessionStart 宿主烟雾测试通过
 - 至少一次 Luna Max 主线路由在 Codex 使用记录中可核对
 

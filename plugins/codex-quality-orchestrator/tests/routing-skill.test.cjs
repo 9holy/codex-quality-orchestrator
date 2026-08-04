@@ -16,7 +16,8 @@ for (const text of ['multi-step implementation', 'cross-file changes', 'located 
 for (const text of [
   'MUST choose `luna_worker`',
   'Never trial uncertain work on Luna',
-  'Luna being unsuitable never selects Terra',
+  'use `sol_medium_worker` for bounded, moderate-judgment',
+  'deep reasoning alone never selects it',
   'Use Radar once at most per root task',
   'Freeze each route',
   'Sol MUST inspect every Worker result or diff',
@@ -30,6 +31,7 @@ for (const text of [
 assert.match(skill, /For `spawn_agent`, always pass `agent_type`, `task_name`, and `fork_turns`/);
 assert.match(skill, /Default to `fork_turns:"none"`/);
 assert.match(skill, /Pass `reasoning_effort` for `terra_worker`/);
+assert.match(skill, /prefer `sol_medium_worker`/);
 assert.match(skill, /Never pass `model` for a named agent/);
 assert.match(skill, /\[CQO_WORK_PACKET_V1\]/);
 for (const field of ['route:', 'goal:', 'scope:', 'acceptance:', 'fallback:']) assert.match(skill, new RegExp(field));

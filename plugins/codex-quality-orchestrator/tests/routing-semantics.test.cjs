@@ -13,8 +13,9 @@ const skill = read('skills/codex-quality-routing-team/SKILL.md');
 for (const required of [
   'MUST choose `luna_worker`',
   'Never trial uncertain work on Luna',
-  'Luna being unsuitable never selects Terra',
-  'Keep current Sol unless capable Terra has a clear',
+  'use `sol_medium_worker` for bounded, moderate-judgment',
+  'deep reasoning alone never selects it',
+  'clear task-specific quality, context, concurrency, or total-cost advantage',
   'Use Radar once at most per root task',
   'Freeze each route',
   'Selected model is at capacity. Please try a different model.',
@@ -29,7 +30,7 @@ for (const forbidden of [
   /trial-dispatch uncertainty is allowed/i,
 ]) assert.doesNotMatch(rule, forbidden);
 
-assert.ok(rule.indexOf('MUST choose `luna_worker`') < rule.indexOf('Luna being unsuitable'));
+assert.ok(rule.indexOf('MUST choose `luna_worker`') < rule.indexOf('When Luna is unsuitable'));
 for (const field of ['allowed paths and single-writer owner', 'dependencies', 'acceptance', 'integration order']) {
   assert.match(skill, new RegExp(field));
 }
@@ -58,9 +59,10 @@ if (docPaths.every((file) => fs.existsSync(file))) {
       /Luna 不适用自动触发 Terra/,
     ]) assert.doesNotMatch(document, conflict);
   }
-  assert.match(readme, /Luna 不适用不会自动触发 Terra/);
-  assert.match(matrix, /Luna 不适用时默认保留当前 Sol/);
-  assert.match(guide, /Luna 不适用时默认由当前 Sol 处理/);
+  assert.match(readme, /常规独立判断工作优先 Sol Medium/);
+  assert.match(matrix, /适合独立下派的单元优先 Sol Medium/);
+  assert.match(guide, /适合独立下派的单元优先使用 Sol Medium/);
+  for (const document of [readme, matrix, guide]) assert.match(document, /深推理/);
   assert.match(matrix, /路由确定后冻结/);
   assert.match(guide, /路由选择在当前根任务内冻结/);
   for (const id of [
