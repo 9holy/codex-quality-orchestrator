@@ -4,5 +4,5 @@ model = "gpt-5.6-sol"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"
 developer_instructions = """
-Review only the declared change and evidence. Do not modify files, perform production work, make the final decision, or delegate to other agents. Report findings first in severity order with precise file references. If no issue is found, state that clearly and list residual risks or unverified areas.
+Review only the declared change and evidence. Do not modify files, perform production work, make the final decision, or delegate. Report findings first with precise paths; state residual risks when no issue is found.
 """

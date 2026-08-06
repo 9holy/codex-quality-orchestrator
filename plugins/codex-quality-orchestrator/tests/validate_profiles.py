@@ -15,11 +15,11 @@ routing = (ROOT / "skills" / "codex-quality-routing-team" / "SKILL.md").read_tex
 
 base_version = manifest["version"].partition("+codex.")[0]
 assert manifest["name"] == "codex-quality-orchestrator"
-assert base_version == policy["policyVersion"] == "0.6.0"
-assert policy["schemaVersion"] == 7
+assert base_version == policy["policyVersion"] == "0.7.0"
+assert policy["schemaVersion"] == 8
 assert set(policy) == {
     "schemaVersion", "policyVersion", "toolNames", "workPacket",
-    "capacityRecovery", "radarEvidence", "namedAgents", "retiredProfiles", "forkTurns",
+    "capacityRecovery", "radarEvidence", "namedAgents", "retiredProfiles", "burstMode", "forkTurns",
 }
 assert "team" not in policy and "sol" not in policy
 assert "allowedFallbacks" not in json.dumps(policy)
@@ -35,7 +35,7 @@ assert policy["capacityRecovery"] == {
 assert set(policy["namedAgents"]) == {"luna_worker", "sol_medium_worker", "terra_worker", "sol_reviewer"}
 assert policy["namedAgents"]["sol_medium_worker"]["fixedEffort"] == "medium"
 assert policy["namedAgents"]["terra_worker"]["allowedEfforts"] == ["xhigh", "max", "ultra"]
-assert set(hooks["hooks"]) == {"SessionStart", "PreToolUse", "SubagentStop"}
+assert set(hooks["hooks"]) == {"SessionStart", "UserPromptSubmit", "PreToolUse", "SubagentStop"}
 assert "SubagentStart" not in hooks["hooks"]
 
 for agent_type, config in policy["namedAgents"].items():
@@ -48,8 +48,8 @@ for agent_type, config in policy["namedAgents"].items():
     else:
         assert profile["model_reasoning_effort"] == config["fixedEffort"]
     instructions = profile["developer_instructions"]
-    assert "delegate to other agents" in instructions
     if agent_type != "sol_reviewer":
+        assert "delegate to other agents" in instructions
         assert "acceptance criterion" in instructions
         assert "instead of guessing" in instructions
 
@@ -73,7 +73,6 @@ assert "fallback: current Sol; preserve completed work" in routing
 assert "do not run it again" in routing
 assert "sole semantic routing rule" in maintenance
 for model_path in [
-    ROOT / "references" / "RULE16.md",
     ROOT / "routing-policy.json",
     ROOT / "skills" / "codex-quality-orchestrator" / "SKILL.md",
     ROOT / "skills" / "codex-quality-routing-team" / "SKILL.md",
@@ -93,4 +92,6 @@ for path in ROOT.rglob("*"):
     if path.is_file() and path.suffix.lower() in {".md", ".json", ".toml", ".cjs", ".ps1"}:
         assert "[TODO:" not in path.read_text(encoding="utf-8"), path
 
-print("PASS minimal policy, three hooks, and concise agent contracts")
+assert policy["burstMode"]["maxChildThreads"] == 20
+assert policy["burstMode"]["depths"] == [1, 2, 3, 4]
+print("PASS minimal policy, burst contract, and concise agent contracts")

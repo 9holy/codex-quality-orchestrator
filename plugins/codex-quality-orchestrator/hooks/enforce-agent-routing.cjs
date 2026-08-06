@@ -80,6 +80,26 @@ function routeLabel(agentType, effort) {
   return 'sol_reviewer_xhigh';
 }
 
+function packetField(message, key) {
+  const match = message.match(new RegExp(`(?:^|\\n)\\s*${key}\\s*=\\s*([^\\s\\n]+)`, 'i'));
+  return match ? match[1].trim() : null;
+}
+
+function validateBurstPacket(message, taskName, policy) {
+  const depthMatch = taskName.match(/__d([1-4])_/);
+  const depth = packetField(message, 'burst_depth');
+  const delegate = packetField(message, 'burst_delegate');
+  if (!depthMatch && (depth !== null || delegate !== null)) return '普通任务不得携带爆种字段。';
+  if (!depthMatch) return null;
+  if (depth !== `d${depthMatch[1]}`) return `爆种任务必须声明 burst_depth=d${depthMatch[1]}。`;
+  if (delegate !== 'yes') return '爆种任务必须声明 burst_delegate=yes。';
+  if (depthMatch[1] === '4') {
+    const lower = message.toLowerCase();
+    if (/spawn_agent|collaboration\\.spawn_agent|继续派发|下派/.test(lower)) return 'd4 任务不得继续派发。';
+  }
+  return null;
+}
+
 function validate(payload, policy) {
   if (!policy.toolNames.includes(payload?.tool_name)) return;
   const input = payload.tool_input;
@@ -122,6 +142,12 @@ function validate(payload, policy) {
   }
   if (taskMatch[1] !== label) {
     deny(`task_name 的路由前缀必须是 ${label}。`);
+    return;
+  }
+
+  const burstError = validateBurstPacket(input.message, input.task_name, policy);
+  if (burstError) {
+    deny(burstError);
     return;
   }
 

@@ -22,6 +22,7 @@ foreach ($relative in $jsonFiles) {
 
 $nodeFiles = @(
   'hooks\inject-routing-policy.cjs',
+  'hooks\burst-mode.cjs',
   'hooks\enforce-agent-routing.cjs',
   'hooks\continue-capacity-subagent.cjs',
   'scripts\radar-routing-evidence.cjs',
@@ -30,7 +31,8 @@ $nodeFiles = @(
   'tests\routing-semantics.test.cjs',
   'tests\radar-routing-evidence.test.cjs',
   'tests\enforce-agent-routing.test.cjs',
-  'tests\continue-capacity-subagent.test.cjs'
+  'tests\continue-capacity-subagent.test.cjs',
+  'tests\burst-mode.test.cjs'
 )
 foreach ($relative in $nodeFiles) {
   & $node --check (Join-Path $pluginRoot $relative)
@@ -98,6 +100,9 @@ if ($LASTEXITCODE -ne 0) { throw 'Radar routing evidence test failed' }
 
 & $node (Join-Path $pluginRoot 'tests\continue-capacity-subagent.test.cjs')
 if ($LASTEXITCODE -ne 0) { throw 'Capacity continuation hook test failed' }
+
+& $node (Join-Path $pluginRoot 'tests\burst-mode.test.cjs')
+if ($LASTEXITCODE -ne 0) { throw 'Burst mode hook test failed' }
 
 & (Join-Path $pluginRoot 'tests\install.test.ps1')
 if ($LASTEXITCODE -ne 0) { throw 'Installer isolation test failed' }

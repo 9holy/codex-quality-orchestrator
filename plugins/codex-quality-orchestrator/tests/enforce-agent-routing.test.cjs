@@ -89,6 +89,12 @@ try {
     }));
   }
   expectAllow('positive-fork', workerInput('luna_worker', { fork_turns: '2' }));
+  for (const depth of [1, 2, 3, 4]) {
+    expectAllow(`burst-d${depth}`, workerInput('luna_worker', {
+      task_name: `luna_max__d${depth}_unit`,
+      message: `[CQO_WORK_PACKET_V1]\nburst_depth=d${depth}\nburst_delegate=yes`,
+    }));
+  }
   expectAllow('dotted-tool-name', workerInput('luna_worker'), { toolName: 'collaboration.spawn_agent' });
   expectAllow('double-bom', null, { raw: `\uFEFF\uFEFF${payload(workerInput('luna_worker'))}` });
 
@@ -109,6 +115,18 @@ try {
   expectDeny('reviewer-effort-override', workerInput('sol_reviewer', { reasoning_effort: 'max' }));
   expectDeny('terra-high', workerInput('terra_worker', { reasoning_effort: 'high' }));
   expectDeny('bad-task-name', workerInput('luna_worker', { task_name: 'plain_name' }));
+  expectDeny('burst-missing-depth', workerInput('luna_worker', {
+    task_name: 'luna_max__d2_unit', message: 'burst_delegate=yes',
+  }));
+  expectDeny('burst-wrong-depth', workerInput('luna_worker', {
+    task_name: 'luna_max__d3_unit', message: 'burst_depth=d2\nburst_delegate=yes',
+  }));
+  expectDeny('normal-with-burst-fields', workerInput('luna_worker', {
+    task_name: 'luna_max__normal_unit', message: 'burst_depth=d1\nburst_delegate=yes',
+  }));
+  expectDeny('d4-delegates', workerInput('luna_worker', {
+    task_name: 'luna_max__d4_unit', message: 'burst_depth=d4\nburst_delegate=yes\n调用 spawn_agent',
+  }));
   expectDeny('wrong-task-route', workerInput('terra_worker', {
     reasoning_effort: 'ultra', task_name: 'terra_max__wrong_effort',
   }));

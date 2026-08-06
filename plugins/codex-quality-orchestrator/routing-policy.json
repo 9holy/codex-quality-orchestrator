@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 7,
-  "policyVersion": "0.6.0",
+  "schemaVersion": 8,
+  "policyVersion": "0.7.0",
   "toolNames": [
     "spawn_agent",
     "Agent",
@@ -58,6 +58,14 @@
     }
   },
   "retiredProfiles": [],
+  "burstMode": {
+    "enabledByExactCommand": "\u5f00\u542f\u7206\u79cd\u6a21\u5f0f",
+    "disabledByExactCommand": "\u5173\u95ed\u7206\u79cd\u6a21\u5f0f",
+    "maxChildThreads": 20,
+    "depths": [1, 2, 3, 4],
+    "depthTaskNamePattern": "__d[1-4]_",
+    "packetFields": ["burst_depth", "burst_delegate"]
+  },
   "forkTurns": {
     "allowedLiterals": [
       "none"

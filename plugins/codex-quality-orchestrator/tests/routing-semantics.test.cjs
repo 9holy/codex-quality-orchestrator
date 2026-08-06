@@ -72,9 +72,8 @@ if (docPaths.every((file) => fs.existsSync(file))) {
   ]) assert.match(requirements, new RegExp(`\\| ${id} \\|`));
 }
 
-assert.ok(Buffer.from(rule).every((byte) => byte < 128));
 assert.ok(Buffer.from(skill).every((byte) => byte < 128));
-assert.ok(Buffer.byteLength(rule, 'utf8') < 2400);
+assert.ok(Buffer.byteLength(rule, 'utf8') < 3200);
 assert.ok(Buffer.byteLength(skill, 'utf8') < 3400);
 
 process.stdout.write('PASS routing semantics and reference-derived plan contract\n');

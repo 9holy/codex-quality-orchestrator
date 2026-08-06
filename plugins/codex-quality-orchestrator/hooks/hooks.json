@@ -1,6 +1,19 @@
 {
   "description": "Load the routing rule and enforce only CQO mechanical contracts.",
   "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/burst-mode.cjs\"",
+            "commandWindows": "node \"$env:PLUGIN_ROOT\\hooks\\burst-mode.cjs\"",
+            "timeout": 5,
+            "statusMessage": "更新爆种模式状态"
+          }
+        ]
+      }
+    ],
     "SessionStart": [
       {
         "hooks": [
