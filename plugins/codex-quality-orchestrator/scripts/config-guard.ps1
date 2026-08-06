@@ -542,8 +542,9 @@ switch ($Mode) {
       }
     }
     $cachedRoot = Join-Path $CodexHome ("plugins\cache\$marketplaceName\codex-quality-orchestrator\$version")
-    $installType = Get-ObjectValue $installed.source @('source', 'sourceType', 'type')
-    $localRoot = Get-ObjectValue $installed.source @('path', 'localPath')
+    $installSource = if ($installed.PSObject.Properties.Name -contains 'source') { $installed.source } else { $null }
+    $installType = Get-ObjectValue $installSource @('source', 'sourceType', 'type')
+    $localRoot = Get-ObjectValue $installSource @('path', 'localPath')
     $approvedRoot = if ($installType -eq 'local' -and -not [string]::IsNullOrWhiteSpace($localRoot) -and
         (Test-Path -LiteralPath $localRoot -PathType Container)) {
       [IO.Path]::GetFullPath($localRoot)

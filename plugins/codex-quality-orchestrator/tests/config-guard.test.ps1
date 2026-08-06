@@ -12,6 +12,7 @@ function Get-HookBundleHash {
     'hooks\hooks.json',
     'hooks\inject-routing-policy.cjs',
     'hooks\enforce-agent-routing.cjs',
+    'hooks\burst-mode.cjs',
     'hooks\continue-capacity-subagent.cjs',
     'routing-policy.json',
     'references\RULE16.md'
@@ -38,6 +39,7 @@ $fakeCodex = Join-Path $tempRoot 'fake-codex.ps1'
 $pluginId = 'codex-quality-orchestrator@codex-quality-orchestrator'
 $preId = "$pluginId`:hooks/hooks.json:pre_tool_use:0:0"
 $sessionId = "$pluginId`:hooks/hooks.json:session_start:0:0"
+$promptId = "$pluginId`:hooks/hooks.json:user_prompt_submit:0:0"
 $subagentId = "$pluginId`:hooks/hooks.json:subagent_stop:0:0"
 $retiredSubagentStartId = "$pluginId`:hooks/hooks.json:subagent_start:0:0"
 $watchProcess = $null
@@ -60,6 +62,7 @@ try {
     trustedHooks = @(
       [ordered]@{ id=$preId; trustedHash=('sha256:' + ('a' * 64)) },
       [ordered]@{ id=$sessionId; trustedHash=('sha256:' + ('b' * 64)) },
+      [ordered]@{ id=$promptId; trustedHash=('sha256:' + ('d' * 64)) },
       [ordered]@{ id=$subagentId; trustedHash=('sha256:' + ('c' * 64)) }
     )
   } | ConvertTo-Json -Depth 6
