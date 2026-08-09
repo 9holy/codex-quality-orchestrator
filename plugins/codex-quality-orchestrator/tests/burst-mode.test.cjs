@@ -16,14 +16,14 @@ function invoke(sessionId, prompt) {
     env: { ...process.env, CODEX_HOME: home },
   });
   assert.equal(result.status, 0, result.stderr);
-  return JSON.parse(result.stdout).hookSpecificOutput.additionalContext;
+  return result.stdout.trim() ? JSON.parse(result.stdout).hookSpecificOutput.additionalContext : '';
 }
 
 try {
-  assert.match(invoke('a', '普通请求'), /CQO_BURST_MODE:OFF/);
+  assert.equal(invoke('a', '普通请求'), '');
   assert.match(invoke('a', '开启爆种模式'), /CQO_BURST_MODE:ON/);
-  assert.match(invoke('a', '继续'), /CQO_BURST_MODE:ON/);
-  assert.match(invoke('b', '继续'), /CQO_BURST_MODE:OFF/);
+  assert.equal(invoke('a', '继续'), '');
+  assert.equal(invoke('b', '继续'), '');
   assert.match(invoke('a', '关闭爆种模式'), /CQO_BURST_MODE:OFF/);
   process.stdout.write('PASS burst mode exact commands and session isolation\n');
 } finally {

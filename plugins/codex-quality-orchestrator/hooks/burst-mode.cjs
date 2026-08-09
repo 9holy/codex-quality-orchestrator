@@ -37,14 +37,14 @@ async function main() {
   const text = String(payload?.prompt || payload?.user_prompt || payload?.message || '').trim();
   const id = sessionId(payload);
   const state = readState();
-  if (text === policy.burstMode.enabledByExactCommand) state[id] = true;
-  if (text === policy.burstMode.disabledByExactCommand) state[id] = false;
-  if (text === policy.burstMode.enabledByExactCommand || text === policy.burstMode.disabledByExactCommand) writeState(state);
-
-  const enabled = state[id] === true;
+  const enabledCommand = text === policy.burstMode.enabledByExactCommand;
+  const disabledCommand = text === policy.burstMode.disabledByExactCommand;
+  if (!enabledCommand && !disabledCommand) return;
+  state[id] = enabledCommand;
+  writeState(state);
   process.stdout.write(`${JSON.stringify({ hookSpecificOutput: {
     hookEventName: 'UserPromptSubmit',
-    additionalContext: `[CQO_BURST_MODE:${enabled ? 'ON' : 'OFF'}] Sol=d0; ${enabled ? '允许独立安全单元使用 d1-d4，d4 不得派发，宿主子代理最多20个。' : '仅使用普通路由。'}`,
+    additionalContext: `[CQO_BURST_MODE:${enabledCommand ? 'ON' : 'OFF'}]`,
   } })}\n`);
 }
 
