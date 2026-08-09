@@ -19,8 +19,7 @@ $hookIds = @(
   "$pluginId`:hooks/hooks.json:pre_tool_use:0:0",
   "$pluginId`:hooks/hooks.json:session_start:0:0",
   "$pluginId`:hooks/hooks.json:user_prompt_submit:0:0",
-  "$pluginId`:hooks/hooks.json:subagent_stop:0:0",
-  "$pluginId`:hooks/hooks.json:stop:0:0"
+  "$pluginId`:hooks/hooks.json:subagent_stop:0:0"
 )
 $retiredHookIds = @(
   "$pluginId`:hooks/hooks.json:subagent_start:0:0"

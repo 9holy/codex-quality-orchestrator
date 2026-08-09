@@ -19,7 +19,7 @@ assert base_version == policy["policyVersion"] == "0.7.0"
 assert policy["schemaVersion"] == 8
 assert set(policy) == {
     "schemaVersion", "policyVersion", "toolNames", "workPacket",
-    "capacityRecovery", "rootCapacityRecovery", "radarEvidence", "namedAgents", "retiredProfiles", "burstMode", "forkTurns",
+    "capacityRecovery", "radarEvidence", "namedAgents", "retiredProfiles", "burstMode", "forkTurns",
 }
 assert "team" not in policy and "sol" not in policy
 assert "allowedFallbacks" not in json.dumps(policy)
@@ -35,7 +35,7 @@ assert policy["capacityRecovery"] == {
 assert set(policy["namedAgents"]) == {"luna_worker", "sol_medium_worker", "terra_worker", "sol_reviewer"}
 assert policy["namedAgents"]["sol_medium_worker"]["fixedEffort"] == "medium"
 assert policy["namedAgents"]["terra_worker"]["allowedEfforts"] == ["xhigh", "max", "ultra"]
-assert set(hooks["hooks"]) == {"SessionStart", "UserPromptSubmit", "PreToolUse", "SubagentStop", "Stop"}
+assert set(hooks["hooks"]) == {"SessionStart", "UserPromptSubmit", "PreToolUse", "SubagentStop"}
 assert "SubagentStart" not in hooks["hooks"]
 
 for agent_type, config in policy["namedAgents"].items():
@@ -93,6 +93,5 @@ for path in ROOT.rglob("*"):
         assert "[TODO:" not in path.read_text(encoding="utf-8"), path
 
 assert policy["burstMode"]["maxChildThreads"] == 20
-assert policy["rootCapacityRecovery"]["maxAttempts"] == 10
 assert policy["burstMode"]["depths"] == [1, 2, 3, 4]
 print("PASS minimal policy, burst contract, and concise agent contracts")

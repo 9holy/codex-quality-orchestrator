@@ -15,9 +15,6 @@
     "message": "Selected model is at capacity. Please try a different model.",
     "automaticContinuationPrompt": "\u7ee7\u7eed"
   },
-  "rootCapacityRecovery": {
-    "maxAttempts": 10
-  },
   "radarEvidence": {
     "enabled": true,
     "sourceUrl": "https://codexradar.com/api/intelligence-efficiency",

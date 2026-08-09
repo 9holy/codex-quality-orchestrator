@@ -41,7 +41,6 @@ $preId = "$pluginId`:hooks/hooks.json:pre_tool_use:0:0"
 $sessionId = "$pluginId`:hooks/hooks.json:session_start:0:0"
 $promptId = "$pluginId`:hooks/hooks.json:user_prompt_submit:0:0"
 $subagentId = "$pluginId`:hooks/hooks.json:subagent_stop:0:0"
-$stopId = "$pluginId`:hooks/hooks.json:stop:0:0"
 $retiredSubagentStartId = "$pluginId`:hooks/hooks.json:subagent_start:0:0"
 $watchProcess = $null
 $runningOnWindows = [Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
@@ -64,8 +63,7 @@ try {
       [ordered]@{ id=$preId; trustedHash=('sha256:' + ('a' * 64)) },
       [ordered]@{ id=$sessionId; trustedHash=('sha256:' + ('b' * 64)) },
       [ordered]@{ id=$promptId; trustedHash=('sha256:' + ('d' * 64)) },
-      [ordered]@{ id=$subagentId; trustedHash=('sha256:' + ('c' * 64)) },
-      [ordered]@{ id=$stopId; trustedHash=('sha256:' + ('f' * 64)) }
+      [ordered]@{ id=$subagentId; trustedHash=('sha256:' + ('c' * 64)) }
     )
   } | ConvertTo-Json -Depth 6
   [IO.File]::WriteAllText((Join-Path $guardDir 'state.json'), $state, [Text.UTF8Encoding]::new($false))
