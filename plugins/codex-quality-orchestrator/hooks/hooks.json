@@ -8,8 +8,7 @@
             "type": "command",
             "command": "node \"${PLUGIN_ROOT}/hooks/burst-mode.cjs\"",
             "commandWindows": "node \"$env:PLUGIN_ROOT\\hooks\\burst-mode.cjs\"",
-            "timeout": 15,
-            "statusMessage": "更新爆种模式状态"
+            "timeout": 15
           }
         ]
       }
