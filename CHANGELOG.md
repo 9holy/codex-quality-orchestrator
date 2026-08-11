@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.0 - 2026-08-11
+
+- Add session-scoped burst mode with exact on/off commands, `d1-d4` delegation, a 20-child host limit, and unchanged Sol audit gates.
+- Add `UserPromptSubmit` as the fourth Hook while keeping ordinary prompts silent.
+- Resume the exact selected-model-capacity failure once inside the same subagent context; document that current Hooks cannot resume the root controller request.
+- Publish current Chinese and English installation, routing, operation, and requirement documentation.
+
 ## 0.6.0
 
 - Restrict Luna Max to frozen, low-judgment work with mechanical verification.

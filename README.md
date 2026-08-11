@@ -1,56 +1,35 @@
 # Codex Quality Orchestrator
 
-让 Sol 负责理解、拆解、整合和验收。冻结、低判断且可机械验证的工作优先交给 Luna Max；需要适度判断的独立单元优先交给 Sol Medium；Terra 只在具体任务上确有优势时使用。目标是在质量不降级的前提下减少高成本模型调用和无效上下文切换。
+[中文](#中文) | [English](#english)
 
-## 路由方式
+## 中文
 
-| 角色 | 模型与档位 | 职责 |
+面向 `gpt-5.6-sol` 主控的质量优先多模型路由插件。Sol 负责理解、拆解、整合、验收和兜底；可靠的低判断执行单元优先交给 Luna Max；常规独立判断工作优先 Sol Medium；Terra 仅在具体任务上确有优势时使用，深推理本身不选择 Terra。
+
+### 模型与职责
+
+| 角色 | 模型 / 档位 | 用途 |
 |---|---|---|
-| 当前主控 | `gpt-5.6-sol`，保持任务已选档位 | 理解、拆解、分派、整合、验收和兜底 |
-| `luna_worker` | `gpt-5.6-luna / max` | 决策已冻结、判断负荷低、可机械验证的执行单元 |
-| `sol_medium_worker` | `gpt-5.6-sol / medium` | 边界明确、需要适度判断且适合独立并行的执行单元 |
-| `terra_worker` | `gpt-5.6-terra / xhigh|max|ultra` | 相比 Sol Medium 或当前 Sol 具有明确任务优势的独立单元 |
+| 当前主控 | `gpt-5.6-sol` / 当前档位 | 规划、拆解、整合、验收、决策和兜底 |
+| `luna_worker` | `gpt-5.6-luna / max` | 冻结、低判断、可机械验证的执行单元 |
+| `sol_medium_worker` | `gpt-5.6-sol / medium` | 边界明确、需要适度判断、可独立验证的单元 |
+| `terra_worker` | `gpt-5.6-terra / xhigh|max|ultra` | 相比 Sol 有明确任务优势的单元 |
 | `sol_reviewer` | `gpt-5.6-sol / xhigh` | 关键高风险变更的一次只读复审 |
 
-短任务由当前主控直接完成。非短任务由 Sol 在当前上下文中列出工作单元、路径所有权、依赖、验收和集成顺序，再决定是否下派。通常先派一个 Worker；独立、写入不冲突且并行确有收益的单元才并行。大量同质批处理先验收一个代表性单元，再填满宿主可用容量，完成一个就补充一个；不设置任务级累计上限。Worker 运行期间使用最长一小时的原生阻塞等待，结果会提前唤醒 Sol，不主动轮询状态。
+### 运行模式
 
-符合低判断条件且 Luna Max 能可靠完成时直接选择，不读取 Radar。Luna 不适用后，适合独立下派的常规判断工作优先使用 Sol Medium；耦合或顺序工作留在当前 Sol。只有多个合格 Sol/Terra 路由仍无法判断时，才在一个根任务内读取一次本地 Radar 摘要。深推理本身不构成选择 Terra 的理由。
+- 普通模式：短任务由主控直接完成；通常只派一个 Worker，仅独立且写入不冲突的单元并行。
+- 爆种模式：精确发送 `开启爆种模式` 开启当前会话，发送 `关闭爆种模式` 关闭。Sol 为 `d0`，允许 `d1-d4`，最多 20 个子线程；`d4` 不再下派。质量门槛不降低，所有结果仍由 Sol 审计。
+- 容量恢复：`SubagentStop` 精确遇到 `Selected model is at capacity. Please try a different model.` 时，在原子代理上下文自动“继续”一次。主控容量通知不经过当前可续交 Hook，插件不伪装成已自动恢复。
 
-模糊需求、根因决策、架构、安全、公共接口、生产数据、不可逆操作和最终裁决由 Sol 保留；边界与验收明确后，其中安全的证据收集或执行单元仍可下派。Luna 不被用作试错、草稿或先做后修模型。
+插件使用四个 Hook：
 
-## 实际运行机制
+- `SessionStart`：按需注入最新 Rule 16。
+- `UserPromptSubmit`：只处理爆种模式精确开关，普通消息静默。
+- `PreToolUse`：校验四个具名代理的确定性调用字段。
+- `SubagentStop`：对子代理容量错误原地续交一次。
 
-Sol 为每个 Worker 发送一个简短工作包：
-
-```text
-[CQO_WORK_PACKET_V1]
-route: gpt-5.6-luna / max
-目标: 完成什么
-范围: 可以读取和修改什么，由谁拥有
-验收: 如何确认完成
-接管: 失败时回到当前 Sol，保留已完成工作
-```
-
-桌面端会加密发送给 Worker 的 `message`，所以 Hook 不伪装成能检查工作包语义。实际模型路由通过可见 `task_name`、具名代理 TOML、调用档位和 Hook 交叉校验，例如：
-
-```text
-luna_max__update_tests
-sol_medium__implement_parser
-terra_ultra__diagnose_parser
-sol_reviewer_xhigh__review_migration
-```
-
-插件只有三个 Hook：
-
-- `SessionStart`：Rule 16 缺失或过期时注入；一致时保持静默。
-- `PreToolUse`：只约束四个 CQO 具名代理，不干涉其他插件或代理。
-- `SubagentStop`：精确遇到容量错误时让原代理在原上下文中“继续”一次。
-
-插件没有 Ledger、波次、固定累计调用上限或自动 fallback。Worker 失败后直接返回当前 Sol 判断，避免陈旧状态和无效升级链。轻量计划只保存在当前任务上下文，不额外创建 Planner 或持久协调文件。
-
-## 安装
-
-Windows PowerShell：
+### 安装
 
 ```powershell
 $marketplace = codex plugin marketplace add 9holy/codex-quality-orchestrator --ref main --json | ConvertFrom-Json
@@ -58,45 +37,50 @@ $plugin = codex plugin add "codex-quality-orchestrator@$($marketplace.marketplac
 powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $plugin.installedPath 'scripts\install.ps1')
 ```
 
-然后在 `/hooks` 审核并信任三个 Hook，并新建任务。安装脚本会安装四个代理配置并同步 Rule 16；已有冲突配置不会被静默覆盖，只有明确使用 `-Force` 时才会在备份后替换。
-
-## 验证
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $plugin.installedPath 'scripts\runtime-smoke.ps1')
-codex plugin list --json
-```
-
-烟雾测试证明插件和 SessionStart Hook 在真实宿主会话中运行。PreToolUse、实际模型调用和容量续交仍分别依靠契约测试及 Codex 使用记录核对，不能用任务名或代理自述代替。
-
-## 配置切换
-
-Cockpit Tools、CC Switch 或其他程序会整体替换 `config.toml` 时启用守护器：
+在 `/hooks` 中信任四个 Hook 后新建任务。Cockpit Tools、CC Switch 等会覆盖 `config.toml` 时，可启用配置守护：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $plugin.installedPath 'scripts\config-guard.ps1') -Mode Install
 ```
 
-守护器只恢复插件注册和三个已经批准的精确 Hook 哈希，保留切换器写入的认证、Provider、端点、模型和其他配置。Hook 内容变化时不会沿用旧批准。
-
-## 边界
-
-- 插件不能修改已经启动任务的根模型或推理档位。
-- 是否胜任是 Sol 的语义判断；代码只校验确定的调用参数。
-- Luna 不适用不会自动触发 Terra；常规独立判断工作优先 Sol Medium，Terra 必须有明确任务优势。
-- Worker 的结果必须由 Sol 检查实际差异并复跑必要验证。
-- 任务名和工作包用于可见性，不是实际后台调用的唯一证据。
-- `codex-auto-review / low` 是 Codex 权限审核，不是本插件路由的工作模型。
-
-开发验证和操作细节见 [操作指南](docs/OPERATING_GUIDE.md)，完整角色边界见 [路由矩阵](docs/ROUTING_MATRIX.md)。
-
-## 开发
+### 验证
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\plugins\codex-quality-orchestrator\scripts\verify.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File .\plugins\codex-quality-orchestrator\scripts\package.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $plugin.installedPath 'scripts\verify.ps1')
+powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $plugin.installedPath 'scripts\runtime-smoke.ps1')
+codex plugin list --json
 ```
 
-## 许可证
+详细说明：[操作指南](docs/OPERATING_GUIDE.md) · [路由矩阵](docs/ROUTING_MATRIX.md) · [需求基线](docs/REQUIREMENTS.md)
+
+## English
+
+Quality-first multi-model routing for a `gpt-5.6-sol` root. Sol owns understanding, decomposition, integration, verification, decisions, and fallback. Luna Max gets frozen low-judgment mechanical units; Sol Medium gets bounded moderate-judgment units; Terra is used only for a concrete task-specific advantage.
+
+### Roles
+
+| Role | Model / effort | Purpose |
+|---|---|---|
+| Current root | `gpt-5.6-sol` / selected effort | Plan, decompose, integrate, verify, decide, and fall back |
+| `luna_worker` | `gpt-5.6-luna / max` | Frozen, low-judgment, mechanically verifiable work |
+| `sol_medium_worker` | `gpt-5.6-sol / medium` | Bounded, moderate-judgment, independently verifiable work |
+| `terra_worker` | `gpt-5.6-terra / xhigh|max|ultra` | Work with a clear advantage over capable Sol |
+| `sol_reviewer` | `gpt-5.6-sol / xhigh` | One read-only review for critical changes |
+
+### Modes
+
+- Normal: the root handles short work directly; one Worker is the default, with parallelism only for independent write-safe units.
+- Burst: send the exact command `开启爆种模式` to enable it for the session and `关闭爆种模式` to disable it. Sol is `d0`; children may use `d1-d4`; the host limit is 20 child threads; `d4` cannot delegate. Sol still audits every result.
+- Capacity recovery: `SubagentStop` resumes the same subagent once after the exact selected-model-capacity message. Root capacity notifications are not exposed through the resumable Hook path, so the plugin does not claim automatic root recovery.
+
+The plugin has four Hooks: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, and `SubagentStop`. Ordinary prompts remain silent.
+
+### Install and verify
+
+Use the PowerShell commands in the Chinese installation section above, then trust all four Hooks in `/hooks` and start a new task. Use `config-guard.ps1 -Mode Install` when another tool may replace `config.toml`.
+
+Detailed documentation: [Operating Guide](docs/OPERATING_GUIDE.en.md) · [Routing Matrix](docs/ROUTING_MATRIX.en.md) · [Requirements](docs/REQUIREMENTS.en.md)
+
+## License
 
 [MIT](LICENSE)

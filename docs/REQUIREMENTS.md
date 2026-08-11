@@ -25,7 +25,7 @@
 | T01 | 非短任务先形成轻量内存计划：单元、目标、路径所有权、依赖、验收和集成顺序 | Routing Skill |
 | T02 | 单个足够大的单元也可下派；通常一个 Worker，只有独立、写入不冲突且净收益为正时并行 | Routing Skill |
 | T03 | 同质批量先验收一个代表单元，再填满宿主可用容量；无任务累计上限 | Rule 16、Routing Skill |
-| T04 | 共享文件单写者；Worker 不得创建或委派子代理 | Rule 16、代理模板 |
+| T04 | 共享文件单写者；普通模式 Worker 不下派；爆种模式仅在工作包明确授权且深度小于 d4 时下派 | Rule 16、代理模板 |
 | T05 | Worker 运行时使用一次长阻塞等待，由结果被动唤醒；禁止轮询 | Rule 16、Routing Skill |
 | T06 | Sol 检查实际结果或差异并复跑必要验证，按计划顺序整合 | Rule 16、Routing Skill |
 | T07 | 明确局部缺陷最多续交原 Worker 一次；能力、越界或质量失败立即交回 Sol | Rule 16 |
@@ -39,14 +39,16 @@
 | M03 | 工作包冻结目标、范围、路径所有权、验收和回到当前 Sol 的接管方式 | Routing Skill |
 | M04 | 精确容量消息只让同一代理在原上下文继续一次，不重启或重做；第二次交回 Sol 重新路由 | Rule 16、SubagentStop Hook |
 | M05 | 禁止静默降级；任务名、工作包和代理自述不能单独证明实际后台模型 | 维护 Skill、README |
-| M06 | 只保留 SessionStart、PreToolUse、SubagentStop 三个最小 Hook，不恢复 Ledger、固定并发或累计尝试上限 | Hook、Policy |
+| M06 | 只保留 SessionStart、UserPromptSubmit、PreToolUse、SubagentStop 四个 Hook；普通提示保持静默 | Hook、Policy |
 | M07 | 配置守护只恢复插件注册和已批准 Hook 哈希，保留 Cockpit、CC Switch 写入的认证、Provider、端点和模型配置 | Config Guard |
 | M08 | 只允许执行型 `sol_medium_worker` 和关键高风险只读 `sol_reviewer` 两种 Sol 子代理 | Rule 16、Policy |
+| M09 | 爆种模式按会话精确开关，保留 d1-d4、最多 20 个子线程和 d4 禁止下派；质量门槛与 Sol 最终审计不变 | Rule 16、Hook、Policy |
+| M10 | 主控容量通知不进入当前可续交 Hook；插件不得宣称主控已自动恢复 | README、操作指南 |
 
 ## 明确排除
 
 - 不自动修改已经启动任务的根模型或推理档位。
 - 不使用关键词、文件数量或代码规则替代 Sol 的能力和风险判断。
 - 不自动路由到 GPT-5.5、`codex-auto-review` 或未声明代理。
-- 不恢复三并发、八次调用、每任务累计上限、波次 Ledger 或自动 fallback 链。
+- 不恢复普通模式固定并发、八次调用、每任务累计上限、波次 Ledger 或自动 fallback 链。
 - 不把预期任务名当作实际模型调用证据。
