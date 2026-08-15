@@ -108,17 +108,17 @@ Current release: [`v0.7.1`](https://github.com/9holy/codex-quality-orchestrator/
 7. Sol inspects the real changes, reruns necessary checks, and accepts or rejects every result. Capability, scope, or quality failures return directly to Sol.
 
 ```mermaid
-flowchart LR
-    A["Task"] --> B["Sol plans and splits"] --> C{"Lowest reliable route"}
-    C --> D["Luna Max"]
-    C --> E["Sol Medium"]
-    C --> F["Terra"]
-    C --> G["Current Sol"]
-    D --> H["Sol acceptance"]
+graph LR
+    A[Task] --> B[Sol plans and splits] --> C{Choose route}
+    C --> D[Luna Max]
+    C --> E[Sol Medium]
+    C --> F[Terra]
+    C --> G[Current Sol]
+    D --> H[Sol acceptance]
     E --> H
     F --> H
     G --> H
-    H --> I["Deliver or Sol takes over"]
+    H --> I[Deliver or Sol takes over]
 ```
 
 ### Model roles
