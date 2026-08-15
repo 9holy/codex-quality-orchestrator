@@ -20,18 +20,12 @@ Codex 路由矩阵是给 `gpt-5.6-sol` 使用的多模型协作插件。它让 S
 6. 互不依赖、不会同时修改同一文件的工作可以并行。
 7. Worker 完成后，Sol 检查真实改动、重跑必要验证并最终决定是否接受。能力不足、越界或质量不达标的工作直接回到 Sol。
 
-```mermaid
-flowchart LR
-    A["任务"] --> B["Sol 规划拆分"] --> C{"最低可靠路线"}
-    C --> D["Luna Max"]
-    C --> E["Sol Medium"]
-    C --> F["Terra"]
-    C --> G["当前 Sol"]
-    D --> H["Sol 验收"]
-    E --> H
-    F --> H
-    G --> H
-    H --> I["交付或 Sol 接管"]
+```text
+任务 -> Sol 规划拆分 -> 选择最低可靠路线
+                         |-> Luna Max --|
+                         |-> Sol Medium -|-> Sol 验收 -> 交付或 Sol 接管
+                         |-> Terra ------|
+                         |-> 当前 Sol ---|
 ```
 
 ### 模型分工
@@ -109,18 +103,12 @@ Current release: [`v0.8.0`](https://github.com/9holy/codex-routing-matrix/releas
 6. Independent, write-safe units may run in parallel.
 7. Sol inspects the real changes, reruns necessary checks, and accepts or rejects every result. Capability, scope, or quality failures return directly to Sol.
 
-```mermaid
-graph LR
-    A[Task] --> B[Sol plans and splits] --> C{Choose route}
-    C --> D[Luna Max]
-    C --> E[Sol Medium]
-    C --> F[Terra]
-    C --> G[Current Sol]
-    D --> H[Sol acceptance]
-    E --> H
-    F --> H
-    G --> H
-    H --> I[Deliver or Sol takes over]
+```text
+Task -> Sol plans and splits -> Choose lowest reliable route
+                                |-> Luna Max -----|
+                                |-> Sol Medium ----|-> Sol acceptance -> Deliver or Sol takes over
+                                |-> Terra ---------|
+                                |-> Current Sol ---|
 ```
 
 ### Model roles
