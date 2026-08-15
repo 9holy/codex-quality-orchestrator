@@ -14,7 +14,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $pluginId = 'codex-quality-orchestrator@codex-quality-orchestrator'
-$burstMaxConcurrentThreads = 20
+$burstMaxConcurrentThreads = 25
 $hookIds = @(
   "$pluginId`:hooks/hooks.json:pre_tool_use:0:0",
   "$pluginId`:hooks/hooks.json:session_start:0:0",

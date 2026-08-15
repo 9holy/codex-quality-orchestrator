@@ -43,7 +43,7 @@ sol_reviewer_xhigh__unit_name
 
 ## Burst Mode
 
-Burst mode is off by default. Send exactly `开启爆种模式` to enable it for the current session and `关闭爆种模式` to disable it. Sol is `d0`; task names contain `__d1_` through `__d4_`; packets include `burst_depth=dN` and `burst_delegate=yes`. Use at most 20 child threads, delegate only independent write-safe frozen units, and never delegate from `d4`. Sol still audits every result and required verification.
+Burst mode is off by default. Send exactly `开启爆种模式` to enable it for the current session and `关闭爆种模式` to disable it. Sol is `d0`; task names contain `__d1_` through `__d4_`; packets include `burst_depth=dN` and `burst_delegate=yes`. Use at most 25 child threads, delegate only independent write-safe frozen units, and never delegate from `d4`. Sol still audits every result and required verification.
 
 ## Radar
 
@@ -57,7 +57,7 @@ The cache is fresh for 24 hours and usable offline for up to 72 hours. Radar is 
 
 ## Installation And Verification
 
-Run `scripts/install.ps1` to install Rule 16 and the four agent profiles. After an upgrade, trust all four current Hooks again and start a new task so the new skill and agent definitions load.
+Run `scripts/install.ps1` to install the routing rule and four agent profiles. The first install prepends unnumbered English `Meta Rule - Conflict Resolution` and `Implementation` defaults, then appends unnumbered `Codex Quality Routing`. The first two defaults are not maintained by later installs or the configuration guard. After an upgrade, trust all four current Hooks again and start a new task so the new skill and agent definitions load.
 
 When another tool may replace `config.toml`, run `scripts/config-guard.ps1`. It merges only plugin registration, the known marketplace source, and the four trusted Hook hashes. It preserves authentication, providers, endpoints, models, and unrelated settings.
 

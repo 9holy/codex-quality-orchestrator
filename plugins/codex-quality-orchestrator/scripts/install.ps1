@@ -127,6 +127,53 @@ function New-FileBackup {
   return $backup
 }
 
+function Install-DefaultAgentRules {
+  param([string]$CodexHome, [bool]$FirstInstall)
+  if (-not $FirstInstall) {
+    return [pscustomobject]@{ Status='skipped'; Backup=$null }
+  }
+
+  $target = Join-Path $CodexHome 'AGENTS.md'
+  $defaults = @'
+## Meta Rule - Conflict Resolution
+
+Data safety, correctness, and recoverability are veto constraints. For routine matters, explicit user instructions take precedence over efficiency and simplicity.
+When rules conflict, prioritize correctness, safety, and recoverability, then choose the most direct implementation. If the user insists on a high-risk approach, record the risk and ask for confirmation. Refuse irreversible data destruction by default unless the user explicitly accepts the consequences.
+
+## Implementation
+
+Fix the root cause with the smallest clear and debuggable change.
+Avoid unrelated refactoring, excessive defensive checks, redundant fallback logic, and compatibility paths for unsupported or hypothetical scenarios.
+Stay focused on the current task. Pursue improvements only when they materially advance the requested outcome.
+Do not pursue excessive consistency or over-testing. Do not add unnecessary gates, SHA-256 hashes, checksums, verification layers, or redundant tests unless they are required for correctness or by the task.
+Follow the existing code style.
+Minimal local refactoring is allowed when the existing structure directly prevents a correct fix. Security, permission, and necessary input validation are not excessive defensive measures.
+'@.Trim()
+
+  $backup = $null
+  if (Test-Path -LiteralPath $target -PathType Leaf) {
+    $text = [IO.File]::ReadAllText($target, [Text.UTF8Encoding]::new($false))
+    if ($text -match '(?m)^## Meta Rule - Conflict Resolution\s*$' -and $text -match '(?m)^## Implementation\s*$') {
+      return [pscustomobject]@{ Status='kept'; Backup=$null }
+    }
+    $backup = New-FileBackup $target
+    $updated = $defaults + [Environment]::NewLine + [Environment]::NewLine + $text.TrimStart()
+    $status = 'prepended'
+  } else {
+    $updated = $defaults
+    $status = 'created'
+  }
+
+  $temp = $target + '.tmp-' + [guid]::NewGuid().ToString('N')
+  try {
+    [IO.File]::WriteAllText($temp, $updated.TrimEnd() + [Environment]::NewLine, [Text.UTF8Encoding]::new($false))
+    Move-Item -LiteralPath $temp -Destination $target -Force -ErrorAction Stop
+  } finally {
+    if (Test-Path -LiteralPath $temp) { Remove-Item -LiteralPath $temp -Force }
+  }
+  return [pscustomobject]@{ Status=$status; Backup=$backup }
+}
+
 function Sync-CanonicalRule16 {
   param([string]$CodexHome, [string]$PluginRoot)
   $source = Join-Path $PluginRoot 'references\RULE16.md'
@@ -139,25 +186,32 @@ function Sync-CanonicalRule16 {
     return ([regex]::Replace($Value, '(?m)^##[^\r\n]*', '## RULE')).Replace("`r`n", "`n").Trim()
   }
 
-  function Render-InsertedRule([string]$Value, [int]$Number) {
-    return [regex]::Replace($Value, '(?m)^## .*$', "## Rule $Number")
-  }
-
   if (Test-Path -LiteralPath $target -PathType Leaf) {
     $text = [IO.File]::ReadAllText($target, [Text.UTF8Encoding]::new($false))
-    $matches = [regex]::Matches($text, '(?ms)^## Rule \d+\b.*?(?=^## [^\r\n]+|\z)')
+    $matches = [regex]::Matches($text, '(?ms)^## [^\r\n]+.*?(?=^## [^\r\n]+|\z)')
     $owned = @($matches | Where-Object { (Normalize-Rule $_.Value) -ceq (Normalize-Rule $canonical) })
     if ($owned.Count -gt 0) {
+      $canonicalHeading = [regex]::Match($canonical, '^##[^\r\n]*').Value
       if ($owned.Count -eq 1) {
-        return [pscustomobject]@{ Status='kept'; Backup=$null }
+        $installedHeading = [regex]::Match($owned[0].Value, '^##[^\r\n]*').Value
+        if ($installedHeading -ceq $canonicalHeading) {
+          return [pscustomobject]@{ Status='kept'; Backup=$null }
+        }
+        $backup = New-FileBackup $target
+        $section = [regex]::new('^##[^\r\n]*').Replace($owned[0].Value, $canonicalHeading, 1)
+        $updated = $text.Substring(0, $owned[0].Index) + $section + $text.Substring($owned[0].Index + $owned[0].Length)
+        $status = 'migrated-heading'
       }
-      $backup = New-FileBackup $target
-      $remove = @($owned | Select-Object -Skip 1)
-      $updated = $text
-      foreach ($match in ($remove | Sort-Object Index -Descending)) {
-        $updated = $updated.Remove($match.Index, $match.Length)
+      if ($owned.Count -gt 1) {
+        $backup = New-FileBackup $target
+        $updated = $text
+        foreach ($match in (@($owned | Select-Object -Skip 1) | Sort-Object Index -Descending)) {
+          $updated = $updated.Remove($match.Index, $match.Length)
+        }
+        $section = [regex]::new('^##[^\r\n]*').Replace($owned[0].Value, $canonicalHeading, 1)
+        $updated = $updated.Remove($owned[0].Index, $owned[0].Length).Insert($owned[0].Index, $section)
+        $status = 'deduplicated'
       }
-      $status = 'deduplicated'
     }
     foreach ($match in $matches) {
       if ($null -ne $updated) { break }
@@ -167,14 +221,12 @@ function Sync-CanonicalRule16 {
     }
 
     if ($null -eq $updated) {
-      $numbers = @([regex]::Matches($text, '(?m)^## Rule (\d+)\b') | ForEach-Object { [int]$_.Groups[1].Value })
-      $nextNumber = if ($numbers.Count -eq 0) { 1 } else { (($numbers | Measure-Object -Maximum).Maximum + 1) }
       $backup = New-FileBackup $target
-      $updated = $text.TrimEnd() + [Environment]::NewLine + [Environment]::NewLine + (Render-InsertedRule $canonical $nextNumber)
+      $updated = $text.TrimEnd() + [Environment]::NewLine + [Environment]::NewLine + $canonical
       $status = 'appended'
     }
   } else {
-    $updated = Render-InsertedRule $canonical 1
+    $updated = $canonical
     $status = 'created'
   }
 
@@ -237,6 +289,7 @@ $templateDir = Join-Path $pluginRoot 'templates\agents'
 $policy = Get-Content -LiteralPath (Join-Path $pluginRoot 'routing-policy.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 $agentsDir = Join-Path $CodexHome 'agents'
 $statePath = Join-Path $CodexHome '.codex-quality-orchestrator.install-state.json'
+$firstInstall = -not (Test-Path -LiteralPath $statePath -PathType Leaf)
 
 New-Item -ItemType Directory -Path $CodexHome -Force | Out-Null
 New-Item -ItemType Directory -Path $agentsDir -Force | Out-Null
@@ -376,6 +429,7 @@ try {
     $reason = Test-ProfileContract $target $property.Value $property.Name
     if ($null -ne $reason) { throw "Post-install verification failed: $target`: $reason" }
   }
+  $defaultRulesResult = Install-DefaultAgentRules $CodexHome $firstInstall
   $rule16Result = Sync-CanonicalRule16 $CodexHome $pluginRoot
 } finally {
   if (Test-Path -LiteralPath $lock) { Remove-Item -LiteralPath $lock -Force }
@@ -384,6 +438,7 @@ try {
 [pscustomobject]@{
   CodexHome = $CodexHome
   Results = $results
+  DefaultRules = $defaultRulesResult
   Rule16 = $rule16Result
   Verified = $true
   NextStep = 'Install and enable the plugin, trust its hooks in /hooks, optionally enable config-guard.ps1 for external config switchers, then start a new task.'

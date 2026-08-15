@@ -75,7 +75,7 @@ Selected model is at capacity. Please try a different model.
 
 ## 4. 爆种模式
 
-爆种模式默认关闭。开启后 Sol 为 `d0`，子任务名包含 `__d1_` 至 `__d4_`，工作包包含 `burst_depth=dN` 和 `burst_delegate=yes`。最多使用 20 个子线程；只并行独立、写入安全、边界和验收冻结的单元；`d4` 不再下派。Sol 仍检查全部结果、实际差异和必要验证。
+爆种模式默认关闭。开启后 Sol 为 `d0`，子任务名包含 `__d1_` 至 `__d4_`，工作包包含 `burst_depth=dN` 和 `burst_delegate=yes`。最多使用 25 个子线程；只并行独立、写入安全、边界和验收冻结的单元；`d4` 不再下派。Sol 仍检查全部结果、实际差异和必要验证。
 
 ## 5. Radar
 
@@ -89,7 +89,7 @@ node <plugin-root>\scripts\radar-routing-evidence.cjs
 
 ## 6. 安装与升级
 
-运行 `scripts/install.ps1` 安装四个代理配置和 Rule 16。安装器先获取锁，再检查所有目标；冲突时默认停止，`-Force` 才会在备份后替换。代理备份使用 `.toml.bak`，不会被 Codex 当成第二个角色加载。
+运行 `scripts/install.ps1` 安装四个代理配置和路由规则。首次安装会在 `AGENTS.md` 顶部加入纯英文、无编号的 `Meta Rule - Conflict Resolution` 和 `Implementation` 默认规则，再追加无编号 `Codex Quality Routing`。前两条不受后续安装或配置守护维护。安装器先获取锁，再检查所有目标；冲突时默认停止，`-Force` 才会在备份后替换。代理备份使用 `.toml.bak`，不会被 Codex 当成第二个角色加载。
 
 升级后必须重新审核四个 Hook，因为可信哈希随实现变化。旧任务不会自动加载新 Skill 和代理定义，应新建任务验证。
 

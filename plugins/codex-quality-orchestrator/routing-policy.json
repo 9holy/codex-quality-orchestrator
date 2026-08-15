@@ -61,7 +61,7 @@
   "burstMode": {
     "enabledByExactCommand": "\u5f00\u542f\u7206\u79cd\u6a21\u5f0f",
     "disabledByExactCommand": "\u5173\u95ed\u7206\u79cd\u6a21\u5f0f",
-    "maxChildThreads": 20,
+    "maxChildThreads": 25,
     "depths": [1, 2, 3, 4],
     "depthTaskNamePattern": "__d[1-4]_",
     "packetFields": ["burst_depth", "burst_delegate"]

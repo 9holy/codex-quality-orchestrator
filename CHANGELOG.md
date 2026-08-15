@@ -2,9 +2,9 @@
 
 ## 0.7.1 - 2026-08-16
 
-- Insert the plugin routing rule after the user's highest numbered `Rule N` instead of assuming `Rule 16`.
-- Preserve user-authored rules, including a user-owned `Rule 16`; update only a previously inserted CQO section.
-- Detect an existing CQO section by its content, so arbitrary user rule numbering remains valid.
+- Insert CQO under the unnumbered `Codex Quality Routing` heading and preserve all user-authored numbered rules.
+- Set burst-mode and host concurrency defaults to 25 child threads.
+- On first install only, prepend unnumbered English `Meta Rule - Conflict Resolution` and `Implementation` defaults; upgrades and the configuration guard do not restore or overwrite them.
 
 ## 0.7.0 - 2026-08-11
 

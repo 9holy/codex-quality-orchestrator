@@ -28,7 +28,7 @@ This file supports maintenance and regression tracking; it is not injected into 
 - Named agents never receive a `model` override. `task_name` exposes the expected route and effort. `fork_turns` is `none` or a positive numeric string.
 - The plugin has exactly four Hooks: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, and `SubagentStop`. Ordinary prompts are silent.
 - On the exact selected-model-capacity message, the same subagent continues once without restarting work. A second failure returns to Sol. Current Hooks cannot resume the root controller request, and the plugin must not claim otherwise.
-- Burst mode is session-scoped and off by default. Exact Chinese commands toggle it. Sol is `d0`; children may use `d1-d4`; `d4` cannot delegate; the host limit is 20 child threads; all normal quality gates remain.
+- Burst mode is session-scoped and off by default. Exact Chinese commands toggle it. Sol is `d0`; children may use `d1-d4`; `d4` cannot delegate; the host limit is 25 child threads; all normal quality gates remain.
 - The configuration guard restores only plugin registration and trusted current Hook hashes while preserving authentication, provider, endpoint, model, and unrelated tool settings.
 
 ## Explicit Exclusions

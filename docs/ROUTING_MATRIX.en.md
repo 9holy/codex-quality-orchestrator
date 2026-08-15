@@ -39,6 +39,6 @@ Workers stay inside the packet scope and make no unrelated changes. They do not 
 
 Normal mode defaults to one Worker. Parallelize only independent write-safe units when the benefit exceeds coordination cost. For homogeneous batches, verify one representative unit, then fill available host capacity and replace completed Workers. Use one long blocking wait and one writer per shared file.
 
-Burst mode is session-scoped, supports `d1-d4`, and uses at most 20 child threads; `d4` cannot delegate. It increases parallel execution without lowering any quality gate.
+Burst mode is session-scoped, supports `d1-d4`, and uses at most 25 child threads; `d4` cannot delegate. It increases parallel execution without lowering any quality gate.
 
 On the exact selected-model-capacity message, continue the same subagent once without restarting completed work. A second failure returns to Sol. This recovery covers `SubagentStop` only; current Hooks cannot resume a root controller capacity notification.

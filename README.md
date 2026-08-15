@@ -19,7 +19,7 @@
 ### 运行模式
 
 - 普通模式：短任务由主控直接完成；通常只派一个 Worker，仅独立且写入不冲突的单元并行。
-- 爆种模式：精确发送 `开启爆种模式` 开启当前会话，发送 `关闭爆种模式` 关闭。Sol 为 `d0`，允许 `d1-d4`，最多 20 个子线程；`d4` 不再下派。质量门槛不降低，所有结果仍由 Sol 审计。
+- 爆种模式：精确发送 `开启爆种模式` 开启当前会话，发送 `关闭爆种模式` 关闭。Sol 为 `d0`，允许 `d1-d4`，最多 25 个子线程；`d4` 不再下派。质量门槛不降低，所有结果仍由 Sol 审计。
 - 容量恢复：`SubagentStop` 精确遇到 `Selected model is at capacity. Please try a different model.` 时，在原子代理上下文自动“继续”一次。主控容量通知不经过当前可续交 Hook，插件不伪装成已自动恢复。
 
 插件使用四个 Hook：
@@ -38,6 +38,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $plugin.installed
 ```
 
 在 `/hooks` 中信任四个 Hook 后新建任务。Cockpit Tools、CC Switch 等会覆盖 `config.toml` 时，可启用配置守护：
+
+首次安装会在 `AGENTS.md` 顶部加入纯英文、无编号的 `Meta Rule - Conflict Resolution` 和 `Implementation` 默认规则，并以无编号 `Codex Quality Routing` 标题追加路由规则。前两条仅初始化一次，不由插件或配置守护恢复、覆盖。
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $plugin.installedPath 'scripts\config-guard.ps1') -Mode Install
@@ -70,14 +72,14 @@ Quality-first multi-model routing for a `gpt-5.6-sol` root. Sol owns understandi
 ### Modes
 
 - Normal: the root handles short work directly; one Worker is the default, with parallelism only for independent write-safe units.
-- Burst: send the exact command `开启爆种模式` to enable it for the session and `关闭爆种模式` to disable it. Sol is `d0`; children may use `d1-d4`; the host limit is 20 child threads; `d4` cannot delegate. Sol still audits every result.
+- Burst: send the exact command `开启爆种模式` to enable it for the session and `关闭爆种模式` to disable it. Sol is `d0`; children may use `d1-d4`; the host limit is 25 child threads; `d4` cannot delegate. Sol still audits every result.
 - Capacity recovery: `SubagentStop` resumes the same subagent once after the exact selected-model-capacity message. Root capacity notifications are not exposed through the resumable Hook path, so the plugin does not claim automatic root recovery.
 
 The plugin has four Hooks: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, and `SubagentStop`. Ordinary prompts remain silent.
 
 ### Install and verify
 
-Use the PowerShell commands in the Chinese installation section above, then trust all four Hooks in `/hooks` and start a new task. Use `config-guard.ps1 -Mode Install` when another tool may replace `config.toml`.
+Use the PowerShell commands in the Chinese installation section above, then trust all four Hooks in `/hooks` and start a new task. The first install prepends unnumbered English `Meta Rule - Conflict Resolution` and `Implementation` defaults and appends an unnumbered `Codex Quality Routing` section. The first two defaults are not restored or overwritten later. Use `config-guard.ps1 -Mode Install` when another tool may replace `config.toml`.
 
 Detailed documentation: [Operating Guide](docs/OPERATING_GUIDE.en.md) · [Routing Matrix](docs/ROUTING_MATRIX.en.md) · [Requirements](docs/REQUIREMENTS.en.md)
 

@@ -27,13 +27,24 @@ try {
   Assert-True $first.Verified 'First install was not verified'
   Assert-True (@($first.Results | Where-Object { $_.Status -eq 'install' -and $_.Ownership -eq 'created' }).Count -eq $profileCount) 'First install did not own every created profile'
   Assert-True (Test-Path -LiteralPath (Join-Path $freshHome '.codex-quality-orchestrator.install-state.json')) 'First install did not write ownership state'
-  Assert-True ($first.Rule16.Status -ceq 'created') 'First install did not create canonical Rule 16'
+  Assert-True ($first.DefaultRules.Status -ceq 'created') 'First install did not create the default agent rules'
+  Assert-True ($first.Rule16.Status -ceq 'appended') 'First install did not append the canonical routing rule'
+  $firstAgentsText = [IO.File]::ReadAllText((Join-Path $freshHome 'AGENTS.md'), [Text.UTF8Encoding]::new($false))
+  Assert-True ($firstAgentsText.StartsWith('## Meta Rule - Conflict Resolution')) 'Default meta rule was not inserted at the beginning'
+  Assert-True ($firstAgentsText.Contains('## Implementation')) 'Default implementation rule is missing'
 
   $second = ((& $installScript -CodexHome $freshHome) -join [Environment]::NewLine) | ConvertFrom-Json
   Assert-True (@($second.Results | Where-Object { $_.Status -eq 'kept' -and $_.Ownership -eq 'created' }).Count -eq $profileCount) 'Second install did not retain ownership'
+  Assert-True ($second.DefaultRules.Status -ceq 'skipped') 'Default rules were guarded after first install'
   Assert-True ($second.Rule16.Status -ceq 'kept') 'Second install did not retain canonical Rule 16'
 
   $freshAgents = Join-Path $freshHome 'AGENTS.md'
+  $numberedPluginRule = [IO.File]::ReadAllText($freshAgents, [Text.UTF8Encoding]::new($false)).Replace('## Codex Quality Routing - Default Multi-Model Quality Team', '## Rule 8 - Default Multi-Model Quality Team')
+  [IO.File]::WriteAllText($freshAgents, $numberedPluginRule, [Text.UTF8Encoding]::new($false))
+  $migratedInstall = ((& $installScript -CodexHome $freshHome) -join [Environment]::NewLine) | ConvertFrom-Json
+  Assert-True ($migratedInstall.Rule16.Status -ceq 'migrated-heading') 'Installer did not remove the legacy plugin rule number'
+  Assert-True ([IO.File]::ReadAllText($freshAgents, [Text.UTF8Encoding]::new($false)).Contains('## Codex Quality Routing - Default Multi-Model Quality Team')) 'Installer did not restore the unnumbered plugin heading'
+
   $staleRule = "## Rule 15 - keep`n`nkeep me`n`n## Rule 16 - user rule`n`nuser content`n`n## Rule 17 - keep`n`nkeep me too`n"
   [IO.File]::WriteAllText($freshAgents, $staleRule, [Text.UTF8Encoding]::new($false))
   $syncedInstall = ((& $installScript -CodexHome $freshHome) -join [Environment]::NewLine) | ConvertFrom-Json
@@ -43,7 +54,8 @@ try {
   Assert-True ($syncedText.Contains('## Rule 15 - keep')) 'Rule 16 synchronization removed the preceding rule'
   Assert-True ($syncedText.Contains('## Rule 16 - user rule')) 'Installer replaced a user Rule 16'
   Assert-True ($syncedText.Contains('## Rule 17 - keep')) 'Rule 16 synchronization removed the following rule'
-  Assert-True ($syncedText.Contains('## Rule 18')) 'Installer did not choose the next available rule number'
+  Assert-True ($syncedText.Contains('## Codex Quality Routing - Default Multi-Model Quality Team')) 'Installer did not append the unnumbered plugin rule'
+  Assert-True (-not $syncedText.Contains('## Meta Rule - Conflict Resolution')) 'Default rules were restored after first install'
   Assert-True (Test-Path -LiteralPath (Join-Path $syncedInstall.Rule16.Backup 'AGENTS.md') -PathType Leaf) 'Rule 16 backup file is missing'
 
   $freshLuna = Join-Path $freshHome 'agents\luna-worker.toml'

@@ -42,7 +42,7 @@
 | M06 | 只保留 SessionStart、UserPromptSubmit、PreToolUse、SubagentStop 四个 Hook；普通提示保持静默 | Hook、Policy |
 | M07 | 配置守护只恢复插件注册和已批准 Hook 哈希，保留 Cockpit、CC Switch 写入的认证、Provider、端点和模型配置 | Config Guard |
 | M08 | 只允许执行型 `sol_medium_worker` 和关键高风险只读 `sol_reviewer` 两种 Sol 子代理 | Rule 16、Policy |
-| M09 | 爆种模式按会话精确开关，保留 d1-d4、最多 20 个子线程和 d4 禁止下派；质量门槛与 Sol 最终审计不变 | Rule 16、Hook、Policy |
+| M09 | 爆种模式按会话精确开关，保留 d1-d4、最多 25 个子线程和 d4 禁止下派；质量门槛与 Sol 最终审计不变 | Rule 16、Hook、Policy |
 | M10 | 主控容量通知不进入当前可续交 Hook；插件不得宣称主控已自动恢复 | README、操作指南 |
 
 ## 明确排除
