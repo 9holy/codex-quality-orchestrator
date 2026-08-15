@@ -25,8 +25,10 @@ try {
   assert.equal(invoke('a', '继续'), '');
   assert.equal(invoke('b', '继续'), '');
   assert.match(invoke('a', 'disable super mode'), /CQO_BURST_MODE:OFF/);
+  assert.match(invoke('a', 'disable super mode'), /Return to normal routing/);
   assert.match(invoke('b', 'enable super mode'), /CQO_BURST_MODE:ON/);
   assert.match(invoke('b', '关闭爆种模式'), /CQO_BURST_MODE:OFF/);
+  assert.match(invoke('b', '关闭爆种模式'), /current Sol handles the remainder and final review/);
   process.stdout.write('PASS burst mode exact commands and session isolation\n');
 } finally {
   fs.rmSync(home, { recursive: true, force: true });
