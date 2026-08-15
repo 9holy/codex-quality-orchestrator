@@ -3,7 +3,7 @@ name: codex-quality-orchestrator
 description: Maintain, install, verify, or diagnose the quality-first Sol, Terra, and Luna routing plugin.
 ---
 
-# Codex Quality Orchestrator
+# Codex Routing Matrix
 
 1. Treat `../../references/RULE16.md` as the sole semantic routing rule and `../../routing-policy.json` as the mechanical contract.
 2. Effective state is proven only by an installed and enabled record from `codex plugin list --json`, four trusted current Hooks, and one unique profile for each named agent in `~/.codex/agents`.

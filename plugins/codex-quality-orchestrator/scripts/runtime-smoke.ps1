@@ -43,7 +43,7 @@ try {
     $ErrorActionPreference = 'Continue'
     $probeRaw = & $codex exec --ephemeral --json -m gpt-5.6-sol `
       -c 'model_reasoning_effort="medium"' -s read-only `
-      'Codex Quality Orchestrator runtime smoke probe. Reply with exactly CQO_HOST_PROBE.' 2>&1 |
+      'Codex Routing Matrix runtime smoke probe. Reply with exactly CQO_HOST_PROBE.' 2>&1 |
       Out-String
     $hostExitCode = $LASTEXITCODE
   } finally {

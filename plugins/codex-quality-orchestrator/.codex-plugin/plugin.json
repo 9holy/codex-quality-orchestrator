@@ -1,9 +1,9 @@
 {
   "name": "codex-quality-orchestrator",
-  "version": "0.7.1+codex.20260815172531",
+  "version": "0.7.1+codex.20260815175914",
   "description": "Quality-first multi-model routing and review guardrails for Codex.",
   "author": {
-    "name": "Codex Quality Orchestrator contributors"
+    "name": "Codex Routing Matrix contributors"
   },
   "license": "MIT",
   "keywords": [
@@ -14,10 +14,10 @@
   ],
   "skills": "./skills/",
   "interface": {
-    "displayName": "Codex Quality Orchestrator",
+    "displayName": "Codex \u8def\u7531\u77e9\u9635",
     "shortDescription": "Quality-first routing for Codex subagents.",
     "longDescription": "Use Sol to plan and verify, Luna Max for low-judgment execution, Sol Medium for bounded judgment, and Terra only with a clear task-specific advantage.",
-    "developerName": "Codex Quality Orchestrator contributors",
+    "developerName": "Codex Routing Matrix contributors",
     "category": "Developer Tools",
     "capabilities": [
       "Read"

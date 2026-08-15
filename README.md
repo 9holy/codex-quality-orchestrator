@@ -1,10 +1,10 @@
-# Codex Quality Orchestrator
+# Codex 路由矩阵
 
 [中文](#中文) | [English](#english)
 
 ## 中文
 
-Codex Quality Orchestrator 是给 `gpt-5.6-sol` 使用的多模型协作插件。它让 Sol 继续负责理解需求、规划、拆分、整合和最终验收，同时把边界清楚、适合独立执行的工作交给 Luna Max、Sol Medium 或 Terra。
+Codex 路由矩阵是给 `gpt-5.6-sol` 使用的多模型协作插件。它让 Sol 继续负责理解需求、规划、拆分、整合和最终验收，同时把边界清楚、适合独立执行的工作交给 Luna Max、Sol Medium 或 Terra。
 
 它解决的不是“每个任务都换模型”，而是两个更实际的问题：复杂任务如何安全并行，以及如何在不降低质量的前提下减少不必要的高价模型调用。
 
@@ -21,25 +21,17 @@ Codex Quality Orchestrator 是给 `gpt-5.6-sol` 使用的多模型协作插件�
 7. Worker 完成后，Sol 检查真实改动、重跑必要验证并最终决定是否接受。能力不足、越界或质量不达标的工作直接回到 Sol。
 
 ```mermaid
-flowchart TD
-    A["用户任务"] --> B["Sol 理解、规划"]
-    B --> C{"短任务或强耦合？"}
-    C -->|"是"| D["当前 Sol 完成"]
-    C -->|"否"| E["Sol 拆成可验收工作单元"]
-    E --> F{"Luna Max 能可靠完成？"}
-    F -->|"是"| G["Luna Max 执行"]
-    F -->|"否"| H{"Sol Medium 适合？"}
-    H -->|"是"| I["Sol Medium 执行"]
-    H -->|"否"| J{"Terra 有明确优势？"}
-    J -->|"是"| K["Terra 执行"]
-    J -->|"否"| D
-    G --> L["Sol 检查结果和验证"]
-    I --> L
-    K --> L
-    D --> L
-    L --> M{"达到质量标准？"}
-    M -->|"是"| N["Sol 整合并交付"]
-    M -->|"否"| D
+flowchart LR
+    A["任务"] --> B["Sol 规划拆分"] --> C{"最低可靠路线"}
+    C --> D["Luna Max"]
+    C --> E["Sol Medium"]
+    C --> F["Terra"]
+    C --> G["当前 Sol"]
+    D --> H["Sol 验收"]
+    E --> H
+    F --> H
+    G --> H
+    H --> I["交付或 Sol 接管"]
 ```
 
 ### 模型分工
@@ -99,7 +91,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketpla
 
 ## English
 
-Codex Quality Orchestrator gives a `gpt-5.6-sol` controller a small multi-model team. Sol keeps ownership of understanding, planning, decomposition, integration, and final acceptance. It delegates only bounded work that Luna Max, Sol Medium, or Terra can reliably complete.
+Codex Routing Matrix gives a `gpt-5.6-sol` controller a small multi-model team. Sol keeps ownership of understanding, planning, decomposition, integration, and final acceptance. It delegates only bounded work that Luna Max, Sol Medium, or Terra can reliably complete.
 
 The plugin is not designed to switch models for every prompt. It is designed to parallelize larger work safely and avoid expensive routes when a lower-cost capable route can deliver the same quality.
 
@@ -116,25 +108,17 @@ Current release: [`v0.7.1`](https://github.com/9holy/codex-quality-orchestrator/
 7. Sol inspects the real changes, reruns necessary checks, and accepts or rejects every result. Capability, scope, or quality failures return directly to Sol.
 
 ```mermaid
-flowchart TD
-    A["User task"] --> B["Sol understands and plans"]
-    B --> C{"Short or tightly coupled?"}
-    C -->|"Yes"| D["Current Sol executes"]
-    C -->|"No"| E["Sol creates bounded work units"]
-    E --> F{"Luna Max can reliably finish?"}
-    F -->|"Yes"| G["Luna Max executes"]
-    F -->|"No"| H{"Sol Medium fits?"}
-    H -->|"Yes"| I["Sol Medium executes"]
-    H -->|"No"| J{"Clear Terra advantage?"}
-    J -->|"Yes"| K["Terra executes"]
-    J -->|"No"| D
-    G --> L["Sol inspects and verifies"]
-    I --> L
-    K --> L
-    D --> L
-    L --> M{"Quality bar met?"}
-    M -->|"Yes"| N["Sol integrates and delivers"]
-    M -->|"No"| D
+flowchart LR
+    A["Task"] --> B["Sol plans and splits"] --> C{"Lowest reliable route"}
+    C --> D["Luna Max"]
+    C --> E["Sol Medium"]
+    C --> F["Terra"]
+    C --> G["Current Sol"]
+    D --> H["Sol acceptance"]
+    E --> H
+    F --> H
+    G --> H
+    H --> I["Deliver or Sol takes over"]
 ```
 
 ### Model roles
