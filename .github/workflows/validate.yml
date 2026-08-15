@@ -23,13 +23,13 @@ jobs:
           python-version: '3.12'
       - name: Verify source and standalone archive
         shell: pwsh
-        run: ./plugins/codex-quality-orchestrator/scripts/package.ps1
+        run: ./plugins/codex-routing-matrix/scripts/package.ps1
       - name: Upload Windows release archive
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: windows-release-archive
-          path: dist/codex-quality-orchestrator-*.zip
+          path: dist/codex-routing-matrix-*.zip
           if-no-files-found: error
 
   verify-windows-archive-on-ubuntu:
@@ -50,8 +50,8 @@ jobs:
       - name: Verify the Windows archive on Ubuntu
         shell: pwsh
         run: |
-          $archives = @(Get-ChildItem -LiteralPath dist -Filter 'codex-quality-orchestrator-*.zip')
+          $archives = @(Get-ChildItem -LiteralPath dist -Filter 'codex-routing-matrix-*.zip')
           if ($archives.Count -ne 1) { throw "Expected one Windows archive, found $($archives.Count)" }
           $extractRoot = Join-Path $PWD 'dist/windows-archive'
           Expand-Archive -LiteralPath $archives[0].FullName -DestinationPath $extractRoot
-          & (Join-Path $extractRoot 'codex-quality-orchestrator/scripts/verify.ps1')
+          & (Join-Path $extractRoot 'codex-routing-matrix/scripts/verify.ps1')

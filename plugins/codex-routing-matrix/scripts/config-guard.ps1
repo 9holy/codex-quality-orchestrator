@@ -13,7 +13,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$pluginId = 'codex-quality-orchestrator@codex-quality-orchestrator'
+$pluginId = 'codex-routing-matrix@codex-routing-matrix'
 $burstMaxConcurrentThreads = 25
 $hookIds = @(
   "$pluginId`:hooks/hooks.json:pre_tool_use:0:0",
@@ -474,9 +474,10 @@ function Write-GuardLog {
 }
 
 function Get-ValidatedWatchProcess {
-  if (-not (Test-Path -LiteralPath $pidPath -PathType Leaf)) { return $null }
+  param([string]$Path = $pidPath)
+  if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $null }
   try {
-    $record = Get-Content -LiteralPath $pidPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $record = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json
     $process = Get-Process -Id ([int]$record.pid) -ErrorAction Stop
     $startTicks = $process.StartTime.ToUniversalTime().Ticks
     if ($startTicks -ne [long]$record.startTimeUtcTicks) { return $null }
@@ -488,7 +489,8 @@ function Get-ValidatedWatchProcess {
 
 $CodexHome = Resolve-CodexHome $CodexHome
 New-Item -ItemType Directory -Path $CodexHome -Force | Out-Null
-$guardDir = Join-Path $CodexHome '.codex-quality-orchestrator-guard'
+$guardDir = Join-Path $CodexHome '.codex-routing-matrix-guard'
+$legacyGuardDir = Join-Path $CodexHome '.codex-quality-orchestrator-guard'
 $script:configPath = Join-Path $CodexHome 'config.toml'
 $script:statePath = Join-Path $guardDir 'state.json'
 $script:logPath = Join-Path $guardDir 'guard.log'
@@ -502,8 +504,14 @@ if ([string]::IsNullOrWhiteSpace($StartupDirectory)) {
 $launcherPath = if ([string]::IsNullOrWhiteSpace($StartupDirectory)) {
   $null
 } else {
+  Join-Path ([IO.Path]::GetFullPath($StartupDirectory)) 'CodexRoutingMatrixGuard.cmd'
+}
+$legacyLauncherPath = if ([string]::IsNullOrWhiteSpace($StartupDirectory)) {
+  $null
+} else {
   Join-Path ([IO.Path]::GetFullPath($StartupDirectory)) 'CodexQualityOrchestratorGuard.cmd'
 }
+$legacyPidPath = Join-Path $legacyGuardDir 'watch.pid'
 
 switch ($Mode) {
   'Install' {
@@ -541,7 +549,7 @@ switch ($Mode) {
         $null
       }
     }
-    $cachedRoot = Join-Path $CodexHome ("plugins\cache\$marketplaceName\codex-quality-orchestrator\$version")
+    $cachedRoot = Join-Path $CodexHome ("plugins\cache\$marketplaceName\codex-routing-matrix\$version")
     $installSource = if ($installed.PSObject.Properties.Name -contains 'source') { $installed.source } else { $null }
     $installType = Get-ObjectValue $installSource @('source', 'sourceType', 'type')
     $localRoot = Get-ObjectValue $installSource @('path', 'localPath')
@@ -560,6 +568,18 @@ switch ($Mode) {
       $existingWatch | Stop-Process -Force
       if (-not $existingWatch.WaitForExit(5000)) {
         throw "Existing config guard process did not stop: $($existingWatch.Id)"
+      }
+    }
+    $legacyWatch = Get-ValidatedWatchProcess $legacyPidPath
+    if ($null -ne $legacyWatch -and $legacyWatch.Id -ne $PID) {
+      $legacyWatch | Stop-Process -Force
+      if (-not $legacyWatch.WaitForExit(5000)) {
+        throw "Legacy config guard process did not stop: $($legacyWatch.Id)"
+      }
+    }
+    foreach ($legacyPath in @($legacyLauncherPath, $legacyPidPath)) {
+      if ($null -ne $legacyPath -and (Test-Path -LiteralPath $legacyPath -PathType Leaf)) {
+        Remove-Item -LiteralPath $legacyPath -Force -ErrorAction Stop
       }
     }
 

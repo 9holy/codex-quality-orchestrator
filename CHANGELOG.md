@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.0 - 2026-08-16
+
+- Rename the public repository, Marketplace, and plugin ID to `codex-routing-matrix`.
+- Keep the old `codex-quality-orchestrator` install state readable during migration.
+- Stop the legacy configuration-guard launcher when the new guard is installed.
+- Keep the Codex Quality Routing rule and existing agent profiles compatible.
+
 ## 0.7.1 - 2026-08-16
 
 - Insert CQO under the unnumbered `Codex Quality Routing` heading and preserve all user-authored numbered rules.

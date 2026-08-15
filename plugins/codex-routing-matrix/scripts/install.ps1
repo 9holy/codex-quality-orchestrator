@@ -301,12 +301,17 @@ $pluginRoot = Split-Path -Parent $PSScriptRoot
 $templateDir = Join-Path $pluginRoot 'templates\agents'
 $policy = Get-Content -LiteralPath (Join-Path $pluginRoot 'routing-policy.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 $agentsDir = Join-Path $CodexHome 'agents'
-$statePath = Join-Path $CodexHome '.codex-quality-orchestrator.install-state.json'
+$statePath = Join-Path $CodexHome '.codex-routing-matrix.install-state.json'
+$legacyStatePath = Join-Path $CodexHome '.codex-quality-orchestrator.install-state.json'
+if (-not (Test-Path -LiteralPath $statePath -PathType Leaf) -and
+    (Test-Path -LiteralPath $legacyStatePath -PathType Leaf)) {
+  Copy-Item -LiteralPath $legacyStatePath -Destination $statePath -Force -ErrorAction Stop
+}
 $firstInstall = -not (Test-Path -LiteralPath $statePath -PathType Leaf)
 
 New-Item -ItemType Directory -Path $CodexHome -Force | Out-Null
 New-Item -ItemType Directory -Path $agentsDir -Force | Out-Null
-$lock = Join-Path $CodexHome '.codex-quality-orchestrator.install.lock'
+$lock = Join-Path $CodexHome '.codex-routing-matrix.install.lock'
 $stream = [IO.File]::Open($lock, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
 try {
   $lockBytes = [Text.Encoding]::UTF8.GetBytes("PID=$PID`nStarted=$(Get-Date -Format o)`n")

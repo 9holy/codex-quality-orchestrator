@@ -24,7 +24,7 @@ if (Test-Path -LiteralPath $archive) {
   Move-Item -LiteralPath $archive -Destination ($archive + '.bak-' + $stamp) -ErrorAction Stop
 }
 
-$tempRoot = Join-Path ([IO.Path]::GetTempPath()) ('codex-quality-orchestrator-package-' + [guid]::NewGuid().ToString('N'))
+$tempRoot = Join-Path ([IO.Path]::GetTempPath()) ('codex-routing-matrix-package-' + [guid]::NewGuid().ToString('N'))
 try {
   New-Item -ItemType Directory -Path $tempRoot -ErrorAction Stop | Out-Null
   $stagedRoot = Join-Path (Join-Path $tempRoot 'stage') $manifest.name

@@ -111,7 +111,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Installer isolation test failed' }
 if ($LASTEXITCODE -ne 0) { throw 'Config guard test failed' }
 
 [pscustomobject]@{
-  Plugin = 'codex-quality-orchestrator'
+  Plugin = 'codex-routing-matrix'
   JSON = 'PASS'
   NodeSyntax = 'PASS'
   PowerShellSyntax = 'PASS'

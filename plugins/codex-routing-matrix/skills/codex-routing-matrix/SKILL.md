@@ -1,5 +1,5 @@
 ---
-name: codex-quality-orchestrator
+name: codex-routing-matrix
 description: Maintain, install, verify, or diagnose the quality-first Sol, Terra, and Luna routing plugin.
 ---
 

@@ -8,7 +8,7 @@ Codex 路由矩阵是给 `gpt-5.6-sol` 使用的多模型协作插件。它让 S
 
 它解决的不是“每个任务都换模型”，而是两个更实际的问题：复杂任务如何安全并行，以及如何在不降低质量的前提下减少不必要的高价模型调用。
 
-当前版本：[`v0.7.1`](https://github.com/9holy/codex-quality-orchestrator/releases/tag/v0.7.1)
+当前版本：[`v0.8.0`](https://github.com/9holy/codex-routing-matrix/releases/tag/v0.8.0)
 
 ### 运行原理
 
@@ -67,14 +67,14 @@ disable super mode
 本插件尚未进入 OpenAI 公共插件商城。先添加这个 Git Marketplace，再安装插件：
 
 ```powershell
-codex plugin marketplace add 9holy/codex-quality-orchestrator --ref main
-codex plugin add codex-quality-orchestrator@codex-quality-orchestrator
+codex plugin marketplace add 9holy/codex-routing-matrix --ref main
+codex plugin add codex-routing-matrix@codex-routing-matrix
 ```
 
 首次安装后运行初始化脚本：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-quality-orchestrator\plugins\codex-quality-orchestrator\scripts\install.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-routing-matrix\plugins\codex-routing-matrix\scripts\install.ps1"
 ```
 
 初始化会安装四个具名代理配置，写入无编号的 `Codex Quality Routing`，并在 `AGENTS.md` 顶部加入一次性的英文 `Meta Rule - Conflict Resolution` 和 `Implementation`。后两条不会被以后安装或配置守护自动恢复、覆盖。
@@ -84,10 +84,12 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketpla
 如果 Cockpit Tools、CC Switch 等工具会覆盖 `config.toml`，再启用配置守护：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-quality-orchestrator\plugins\codex-quality-orchestrator\scripts\config-guard.ps1" -Mode Install
+powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-routing-matrix\plugins\codex-routing-matrix\scripts\config-guard.ps1" -Mode Install
 ```
 
 详细说明：[操作指南](docs/OPERATING_GUIDE.md) · [路由矩阵](docs/ROUTING_MATRIX.md) · [需求基线](docs/REQUIREMENTS.md)
+
+旧版 `codex-quality-orchestrator` 用户迁移时，先安装新的 `codex-routing-matrix`，确认新插件和 Hook 正常后，再移除旧插件注册。新安装器会读取旧版代理安装状态，不会重复覆盖代理配置。
 
 ## English
 
@@ -95,7 +97,7 @@ Codex Routing Matrix gives a `gpt-5.6-sol` controller a small multi-model team. 
 
 The plugin is not designed to switch models for every prompt. It is designed to parallelize larger work safely and avoid expensive routes when a lower-cost capable route can deliver the same quality.
 
-Current release: [`v0.7.1`](https://github.com/9holy/codex-quality-orchestrator/releases/tag/v0.7.1)
+Current release: [`v0.8.0`](https://github.com/9holy/codex-routing-matrix/releases/tag/v0.8.0)
 
 ### How it works
 
@@ -152,14 +154,14 @@ disable super mode
 The plugin is not yet listed in OpenAI's public plugin marketplace. Add its Git Marketplace, then install it:
 
 ```powershell
-codex plugin marketplace add 9holy/codex-quality-orchestrator --ref main
-codex plugin add codex-quality-orchestrator@codex-quality-orchestrator
+codex plugin marketplace add 9holy/codex-routing-matrix --ref main
+codex plugin add codex-routing-matrix@codex-routing-matrix
 ```
 
 Run first-install setup:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-quality-orchestrator\plugins\codex-quality-orchestrator\scripts\install.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-routing-matrix\plugins\codex-routing-matrix\scripts\install.ps1"
 ```
 
 Setup installs four named agent profiles, adds the unnumbered `Codex Quality Routing` section, and places one-time English `Meta Rule - Conflict Resolution` and `Implementation` defaults at the top of `AGENTS.md`. Later installs and the configuration guard do not restore or overwrite those two defaults.
@@ -169,6 +171,8 @@ Review and trust all four Hooks in `/hooks`, then start a new task. Trust must b
 Use `config-guard.ps1 -Mode Install` only when another tool may replace `config.toml`.
 
 Detailed documentation: [Operating Guide](docs/OPERATING_GUIDE.en.md) · [Routing Matrix](docs/ROUTING_MATRIX.en.md) · [Requirements](docs/REQUIREMENTS.en.md)
+
+When upgrading from `codex-quality-orchestrator`, install `codex-routing-matrix` first, verify the new plugin and Hooks, then remove the old plugin registration. The new installer reads the old agent-install state and does not create duplicate profiles.
 
 ## License
 

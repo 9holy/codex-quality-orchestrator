@@ -10,12 +10,12 @@ policy = json.loads((ROOT / "routing-policy.json").read_text(encoding="utf-8"))
 manifest = json.loads((ROOT / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8"))
 hooks = json.loads((ROOT / "hooks" / "hooks.json").read_text(encoding="utf-8"))
 rule = (ROOT / "references" / "RULE16.md").read_text(encoding="utf-8")
-maintenance = (ROOT / "skills" / "codex-quality-orchestrator" / "SKILL.md").read_text(encoding="utf-8")
+maintenance = (ROOT / "skills" / "codex-routing-matrix" / "SKILL.md").read_text(encoding="utf-8")
 routing = (ROOT / "skills" / "codex-quality-routing-team" / "SKILL.md").read_text(encoding="utf-8")
 
 base_version = manifest["version"].partition("+codex.")[0]
-assert manifest["name"] == "codex-quality-orchestrator"
-assert base_version == policy["policyVersion"] == "0.7.1"
+assert manifest["name"] == "codex-routing-matrix"
+assert base_version == policy["policyVersion"] == "0.8.0"
 assert policy["schemaVersion"] == 8
 assert set(policy) == {
     "schemaVersion", "policyVersion", "toolNames", "workPacket",
@@ -74,7 +74,7 @@ assert "do not run it again" in routing
 assert "sole semantic routing rule" in maintenance
 for model_path in [
     ROOT / "routing-policy.json",
-    ROOT / "skills" / "codex-quality-orchestrator" / "SKILL.md",
+    ROOT / "skills" / "codex-routing-matrix" / "SKILL.md",
     ROOT / "skills" / "codex-quality-routing-team" / "SKILL.md",
 ]:
     assert model_path.read_bytes().isascii(), f"model-facing file is not ASCII: {model_path}"

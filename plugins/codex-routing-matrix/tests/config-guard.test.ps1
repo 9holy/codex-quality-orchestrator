@@ -33,10 +33,10 @@ $pluginRoot = Split-Path -Parent $PSScriptRoot
 $guardScript = Join-Path $pluginRoot 'scripts\config-guard.ps1'
 $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ('cqo-config-guard-' + [guid]::NewGuid().ToString('N'))
 $codexHome = Join-Path $tempRoot '.codex'
-$guardDir = Join-Path $codexHome '.codex-quality-orchestrator-guard'
+$guardDir = Join-Path $codexHome '.codex-routing-matrix-guard'
 $configPath = Join-Path $codexHome 'config.toml'
 $fakeCodex = Join-Path $tempRoot 'fake-codex.ps1'
-$pluginId = 'codex-quality-orchestrator@codex-quality-orchestrator'
+$pluginId = 'codex-routing-matrix@codex-routing-matrix'
 $preId = "$pluginId`:hooks/hooks.json:pre_tool_use:0:0"
 $sessionId = "$pluginId`:hooks/hooks.json:session_start:0:0"
 $promptId = "$pluginId`:hooks/hooks.json:user_prompt_submit:0:0"
@@ -83,8 +83,8 @@ if (($Args -join ' ') -ceq 'plugin list --json') {
     '{"installed":[]}'
     exit 0
   }
-  if ($text.Contains('[plugins."codex-quality-orchestrator@codex-quality-orchestrator"]')) {
-    '{"installed":[{"pluginId":"codex-quality-orchestrator@codex-quality-orchestrator","installed":true,"enabled":true,"version":"0.2.0","marketplaceName":"cqo-test","marketplaceSource":{"sourceType":"local","source":"owner/repo"}}]}'
+  if ($text.Contains('[plugins."codex-routing-matrix@codex-routing-matrix"]')) {
+    '{"installed":[{"pluginId":"codex-routing-matrix@codex-routing-matrix","installed":true,"enabled":true,"version":"0.2.0","marketplaceName":"cqo-test","marketplaceSource":{"sourceType":"local","source":"owner/repo"}}]}'
   } else {
     '{"installed":[]}'
   }
@@ -94,7 +94,7 @@ if ($Args[0] -ceq 'plugin' -and $Args[1] -ceq 'marketplace') {
   if ($Args[2] -ceq 'add') {
     if (-not [string]::IsNullOrWhiteSpace($env:CQO_TEST_MARKETPLACE_CONFLICT) -and
         -not (Test-Path -LiteralPath $env:CQO_TEST_MARKETPLACE_CONFLICT)) {
-      Write-Output "Error: marketplace 'codex-quality-orchestrator' is already added from a different source; remove it before adding this source"
+      Write-Output "Error: marketplace 'codex-routing-matrix' is already added from a different source; remove it before adding this source"
       exit 1
     }
     if (-not [string]::IsNullOrWhiteSpace($env:CQO_TEST_REQUIRE_MARKETPLACE)) {
@@ -112,10 +112,10 @@ if ($Args[0] -ceq 'plugin' -and $Args[1] -ceq 'marketplace') {
   }
 }
 if ($Args[0] -ceq 'plugin' -and $Args[1] -ceq 'add') {
-  if (-not $text.Contains('[plugins."codex-quality-orchestrator@codex-quality-orchestrator"]')) {
-    Add-Content -LiteralPath $config -Encoding UTF8 -Value "`n[plugins.`"codex-quality-orchestrator@codex-quality-orchestrator`"]`nenabled = true"
+  if (-not $text.Contains('[plugins."codex-routing-matrix@codex-routing-matrix"]')) {
+    Add-Content -LiteralPath $config -Encoding UTF8 -Value "`n[plugins.`"codex-routing-matrix@codex-routing-matrix`"]`nenabled = true"
   }
-  [pscustomobject]@{ pluginId='codex-quality-orchestrator@codex-quality-orchestrator'; version='0.2.0'; installedPath=$env:CQO_TEST_PLUGIN_ROOT } | ConvertTo-Json -Compress
+  [pscustomobject]@{ pluginId='codex-routing-matrix@codex-routing-matrix'; version='0.2.0'; installedPath=$env:CQO_TEST_PLUGIN_ROOT } | ConvertTo-Json -Compress
   exit 0
 }
 throw "Unexpected fake codex call: $($Args -join ' ')"
@@ -165,12 +165,12 @@ wire_api = "responses"
   Assert-True $cockpitAfter.Contains("trusted_hash = `"sha256:$('c' * 64)`"") 'Stale Hook trust was not replaced with the approved hash'
   Assert-True (-not $cockpitAfter.Contains("sha256:$('e' * 64)")) 'Stale Hook trust remained after repair'
   Assert-True (-not $cockpitAfter.Contains($retiredSubagentStartId)) 'Retired Hook trust remained after Cockpit repair'
-  Assert-True $cockpitAfter.Contains('[plugins."codex-quality-orchestrator@codex-quality-orchestrator"]') 'Plugin registration was not restored after Cockpit replacement'
+  Assert-True $cockpitAfter.Contains('[plugins."codex-routing-matrix@codex-routing-matrix"]') 'Plugin registration was not restored after Cockpit replacement'
 
   $legacyState = $validState | ConvertFrom-Json
   $legacyState.marketplaceRef = $null
   [IO.File]::WriteAllText($statePath, ($legacyState | ConvertTo-Json -Depth 6), [Text.UTF8Encoding]::new($false))
-  $metadataRoot = Join-Path $codexHome '.tmp\marketplaces\codex-quality-orchestrator'
+  $metadataRoot = Join-Path $codexHome '.tmp\marketplaces\codex-routing-matrix'
   New-Item -ItemType Directory -Path $metadataRoot -Force | Out-Null
   $metadata = [ordered]@{ source_type='local'; source='owner/repo'; ref_name='main' } | ConvertTo-Json
   [IO.File]::WriteAllText((Join-Path $metadataRoot '.codex-marketplace-install.json'), $metadata, [Text.UTF8Encoding]::new($false))
@@ -183,7 +183,7 @@ wire_api = "responses"
   Assert-True $legacyRepair.Healthy 'Legacy null-ref state was not repaired'
   Assert-True ((Get-Content -LiteralPath $marketplaceMarker -Raw).Contains('--ref main')) 'Marketplace repair did not recover ref_name from install metadata'
   Assert-True (Test-Path -LiteralPath $conflictResolvedMarker -PathType Leaf) 'Verified same-source marketplace conflict was not recovered'
-  Assert-True (@(Get-ChildItem -LiteralPath (Split-Path -Parent $metadataRoot) -Directory -Filter 'codex-quality-orchestrator-*').Count -ge 1) 'Marketplace conflict recovery did not create a rollback backup'
+  Assert-True (@(Get-ChildItem -LiteralPath (Split-Path -Parent $metadataRoot) -Directory -Filter 'codex-routing-matrix-*').Count -ge 1) 'Marketplace conflict recovery did not create a rollback backup'
   Remove-Item Env:CQO_TEST_REQUIRE_MARKETPLACE
   Remove-Item Env:CQO_TEST_MARKETPLACE_CONFLICT
   [IO.File]::WriteAllText($statePath, $validState, [Text.UTF8Encoding]::new($false))
@@ -257,10 +257,15 @@ wire_api = "responses"
       ([ordered]@{ source_type='local'; source='owner/repo'; ref_name='main' } | ConvertTo-Json),
       [Text.UTF8Encoding]::new($false)
     )
+    New-Item -ItemType Directory -Path $startupDir -Force | Out-Null
+    $legacyLauncher = Join-Path $startupDir 'CodexQualityOrchestratorGuard.cmd'
+    [IO.File]::WriteAllText($legacyLauncher, '@echo off', [Text.UTF8Encoding]::new($false))
     $guardInstall = ((& $guardScript -Mode Install -CodexHome $codexHome -CodexCommand $fakeCodex -StartupDirectory $startupDir -NoStart) -join [Environment]::NewLine) | ConvertFrom-Json
     $watchProcess.WaitForExit(5000) | Out-Null
     Assert-True $watchProcess.HasExited 'Guard upgrade did not stop the previous Watch process'
     Assert-True (-not $guardInstall.Started) 'NoStart guard upgrade started a watcher'
+    Assert-True ((Split-Path -Leaf $guardInstall.Launcher) -ceq 'CodexRoutingMatrixGuard.cmd') 'Guard install kept the legacy launcher name'
+    Assert-True (-not (Test-Path -LiteralPath $legacyLauncher)) 'Guard install did not remove the legacy startup launcher'
     $launcher = Get-Content -LiteralPath $guardInstall.Launcher -Raw
     Assert-True $launcher.Contains("-CodexCommand `"$fakeCodex`"") 'Startup launcher did not persist the resolved Codex command'
     $installedState = Get-Content -LiteralPath (Join-Path $guardDir 'state.json') -Raw | ConvertFrom-Json

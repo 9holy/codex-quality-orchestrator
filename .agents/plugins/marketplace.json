@@ -1,14 +1,14 @@
 {
-  "name": "codex-quality-orchestrator",
+  "name": "codex-routing-matrix",
   "interface": {
     "displayName": "Codex 路由矩阵"
   },
   "plugins": [
     {
-      "name": "codex-quality-orchestrator",
+      "name": "codex-routing-matrix",
       "source": {
         "source": "local",
-        "path": "./plugins/codex-quality-orchestrator"
+        "path": "./plugins/codex-routing-matrix"
       },
       "policy": {
         "installation": "AVAILABLE",

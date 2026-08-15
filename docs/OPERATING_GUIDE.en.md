@@ -54,14 +54,14 @@ A second failure returns to Sol. Capability, scope, and quality failures are nev
 The plugin is distributed through an independent Git Marketplace and is not yet listed in OpenAI's public plugin marketplace:
 
 ```powershell
-codex plugin marketplace add 9holy/codex-quality-orchestrator --ref main
-codex plugin add codex-quality-orchestrator@codex-quality-orchestrator
+codex plugin marketplace add 9holy/codex-routing-matrix --ref main
+codex plugin add codex-routing-matrix@codex-routing-matrix
 ```
 
 Run setup after first install or upgrade:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-quality-orchestrator\plugins\codex-quality-orchestrator\scripts\install.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-routing-matrix\plugins\codex-routing-matrix\scripts\install.ps1"
 ```
 
 Setup installs the Luna, Sol Medium, Terra, and Sol Reviewer profiles, maintains the unnumbered `Codex Quality Routing` section, and places one-time English `Meta Rule - Conflict Resolution` and `Implementation` defaults at the top of `AGENTS.md`. Those two defaults are not guarded and are never restored or overwritten by later installs.
@@ -69,10 +69,18 @@ Setup installs the Luna, Sol Medium, Terra, and Sol Reviewer profiles, maintains
 Upgrade commands:
 
 ```powershell
-codex plugin marketplace upgrade codex-quality-orchestrator
-codex plugin add codex-quality-orchestrator@codex-quality-orchestrator
-powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-quality-orchestrator\plugins\codex-quality-orchestrator\scripts\install.ps1"
+codex plugin marketplace upgrade codex-routing-matrix
+codex plugin add codex-routing-matrix@codex-routing-matrix
+powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-routing-matrix\plugins\codex-routing-matrix\scripts\install.ps1"
 ```
+
+When migrating from `codex-quality-orchestrator`, install the new Marketplace and run setup first. After the new plugin and its four Hooks are verified, remove the old registration:
+
+```powershell
+codex plugin remove codex-quality-orchestrator@codex-quality-orchestrator
+```
+
+The new installer reads `.codex-quality-orchestrator.install-state.json` and migrates the agent-install state without creating duplicate profiles.
 
 ## Hooks and configuration guard
 
@@ -90,7 +98,7 @@ Review and trust Hooks again when an upgrade changes their content. The plugin n
 If Cockpit Tools, CC Switch, or another tool may replace `config.toml`, enable the configuration guard:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-quality-orchestrator\plugins\codex-quality-orchestrator\scripts\config-guard.ps1" -Mode Install
+powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-routing-matrix\plugins\codex-routing-matrix\scripts\config-guard.ps1" -Mode Install
 ```
 
 The guard restores only plugin registration and already approved current Hooks. It preserves authentication, providers, endpoints, models, and unrelated settings.
@@ -98,7 +106,7 @@ The guard restores only plugin registration and already approved current Hooks. 
 ## Verify
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-quality-orchestrator\plugins\codex-quality-orchestrator\scripts\verify.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-routing-matrix\plugins\codex-routing-matrix\scripts\verify.ps1"
 codex plugin list --json
 ```
 

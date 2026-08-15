@@ -6,7 +6,7 @@ const path = require('node:path');
 
 const policy = JSON.parse(fs.readFileSync(path.resolve(__dirname, '..', 'routing-policy.json'), 'utf8'));
 const home = path.resolve(process.env.CODEX_HOME || path.join(os.homedir(), '.codex'));
-const stateDir = path.join(home, '.codex-quality-orchestrator');
+const stateDir = path.join(home, '.codex-routing-matrix');
 const statePath = path.join(stateDir, 'burst-sessions.json');
 
 function sessionId(payload) {

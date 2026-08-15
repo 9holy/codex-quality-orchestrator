@@ -1,6 +1,6 @@
 {
-  "name": "codex-quality-orchestrator",
-  "version": "0.7.1+codex.20260815175914",
+  "name": "codex-routing-matrix",
+  "version": "0.8.0+codex.20260815183634",
   "description": "Quality-first multi-model routing and review guardrails for Codex.",
   "author": {
     "name": "Codex Routing Matrix contributors"
@@ -25,7 +25,7 @@
     "defaultPrompt": [
       "Route this task through the lowest-cost capable quality team.",
       "Audit my current model routing configuration.",
-      "Verify that the orchestrator plugin and hooks are active."
+      "Verify that the routing matrix plugin and hooks are active."
     ]
   }
 }

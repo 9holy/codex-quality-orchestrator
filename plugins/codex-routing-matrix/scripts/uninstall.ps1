@@ -97,8 +97,8 @@ $pluginRoot = Split-Path -Parent $PSScriptRoot
 $templateDir = Join-Path $pluginRoot 'templates\agents'
 $policy = Get-Content -LiteralPath (Join-Path $pluginRoot 'routing-policy.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 $agentsDir = Join-Path $CodexHome 'agents'
-$statePath = Join-Path $CodexHome '.codex-quality-orchestrator.install-state.json'
-$lock = Join-Path $CodexHome '.codex-quality-orchestrator.install.lock'
+$statePath = Join-Path $CodexHome '.codex-routing-matrix.install-state.json'
+$lock = Join-Path $CodexHome '.codex-routing-matrix.install.lock'
 
 New-Item -ItemType Directory -Path $CodexHome -Force | Out-Null
 New-Item -ItemType Directory -Path $agentsDir -Force | Out-Null

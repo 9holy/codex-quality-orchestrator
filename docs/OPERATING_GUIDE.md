@@ -54,14 +54,14 @@ Selected model is at capacity. Please try a different model.
 插件通过独立 Git Marketplace 分发，尚未进入 OpenAI 公共插件商城：
 
 ```powershell
-codex plugin marketplace add 9holy/codex-quality-orchestrator --ref main
-codex plugin add codex-quality-orchestrator@codex-quality-orchestrator
+codex plugin marketplace add 9holy/codex-routing-matrix --ref main
+codex plugin add codex-routing-matrix@codex-routing-matrix
 ```
 
 首次安装或升级后运行初始化：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-quality-orchestrator\plugins\codex-quality-orchestrator\scripts\install.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-routing-matrix\plugins\codex-routing-matrix\scripts\install.ps1"
 ```
 
 初始化会安装 Luna、Sol Medium、Terra 和 Sol Reviewer 四个具名代理，维护无编号的 `Codex Quality Routing`，并在首次安装时把英文 `Meta Rule - Conflict Resolution` 和 `Implementation` 放到 `AGENTS.md` 顶部。后两条不是守护内容，以后不会被安装器自动恢复或覆盖。
@@ -69,10 +69,18 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketpla
 升级命令：
 
 ```powershell
-codex plugin marketplace upgrade codex-quality-orchestrator
-codex plugin add codex-quality-orchestrator@codex-quality-orchestrator
-powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-quality-orchestrator\plugins\codex-quality-orchestrator\scripts\install.ps1"
+codex plugin marketplace upgrade codex-routing-matrix
+codex plugin add codex-routing-matrix@codex-routing-matrix
+powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-routing-matrix\plugins\codex-routing-matrix\scripts\install.ps1"
 ```
+
+从旧版 `codex-quality-orchestrator` 迁移时，先执行新的 Marketplace 安装命令并运行初始化脚本。确认新插件和四个新 Hook 正常后，再执行：
+
+```powershell
+codex plugin remove codex-quality-orchestrator@codex-quality-orchestrator
+```
+
+新安装器会读取旧版 `.codex-quality-orchestrator.install-state.json`，迁移代理安装状态，不会重复覆盖代理配置。
 
 ## Hook 与配置守护
 
@@ -90,7 +98,7 @@ Hook 内容升级后必须重新检查并信任，插件不会绕过信任机制
 如果 Cockpit Tools、CC Switch 等工具会替换 `config.toml`，启用配置守护：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-quality-orchestrator\plugins\codex-quality-orchestrator\scripts\config-guard.ps1" -Mode Install
+powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-routing-matrix\plugins\codex-routing-matrix\scripts\config-guard.ps1" -Mode Install
 ```
 
 配置守护只恢复插件注册和已经批准的当前 Hook，不修改认证、Provider、端点、模型或其他工具设置。
@@ -98,7 +106,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketpla
 ## 验证
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-quality-orchestrator\plugins\codex-quality-orchestrator\scripts\verify.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-routing-matrix\plugins\codex-routing-matrix\scripts\verify.ps1"
 codex plugin list --json
 ```
 

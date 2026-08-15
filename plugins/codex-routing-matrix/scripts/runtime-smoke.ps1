@@ -7,7 +7,7 @@ $ErrorActionPreference = 'Stop'
 $pluginRoot = Split-Path -Parent $PSScriptRoot
 $manifest = Get-Content -LiteralPath (Join-Path $pluginRoot '.codex-plugin\plugin.json') -Raw -Encoding UTF8 |
   ConvertFrom-Json
-$pluginId = "$($manifest.name)@codex-quality-orchestrator"
+$pluginId = "$($manifest.name)@codex-routing-matrix"
 $expectedBaseVersion = ($manifest.version -split '\+', 2)[0]
 $codex = (Get-Command codex -ErrorAction Stop).Source
 

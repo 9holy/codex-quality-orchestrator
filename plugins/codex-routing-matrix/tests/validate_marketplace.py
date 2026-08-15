@@ -20,11 +20,11 @@ manifest = load_json(PLUGIN_ROOT / ".codex-plugin" / "plugin.json")
 marketplace = load_json(args.marketplace.resolve())
 entries = [entry for entry in marketplace["plugins"] if entry["name"] == manifest["name"]]
 
-assert marketplace["name"] == "codex-quality-orchestrator"
+assert marketplace["name"] == "codex-routing-matrix"
 assert len(entries) == 1
 assert entries[0]["source"] == {
     "source": "local",
-    "path": "./plugins/codex-quality-orchestrator",
+    "path": "./plugins/codex-routing-matrix",
 }
 
 print("PASS repository marketplace")

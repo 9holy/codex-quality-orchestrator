@@ -7,7 +7,7 @@ const path = require('node:path');
 const SOURCE_URL = 'https://codexradar.com/api/intelligence-efficiency';
 const DEFAULT_CACHE_FILE = path.join(
   'cache',
-  'codex-quality-orchestrator',
+  'codex-routing-matrix',
   'radar-routing-evidence.json',
 );
 const DEFAULT_CONFIG = Object.freeze({
