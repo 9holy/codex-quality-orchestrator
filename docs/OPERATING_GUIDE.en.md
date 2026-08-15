@@ -1,21 +1,32 @@
 # Operating Guide
 
-## How it works
+## How one task runs
 
-The current Sol always remains in control. It understands the task, splits the work, chooses suitable Workers, and checks the final result. The plugin never changes the root model or reasoning effort of a running task.
+The current `gpt-5.6-sol` always remains the controller. The plugin does not replace the root model or reasoning effort of a running task. It gives Sol a concise routing rule and four named agent profiles.
 
-The current Sol handles simple work directly. Larger work is delegated only when its boundaries are clear, its result can be checked, and delegation has a real benefit:
+1. Sol first decides whether decomposition has net value. It handles short, tightly coupled, or naturally sequential work directly.
+2. Before delegation, Sol freezes each unit's goal, scope, single-writer ownership, dependencies, acceptance checks, and integration order.
+3. Luna Max is the first choice for frozen, low-judgment, mechanically verifiable work it can reliably complete.
+4. When Luna does not fit, Sol Medium is preferred for bounded, independently verifiable work that needs normal judgment.
+5. Terra is used only for a clear task-specific advantage in quality, context handling, parallel value, or total cost. Deep reasoning alone does not select Terra.
+6. Architecture, security, public interfaces, production data, irreversible operations, unclear requirements, and undiagnosed causes stay with the current Sol.
+7. Every Worker result returns to Sol. Sol inspects the actual diff, reruns necessary checks in integration order, then accepts it, returns one local defect once, or takes over.
 
-- Luna Max: clear, low-judgment work with straightforward checks.
-- Sol Medium: bounded work that needs normal judgment.
-- Terra: only when the specific task clearly favors Terra over Sol.
-- Sol Reviewer: one read-only review for a critical high-risk change.
+This keeps final quality judgment with Sol while assigning suitable execution to a lower-cost capable route. A route stays frozen within the task and is reconsidered only when the unit, boundary, availability, or result changes.
 
-Architecture, security, production data, irreversible operations, unclear requirements, and unresolved causes stay with the current Sol.
+## Normal mode
+
+Normal mode is for everyday work:
+
+- Simple work creates no subagent.
+- Non-short work starts with one Worker only when delegation or parallelism has net value.
+- Only independent, write-safe units run in parallel.
+- Homogeneous batches verify one representative unit before filling real host capacity and replacing completed Workers.
+- While Workers run, Sol uses one long event-driven wait rather than short polling.
 
 ## Super mode
 
-Super mode is for many independent tasks that do not write to the same files. It uses up to 25 child threads and supports four delegation levels. The deepest level cannot delegate again.
+Super mode is high parallelism, not a lower quality bar. It is intended for many independent, write-safe units and supports `d1-d4` with up to 25 child threads; `d4` cannot delegate again. Actual concurrency is still limited by the active Codex host's available slots.
 
 Toggle it for the current session:
 
@@ -26,46 +37,55 @@ disable super mode
 关闭爆种模式
 ```
 
-Super mode only increases parallelism. Sol still checks every result, reruns necessary verification, and owns final integration.
+At any concurrency, Sol still owns file boundaries, dependency order, actual-diff inspection, required checks, and final acceptance.
 
 ## Failure handling
 
-When a subagent returns this exact capacity message, the plugin continues once in the same context instead of restarting the task:
+When a subagent returns this exact capacity message, the plugin continues once in the same context. It does not restart the task or redo completed work:
 
 ```text
 Selected model is at capacity. Please try a different model.
 ```
 
-A second failure returns to Sol. Capability, scope, and quality failures are never treated as capacity failures. Current Codex Hooks cannot resume a root-controller request, so the plugin does not claim root automatic recovery.
+A second failure returns to Sol. Capability, scope, and quality failures are never treated as capacity failures or passed through a mechanical model ladder. Current Codex Hooks cannot resume a root-controller capacity notification, so the plugin promises subagent continuation only.
 
-## Install
+## Install and upgrade
 
-The plugin is distributed through an independent Git Marketplace and is not yet listed in OpenAI's public plugin marketplace.
+The plugin is distributed through an independent Git Marketplace and is not yet listed in OpenAI's public plugin marketplace:
 
 ```powershell
 codex plugin marketplace add 9holy/codex-quality-orchestrator --ref main
 codex plugin add codex-quality-orchestrator@codex-quality-orchestrator
+```
+
+Run setup after first install or upgrade:
+
+```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-quality-orchestrator\plugins\codex-quality-orchestrator\scripts\install.ps1"
 ```
 
-First-install setup:
+Setup installs the Luna, Sol Medium, Terra, and Sol Reviewer profiles, maintains the unnumbered `Codex Quality Routing` section, and places one-time English `Meta Rule - Conflict Resolution` and `Implementation` defaults at the top of `AGENTS.md`. Those two defaults are not guarded and are never restored or overwritten by later installs.
 
-- Installs the Luna, Sol Medium, Terra, and Sol Reviewer profiles.
-- Adds the unnumbered `Codex Quality Routing` section.
-- Adds one-time English `Meta Rule - Conflict Resolution` and `Implementation` defaults at the top of `AGENTS.md`.
+Upgrade commands:
 
-Later installs and the configuration guard do not restore or overwrite the two English defaults.
+```powershell
+codex plugin marketplace upgrade codex-quality-orchestrator
+codex plugin add codex-quality-orchestrator@codex-quality-orchestrator
+powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-quality-orchestrator\plugins\codex-quality-orchestrator\scripts\install.ps1"
+```
 
 ## Hooks and configuration guard
 
 Review and trust these four Hooks in `/hooks`:
 
-- `SessionStart`: supplies the current routing rule when it is missing.
-- `UserPromptSubmit`: recognizes Chinese and English Super mode commands.
-- `PreToolUse`: checks that CQO agent calls match their configuration.
-- `SubagentStop`: handles one subagent capacity retry.
+| Hook | Purpose |
+|---|---|
+| `SessionStart` | Supplies the routing rule when it is missing from context |
+| `UserPromptSubmit` | Recognizes Chinese and English Super mode commands |
+| `PreToolUse` | Checks that CQO named-agent calls match mechanical configuration |
+| `SubagentStop` | Handles one subagent capacity continuation |
 
-Review and trust Hooks again after an update changes their content. The plugin never bypasses trust.
+Review and trust Hooks again when an upgrade changes their content. The plugin never bypasses trust.
 
 If Cockpit Tools, CC Switch, or another tool may replace `config.toml`, enable the configuration guard:
 
@@ -73,7 +93,7 @@ If Cockpit Tools, CC Switch, or another tool may replace `config.toml`, enable t
 powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-quality-orchestrator\plugins\codex-quality-orchestrator\scripts\config-guard.ps1" -Mode Install
 ```
 
-The guard restores only plugin registration and already approved Hooks. It preserves authentication, providers, endpoints, models, and unrelated settings.
+The guard restores only plugin registration and already approved current Hooks. It preserves authentication, providers, endpoints, models, and unrelated settings.
 
 ## Verify
 
@@ -82,4 +102,4 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketpla
 codex plugin list --json
 ```
 
-Installation is complete only when the plugin is installed and enabled, each agent profile is unique, and all four Hooks are trusted. Start a new task after an upgrade so the new rules and profiles load.
+Installation is complete only when the plugin is installed and enabled, each of the four profiles is unique, and all four Hooks are trusted. Start a new task after an upgrade so the new rules and profiles load.
