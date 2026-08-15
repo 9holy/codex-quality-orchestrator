@@ -14,13 +14,20 @@ function codexHome() {
     : path.join(os.homedir(), '.codex');
 }
 
-function extractRule16(text) {
-  const marker = '## Rule 16';
-  const start = text.indexOf(marker);
-  if (start < 0) return null;
-  const section = text.slice(start);
-  const nextRule = section.slice(marker.length).search(/^## Rule \d+/m);
-  return (nextRule < 0 ? section : section.slice(0, marker.length + nextRule)).trim();
+function normalizeRule(text) {
+  return text.replace(/^##[^\r\n]*/m, '## RULE').replace(/\r\n/g, '\n').trim();
+}
+
+function extractCanonicalRule(text, canonical) {
+  const headings = [...text.matchAll(/^## .*$/gm)];
+  const expected = normalizeRule(canonical);
+  for (let index = 0; index < headings.length; index += 1) {
+    const start = headings[index].index;
+    const end = index + 1 < headings.length ? headings[index + 1].index : text.length;
+    const section = text.slice(start, end).trim();
+    if (normalizeRule(section) === expected) return section;
+  }
+  return null;
 }
 
 function writeRuntimeSmokeProof(nonce, requestedPath, details) {
@@ -56,11 +63,11 @@ async function main() {
 
   const globalPath = path.join(home, 'AGENTS.md');
   const installedRule = fs.existsSync(globalPath)
-    ? extractRule16(fs.readFileSync(globalPath, 'utf8'))
+    ? extractCanonicalRule(fs.readFileSync(globalPath, 'utf8'), canonical)
     : null;
   const rule16Status = installedRule === null
     ? 'injected'
-    : installedRule === canonical ? 'match' : 'refreshed';
+    : normalizeRule(installedRule) === normalizeRule(canonical) ? 'match' : 'refreshed';
 
   const notes = [];
   if (rule16Status === 'injected') {

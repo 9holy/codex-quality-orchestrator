@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.1 - 2026-08-16
+
+- Insert the plugin routing rule after the user's highest numbered `Rule N` instead of assuming `Rule 16`.
+- Preserve user-authored rules, including a user-owned `Rule 16`; update only a previously inserted CQO section.
+- Detect an existing CQO section by its content, so arbitrary user rule numbering remains valid.
+
 ## 0.7.0 - 2026-08-11
 
 - Add session-scoped burst mode with exact on/off commands, `d1-d4` delegation, a 20-child host limit, and unchanged Sol audit gates.

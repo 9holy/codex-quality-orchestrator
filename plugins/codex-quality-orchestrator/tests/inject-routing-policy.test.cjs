@@ -54,11 +54,14 @@ try {
   assert.match(invoke(), /CQO_AGENT_PROFILES_MISSING.*luna-worker\.toml/s);
   installProfiles();
 
-  fs.writeFileSync(path.join(codexHome, 'AGENTS.md'), '## Rule 16 — stale\n');
-  const refreshed = invoke();
-  assert.match(refreshed, /^\[CQO_RULE16_REFRESHED\]/);
-  assert.match(refreshed, /Default Multi-Model Quality Team/);
-  assert.doesNotMatch(refreshed, /暂停具名代理|全局 Rule 16 与插件规则不一致/);
+  fs.writeFileSync(path.join(codexHome, 'AGENTS.md'), '## Rule 16 — user rule\n\nuser content\n');
+  const inserted = invoke();
+  assert.match(inserted, /^\[CQO_RULE16_INJECTED\]/);
+  assert.match(inserted, /Codex Quality Routing/);
+  assert.doesNotMatch(inserted, /暂停具名代理|全局 Rule 16 与插件规则不一致/);
+
+  fs.writeFileSync(path.join(codexHome, 'AGENTS.md'), canonical.replace(/^## .*$/m, '## Rule 8 - user numbering'));
+  assert.equal(invoke(), '', 'matching rule with a non-16 number must stay silent');
 
   fs.rmSync(path.join(codexHome, 'AGENTS.md'));
   assert.equal(invoke(), `[CQO_RULE16_INJECTED]\n${canonical}`);

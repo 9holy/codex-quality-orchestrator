@@ -15,7 +15,7 @@ routing = (ROOT / "skills" / "codex-quality-routing-team" / "SKILL.md").read_tex
 
 base_version = manifest["version"].partition("+codex.")[0]
 assert manifest["name"] == "codex-quality-orchestrator"
-assert base_version == policy["policyVersion"] == "0.7.0"
+assert base_version == policy["policyVersion"] == "0.7.1"
 assert policy["schemaVersion"] == 8
 assert set(policy) == {
     "schemaVersion", "policyVersion", "toolNames", "workPacket",

@@ -34,15 +34,16 @@ try {
   Assert-True ($second.Rule16.Status -ceq 'kept') 'Second install did not retain canonical Rule 16'
 
   $freshAgents = Join-Path $freshHome 'AGENTS.md'
-  $staleRule = "## Rule 15 - keep`n`nkeep me`n`n## Rule 16 - stale`n`nstale`n`n## Rule 17 - keep`n`nkeep me too`n"
+  $staleRule = "## Rule 15 - keep`n`nkeep me`n`n## Rule 16 - user rule`n`nuser content`n`n## Rule 17 - keep`n`nkeep me too`n"
   [IO.File]::WriteAllText($freshAgents, $staleRule, [Text.UTF8Encoding]::new($false))
   $syncedInstall = ((& $installScript -CodexHome $freshHome) -join [Environment]::NewLine) | ConvertFrom-Json
-  Assert-True ($syncedInstall.Rule16.Status -ceq 'replaced') 'Installer did not replace stale Rule 16'
-  Assert-True (-not [string]::IsNullOrWhiteSpace($syncedInstall.Rule16.Backup)) 'Rule 16 replacement did not back up AGENTS.md'
+  Assert-True ($syncedInstall.Rule16.Status -ceq 'appended') 'Installer did not append the plugin rule'
+  Assert-True (-not [string]::IsNullOrWhiteSpace($syncedInstall.Rule16.Backup)) 'Rule insertion did not back up AGENTS.md'
   $syncedText = [IO.File]::ReadAllText($freshAgents, [Text.UTF8Encoding]::new($false))
   Assert-True ($syncedText.Contains('## Rule 15 - keep')) 'Rule 16 synchronization removed the preceding rule'
+  Assert-True ($syncedText.Contains('## Rule 16 - user rule')) 'Installer replaced a user Rule 16'
   Assert-True ($syncedText.Contains('## Rule 17 - keep')) 'Rule 16 synchronization removed the following rule'
-  Assert-True (-not $syncedText.Contains('## Rule 16 - stale')) 'Stale Rule 16 survived synchronization'
+  Assert-True ($syncedText.Contains('## Rule 18')) 'Installer did not choose the next available rule number'
   Assert-True (Test-Path -LiteralPath (Join-Path $syncedInstall.Rule16.Backup 'AGENTS.md') -PathType Leaf) 'Rule 16 backup file is missing'
 
   $freshLuna = Join-Path $freshHome 'agents\luna-worker.toml'

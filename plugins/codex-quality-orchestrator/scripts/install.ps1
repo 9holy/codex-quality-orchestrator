@@ -133,29 +133,48 @@ function Sync-CanonicalRule16 {
   $target = Join-Path $CodexHome 'AGENTS.md'
   $canonical = [IO.File]::ReadAllText($source, [Text.UTF8Encoding]::new($false)).Trim()
   $backup = $null
+  $updated = $null
+
+  function Normalize-Rule([string]$Value) {
+    return ([regex]::Replace($Value, '(?m)^##[^\r\n]*', '## RULE')).Replace("`r`n", "`n").Trim()
+  }
+
+  function Render-InsertedRule([string]$Value, [int]$Number) {
+    return [regex]::Replace($Value, '(?m)^## .*$', "## Rule $Number")
+  }
 
   if (Test-Path -LiteralPath $target -PathType Leaf) {
     $text = [IO.File]::ReadAllText($target, [Text.UTF8Encoding]::new($false))
-    $match = [regex]::Match($text, '(?ms)^## Rule 16\b.*?(?=^## Rule \d+\b|\z)')
-    if ($match.Success -and $match.Value.Trim() -ceq $canonical) {
-      return [pscustomobject]@{ Status='kept'; Backup=$null }
+    $matches = [regex]::Matches($text, '(?ms)^## Rule \d+\b.*?(?=^## [^\r\n]+|\z)')
+    $owned = @($matches | Where-Object { (Normalize-Rule $_.Value) -ceq (Normalize-Rule $canonical) })
+    if ($owned.Count -gt 0) {
+      if ($owned.Count -eq 1) {
+        return [pscustomobject]@{ Status='kept'; Backup=$null }
+      }
+      $backup = New-FileBackup $target
+      $remove = @($owned | Select-Object -Skip 1)
+      $updated = $text
+      foreach ($match in ($remove | Sort-Object Index -Descending)) {
+        $updated = $updated.Remove($match.Index, $match.Length)
+      }
+      $status = 'deduplicated'
+    }
+    foreach ($match in $matches) {
+      if ($null -ne $updated) { break }
+      if ((Normalize-Rule $match.Value) -ceq (Normalize-Rule $canonical)) {
+        return [pscustomobject]@{ Status='kept'; Backup=$null }
+      }
     }
 
-    $backup = New-FileBackup $target
-    if ($match.Success) {
-      $prefix = $text.Substring(0, $match.Index).TrimEnd()
-      $suffix = $text.Substring($match.Index + $match.Length).TrimStart()
-      $updated = $prefix + [Environment]::NewLine + [Environment]::NewLine + $canonical
-      if (-not [string]::IsNullOrWhiteSpace($suffix)) {
-        $updated += [Environment]::NewLine + [Environment]::NewLine + $suffix
-      }
-      $status = 'replaced'
-    } else {
-      $updated = $text.TrimEnd() + [Environment]::NewLine + [Environment]::NewLine + $canonical
+    if ($null -eq $updated) {
+      $numbers = @([regex]::Matches($text, '(?m)^## Rule (\d+)\b') | ForEach-Object { [int]$_.Groups[1].Value })
+      $nextNumber = if ($numbers.Count -eq 0) { 1 } else { (($numbers | Measure-Object -Maximum).Maximum + 1) }
+      $backup = New-FileBackup $target
+      $updated = $text.TrimEnd() + [Environment]::NewLine + [Environment]::NewLine + (Render-InsertedRule $canonical $nextNumber)
       $status = 'appended'
     }
   } else {
-    $updated = $canonical
+    $updated = Render-InsertedRule $canonical 1
     $status = 'created'
   }
 
