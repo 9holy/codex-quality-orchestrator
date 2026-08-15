@@ -1,6 +1,6 @@
 # Requirements Baseline
 
-This file supports maintenance and regression tracking; it is not injected into model context. `references/RULE16.md` is the only semantic routing rule. The routing skill applies it, while Hooks validate only observable mechanical fields.
+This file supports maintenance and regression tracking; it is not injected into model context. The unnumbered `Codex Quality Routing` section in `references/RULE16.md` is the only semantic routing rule. The routing skill applies it, while Hooks validate only observable mechanical fields.
 
 ## Quality And Routing
 
@@ -30,6 +30,8 @@ This file supports maintenance and regression tracking; it is not injected into 
 - On the exact selected-model-capacity message, the same subagent continues once without restarting work. A second failure returns to Sol. Current Hooks cannot resume the root controller request, and the plugin must not claim otherwise.
 - Burst mode is session-scoped and off by default. Exact Chinese commands toggle it. Sol is `d0`; children may use `d1-d4`; `d4` cannot delegate; the host limit is 25 child threads; all normal quality gates remain.
 - The configuration guard restores only plugin registration and trusted current Hook hashes while preserving authentication, provider, endpoint, model, and unrelated tool settings.
+- First install initializes unnumbered English `Meta Rule - Conflict Resolution` and `Implementation` defaults once. Upgrades and the configuration guard never restore or overwrite them.
+- The independent Git Marketplace must be added before installation. Do not claim public search availability unless OpenAI's curated Marketplace lists the plugin.
 
 ## Explicit Exclusions
 

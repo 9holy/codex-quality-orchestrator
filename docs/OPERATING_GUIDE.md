@@ -42,7 +42,7 @@ sol_reviewer_xhigh__unit_name
 
 ### SessionStart
 
-全局 Rule 16 一致且代理配置完整时不输出内容。规则缺失或过期时注入插件当前版本；代理配置缺失时明确报告。它不读取或修改当前根模型和档位。
+全局 `Codex Quality Routing` 一致且代理配置完整时不输出内容。规则缺失或过期时注入插件当前版本；代理配置缺失时明确报告。它不读取或修改当前根模型和档位。
 
 ### UserPromptSubmit
 
@@ -89,9 +89,17 @@ node <plugin-root>\scripts\radar-routing-evidence.cjs
 
 ## 6. 安装与升级
 
+本插件当前通过独立 Git Marketplace 分发，尚未进入 OpenAI 公共 curated Marketplace。新用户不能直接在公共商城搜索到，必须先添加一次 Marketplace：
+
+```powershell
+$marketplace = codex plugin marketplace add 9holy/codex-quality-orchestrator --ref main --json | ConvertFrom-Json
+$plugin = codex plugin add "codex-quality-orchestrator@$($marketplace.marketplaceName)" --json | ConvertFrom-Json
+powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $plugin.installedPath 'scripts\install.ps1')
+```
+
 运行 `scripts/install.ps1` 安装四个代理配置和路由规则。首次安装会在 `AGENTS.md` 顶部加入纯英文、无编号的 `Meta Rule - Conflict Resolution` 和 `Implementation` 默认规则，再追加无编号 `Codex Quality Routing`。前两条不受后续安装或配置守护维护。安装器先获取锁，再检查所有目标；冲突时默认停止，`-Force` 才会在备份后替换。代理备份使用 `.toml.bak`，不会被 Codex 当成第二个角色加载。
 
-升级后必须重新审核四个 Hook，因为可信哈希随实现变化。旧任务不会自动加载新 Skill 和代理定义，应新建任务验证。
+升级后必须重新审核四个 Hook，因为可信哈希随实现变化；插件不会绕过或伪造 Hook 信任。旧任务不会自动加载新 Skill 和代理定义，应新建任务验证。
 
 ## 7. 配置守护
 

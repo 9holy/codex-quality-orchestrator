@@ -36,7 +36,7 @@ sol_reviewer_xhigh__unit_name
 
 ## Four Hooks
 
-- `SessionStart`: stays silent when the global Rule 16 and agent profiles are current; otherwise injects the installed rule or reports missing profiles. It never changes the root model or effort.
+- `SessionStart`: stays silent when the global `Codex Quality Routing` section and agent profiles are current; otherwise injects the installed rule or reports missing profiles. It never changes the root model or effort.
 - `UserPromptSubmit`: recognizes only the exact Chinese burst on/off commands. All other prompts are silent.
 - `PreToolUse`: validates CQO agent profiles, allowed effort, absent model overrides, valid `fork_turns`, and visible route names. Unrelated agent calls pass through.
 - `SubagentStop`: when the trimmed final message exactly equals `Selected model is at capacity. Please try a different model.`, continues once in the same subagent context. A second occurrence returns to Sol. Root controller capacity notifications are outside the resumable Hook path.
@@ -57,7 +57,9 @@ The cache is fresh for 24 hours and usable offline for up to 72 hours. Radar is 
 
 ## Installation And Verification
 
-Run `scripts/install.ps1` to install the routing rule and four agent profiles. The first install prepends unnumbered English `Meta Rule - Conflict Resolution` and `Implementation` defaults, then appends unnumbered `Codex Quality Routing`. The first two defaults are not maintained by later installs or the configuration guard. After an upgrade, trust all four current Hooks again and start a new task so the new skill and agent definitions load.
+The plugin is currently distributed through an independent Git Marketplace and is not listed in OpenAI's public curated Marketplace. New users must add the Git Marketplace before the plugin selector can install it or list it from that configured source.
+
+Run `scripts/install.ps1` to install the routing rule and four agent profiles. The first install prepends unnumbered English `Meta Rule - Conflict Resolution` and `Implementation` defaults, then appends unnumbered `Codex Quality Routing`. The first two defaults are not maintained by later installs or the configuration guard. After an upgrade, review and trust all four current Hooks again; the plugin never bypasses or fabricates Hook trust. Start a new task so the new skill and agent definitions load.
 
 When another tool may replace `config.toml`, run `scripts/config-guard.ps1`. It merges only plugin registration, the known marketplace source, and the four trusted Hook hashes. It preserves authentication, providers, endpoints, models, and unrelated settings.
 

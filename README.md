@@ -6,6 +6,8 @@
 
 面向 `gpt-5.6-sol` 主控的质量优先多模型路由插件。Sol 负责理解、拆解、整合、验收和兜底；可靠的低判断执行单元优先交给 Luna Max；常规独立判断工作优先 Sol Medium；Terra 仅在具体任务上确有优势时使用，深推理本身不选择 Terra。
 
+当前发布版：[`v0.7.1`](https://github.com/9holy/codex-quality-orchestrator/releases/tag/v0.7.1)。
+
 ### 模型与职责
 
 | 角色 | 模型 / 档位 | 用途 |
@@ -24,12 +26,14 @@
 
 插件使用四个 Hook：
 
-- `SessionStart`：按需注入最新 Rule 16。
+- `SessionStart`：按需注入最新 `Codex Quality Routing` 规则。
 - `UserPromptSubmit`：只处理爆种模式精确开关，普通消息静默。
 - `PreToolUse`：校验四个具名代理的确定性调用字段。
 - `SubagentStop`：对子代理容量错误原地续交一次。
 
-### 安装
+### 插件商城与安装
+
+本插件当前来自独立 Git Marketplace，尚未收录进 OpenAI 公共 curated Marketplace，因此新用户不能直接在公共商城搜索到。先添加一次 Git Marketplace，之后即可通过插件选择器安装，并可在已配置 Marketplace 的插件列表中使用。
 
 ```powershell
 $marketplace = codex plugin marketplace add 9holy/codex-quality-orchestrator --ref main --json | ConvertFrom-Json
@@ -37,12 +41,20 @@ $plugin = codex plugin add "codex-quality-orchestrator@$($marketplace.marketplac
 powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $plugin.installedPath 'scripts\install.ps1')
 ```
 
-在 `/hooks` 中信任四个 Hook 后新建任务。Cockpit Tools、CC Switch 等会覆盖 `config.toml` 时，可启用配置守护：
-
 首次安装会在 `AGENTS.md` 顶部加入纯英文、无编号的 `Meta Rule - Conflict Resolution` 和 `Implementation` 默认规则，并以无编号 `Codex Quality Routing` 标题追加路由规则。前两条仅初始化一次，不由插件或配置守护恢复、覆盖。
+
+在 `/hooks` 中审核并信任四个 Hook 后新建任务。Hook 内容随升级变化时必须重新审核，插件不会伪造或绕过信任。Cockpit Tools、CC Switch 等会覆盖 `config.toml` 时，可启用配置守护：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $plugin.installedPath 'scripts\config-guard.ps1') -Mode Install
+```
+
+升级已添加的 Marketplace 与插件：
+
+```powershell
+codex plugin marketplace upgrade codex-quality-orchestrator
+$plugin = codex plugin add codex-quality-orchestrator@codex-quality-orchestrator --json | ConvertFrom-Json
+powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $plugin.installedPath 'scripts\install.ps1')
 ```
 
 ### 验证
@@ -58,6 +70,8 @@ codex plugin list --json
 ## English
 
 Quality-first multi-model routing for a `gpt-5.6-sol` root. Sol owns understanding, decomposition, integration, verification, decisions, and fallback. Luna Max gets frozen low-judgment mechanical units; Sol Medium gets bounded moderate-judgment units; Terra is used only for a concrete task-specific advantage.
+
+Current release: [`v0.7.1`](https://github.com/9holy/codex-quality-orchestrator/releases/tag/v0.7.1).
 
 ### Roles
 
@@ -77,9 +91,11 @@ Quality-first multi-model routing for a `gpt-5.6-sol` root. Sol owns understandi
 
 The plugin has four Hooks: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, and `SubagentStop`. Ordinary prompts remain silent.
 
-### Install and verify
+### Marketplace and installation
 
-Use the PowerShell commands in the Chinese installation section above, then trust all four Hooks in `/hooks` and start a new task. The first install prepends unnumbered English `Meta Rule - Conflict Resolution` and `Implementation` defaults and appends an unnumbered `Codex Quality Routing` section. The first two defaults are not restored or overwritten later. Use `config-guard.ps1 -Mode Install` when another tool may replace `config.toml`.
+This plugin is currently distributed through an independent Git Marketplace and is not listed in OpenAI's public curated Marketplace. New users must add the Git Marketplace once before the plugin selector can install it or list it from that configured source.
+
+Use the PowerShell commands in the Chinese installation section above, then review and trust all four Hooks in `/hooks` and start a new task. Hook changes require renewed review; the plugin never bypasses trust. The first install prepends unnumbered English `Meta Rule - Conflict Resolution` and `Implementation` defaults and appends an unnumbered `Codex Quality Routing` section. The first two defaults are not restored or overwritten later. Use `config-guard.ps1 -Mode Install` when another tool may replace `config.toml`.
 
 Detailed documentation: [Operating Guide](docs/OPERATING_GUIDE.en.md) · [Routing Matrix](docs/ROUTING_MATRIX.en.md) · [Requirements](docs/REQUIREMENTS.en.md)
 
