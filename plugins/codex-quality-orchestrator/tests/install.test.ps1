@@ -39,6 +39,12 @@ try {
   Assert-True ($second.Rule16.Status -ceq 'kept') 'Second install did not retain canonical Rule 16'
 
   $freshAgents = Join-Path $freshHome 'AGENTS.md'
+  $stalePluginRule = [regex]::Replace([IO.File]::ReadAllText($freshAgents, [Text.UTF8Encoding]::new($false)), '(?ms)(^## Codex Quality Routing[^\r\n]*\r?\n).*\z', '$1`nstale plugin content')
+  [IO.File]::WriteAllText($freshAgents, $stalePluginRule, [Text.UTF8Encoding]::new($false))
+  $refreshedRuleInstall = ((& $installScript -CodexHome $freshHome) -join [Environment]::NewLine) | ConvertFrom-Json
+  Assert-True ($refreshedRuleInstall.Rule16.Status -ceq 'refreshed') 'Installer did not refresh its own stale routing section'
+  Assert-True ([IO.File]::ReadAllText($freshAgents, [Text.UTF8Encoding]::new($false)).Contains('enable super mode')) 'Refreshed routing section did not contain the current Super mode command'
+
   $numberedPluginRule = [IO.File]::ReadAllText($freshAgents, [Text.UTF8Encoding]::new($false)).Replace('## Codex Quality Routing - Default Multi-Model Quality Team', '## Rule 8 - Default Multi-Model Quality Team')
   [IO.File]::WriteAllText($freshAgents, $numberedPluginRule, [Text.UTF8Encoding]::new($false))
   $migratedInstall = ((& $installScript -CodexHome $freshHome) -join [Environment]::NewLine) | ConvertFrom-Json

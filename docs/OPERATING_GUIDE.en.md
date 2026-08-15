@@ -1,66 +1,85 @@
 # Operating Guide
 
-## Decision Flow
+## How it works
 
-1. Handle clear short work directly on the current root agent.
-2. For non-short work, Sol defines bounded units, ownership, dependencies, acceptance criteria, and integration order.
-3. Use Luna Max first only when the unit is frozen, low-judgment, mechanically verifiable, and reliably within Luna's capability.
-4. Otherwise prefer Sol Medium for bounded, moderate-judgment, independently verifiable units when delegation pays. Keep coupled or sequential work on the current Sol.
-5. Use Terra only for a clear task-specific quality, context, concurrency, or total-cost advantage, at its lowest reliable effort.
-6. Freeze each route until its unit, boundary, availability, or result changes.
-7. Default to one Worker. Parallelize only independent, write-safe units. For homogeneous batches, verify one unit before filling available host capacity.
-8. Wait once with a long blocking wait; do not poll.
-9. Sol inspects actual diffs, reruns necessary checks, integrates in order, and makes the final decision.
+The current Sol always remains in control. It understands the task, splits the work, chooses suitable Workers, and checks the final result. The plugin never changes the root model or reasoning effort of a running task.
 
-## Work Packet
+The current Sol handles simple work directly. Larger work is delegated only when its boundaries are clear, its result can be checked, and delegation has a real benefit:
 
-```text
-[CQO_WORK_PACKET_V1]
-route: <model> / <effort>
-goal: <explicit result>
-scope: <boundaries and allowed paths>
-acceptance: <executable or observable criteria>
-handoff: return failures to the current Sol and preserve completed work
-```
+- Luna Max: clear, low-judgment work with straightforward checks.
+- Sol Medium: bounded work that needs normal judgment.
+- Terra: only when the specific task clearly favors Terra over Sol.
+- Sol Reviewer: one read-only review for a critical high-risk change.
 
-Use `fork_turns:"none"` by default. Use a positive numeric string only when a Worker needs limited history. Never pass `model` to a named agent. Visible task names are:
+Architecture, security, production data, irreversible operations, unclear requirements, and unresolved causes stay with the current Sol.
+
+## Super mode
+
+Super mode is for many independent tasks that do not write to the same files. It uses up to 25 child threads and supports four delegation levels. The deepest level cannot delegate again.
+
+Toggle it for the current session:
 
 ```text
-luna_max__unit_name
-sol_medium__unit_name
-terra_xhigh__unit_name
-terra_max__unit_name
-terra_ultra__unit_name
-sol_reviewer_xhigh__unit_name
+enable super mode
+disable super mode
+开启爆种模式
+关闭爆种模式
 ```
 
-## Four Hooks
+Super mode only increases parallelism. Sol still checks every result, reruns necessary verification, and owns final integration.
 
-- `SessionStart`: stays silent when the global `Codex Quality Routing` section and agent profiles are current; otherwise injects the installed rule or reports missing profiles. It never changes the root model or effort.
-- `UserPromptSubmit`: recognizes only the exact Chinese burst on/off commands. All other prompts are silent.
-- `PreToolUse`: validates CQO agent profiles, allowed effort, absent model overrides, valid `fork_turns`, and visible route names. Unrelated agent calls pass through.
-- `SubagentStop`: when the trimmed final message exactly equals `Selected model is at capacity. Please try a different model.`, continues once in the same subagent context. A second occurrence returns to Sol. Root controller capacity notifications are outside the resumable Hook path.
+## Failure handling
 
-## Burst Mode
+When a subagent returns this exact capacity message, the plugin continues once in the same context instead of restarting the task:
 
-Burst mode is off by default. Send exactly `开启爆种模式` to enable it for the current session and `关闭爆种模式` to disable it. Sol is `d0`; task names contain `__d1_` through `__d4_`; packets include `burst_depth=dN` and `burst_delegate=yes`. Use at most 25 child threads, delegate only independent write-safe frozen units, and never delegate from `d4`. Sol still audits every result and required verification.
+```text
+Selected model is at capacity. Please try a different model.
+```
 
-## Radar
+A second failure returns to Sol. Capability, scope, and quality failures are never treated as capacity failures. Current Codex Hooks cannot resume a root-controller request, so the plugin does not claim root automatic recovery.
 
-Do not run Radar when Luna is suitable, only one candidate exists, or Sol can decide directly. If multiple capable Sol/Terra routes remain unresolved, run once per root task:
+## Install
+
+The plugin is distributed through an independent Git Marketplace and is not yet listed in OpenAI's public plugin marketplace.
 
 ```powershell
-node <plugin-root>\scripts\radar-routing-evidence.cjs
+codex plugin marketplace add 9holy/codex-quality-orchestrator --ref main
+codex plugin add codex-quality-orchestrator@codex-quality-orchestrator
+powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-quality-orchestrator\plugins\codex-quality-orchestrator\scripts\install.ps1"
 ```
 
-The cache is fresh for 24 hours and usable offline for up to 72 hours. Radar is supporting evidence between capable routes, never a replacement for capability or risk judgment.
+First-install setup:
 
-## Installation And Verification
+- Installs the Luna, Sol Medium, Terra, and Sol Reviewer profiles.
+- Adds the unnumbered `Codex Quality Routing` section.
+- Adds one-time English `Meta Rule - Conflict Resolution` and `Implementation` defaults at the top of `AGENTS.md`.
 
-The plugin is currently distributed through an independent Git Marketplace and is not listed in OpenAI's public curated Marketplace. New users must add the Git Marketplace before the plugin selector can install it or list it from that configured source.
+Later installs and the configuration guard do not restore or overwrite the two English defaults.
 
-Run `scripts/install.ps1` to install the routing rule and four agent profiles. The first install prepends unnumbered English `Meta Rule - Conflict Resolution` and `Implementation` defaults, then appends unnumbered `Codex Quality Routing`. The first two defaults are not maintained by later installs or the configuration guard. After an upgrade, review and trust all four current Hooks again; the plugin never bypasses or fabricates Hook trust. Start a new task so the new skill and agent definitions load.
+## Hooks and configuration guard
 
-When another tool may replace `config.toml`, run `scripts/config-guard.ps1`. It merges only plugin registration, the known marketplace source, and the four trusted Hook hashes. It preserves authentication, providers, endpoints, models, and unrelated settings.
+Review and trust these four Hooks in `/hooks`:
 
-Before release, `scripts/verify.ps1` must pass. Runtime acceptance also requires one unique profile per named agent, four trusted Hooks, healthy configuration-guard state, and an enabled installed plugin record from `codex plugin list --json`.
+- `SessionStart`: supplies the current routing rule when it is missing.
+- `UserPromptSubmit`: recognizes Chinese and English Super mode commands.
+- `PreToolUse`: checks that CQO agent calls match their configuration.
+- `SubagentStop`: handles one subagent capacity retry.
+
+Review and trust Hooks again after an update changes their content. The plugin never bypasses trust.
+
+If Cockpit Tools, CC Switch, or another tool may replace `config.toml`, enable the configuration guard:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-quality-orchestrator\plugins\codex-quality-orchestrator\scripts\config-guard.ps1" -Mode Install
+```
+
+The guard restores only plugin registration and already approved Hooks. It preserves authentication, providers, endpoints, models, and unrelated settings.
+
+## Verify
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-quality-orchestrator\plugins\codex-quality-orchestrator\scripts\verify.ps1"
+codex plugin list --json
+```
+
+Installation is complete only when the plugin is installed and enabled, each agent profile is unique, and all four Hooks are trusted. Start a new task after an upgrade so the new rules and profiles load.

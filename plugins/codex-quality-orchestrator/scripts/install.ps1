@@ -189,9 +189,22 @@ function Sync-CanonicalRule16 {
   if (Test-Path -LiteralPath $target -PathType Leaf) {
     $text = [IO.File]::ReadAllText($target, [Text.UTF8Encoding]::new($false))
     $matches = [regex]::Matches($text, '(?ms)^## [^\r\n]+.*?(?=^## [^\r\n]+|\z)')
+    $canonicalHeading = [regex]::Match($canonical, '^##[^\r\n]*').Value
+    $named = @($matches | Where-Object { [regex]::Match($_.Value, '^##[^\r\n]*').Value -ceq $canonicalHeading })
+    if ($named.Count -gt 0) {
+      if ($named.Count -eq 1 -and $named[0].Value.Trim() -ceq $canonical) {
+        return [pscustomobject]@{ Status='kept'; Backup=$null }
+      }
+      $backup = New-FileBackup $target
+      $updated = $text
+      foreach ($match in (@($named | Select-Object -Skip 1) | Sort-Object Index -Descending)) {
+        $updated = $updated.Remove($match.Index, $match.Length)
+      }
+      $updated = $updated.Remove($named[0].Index, $named[0].Length).Insert($named[0].Index, $canonical)
+      $status = if ($named.Count -gt 1) { 'deduplicated' } else { 'refreshed' }
+    }
     $owned = @($matches | Where-Object { (Normalize-Rule $_.Value) -ceq (Normalize-Rule $canonical) })
-    if ($owned.Count -gt 0) {
-      $canonicalHeading = [regex]::Match($canonical, '^##[^\r\n]*').Value
+    if ($null -eq $updated -and $owned.Count -gt 0) {
       if ($owned.Count -eq 1) {
         $installedHeading = [regex]::Match($owned[0].Value, '^##[^\r\n]*').Value
         if ($installedHeading -ceq $canonicalHeading) {

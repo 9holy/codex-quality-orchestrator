@@ -21,7 +21,7 @@ The current `gpt-5.6-sol` owns understanding, decomposition, delegation, integra
 | `terra_worker` | `gpt-5.6-terra` | `xhigh/max/ultra` | A clear task-specific advantage over capable Sol Medium or the current Sol; use the lowest reliable effort |
 | `sol_reviewer` | `gpt-5.6-sol` | `xhigh` | One read-only independent review for critical high-risk changes |
 
-Workers stay inside the packet scope and make no unrelated changes. They do not delegate in normal mode. In burst mode, delegation requires explicit packet authorization and a depth below `d4`. Sol accepts or rejects every result.
+Workers stay inside the packet scope and make no unrelated changes. They do not delegate in normal mode. In Super mode, delegation requires explicit packet authorization and a depth below `d4`. Sol accepts or rejects every result.
 
 ## Selection Order
 
@@ -39,6 +39,6 @@ Workers stay inside the packet scope and make no unrelated changes. They do not 
 
 Normal mode defaults to one Worker. Parallelize only independent write-safe units when the benefit exceeds coordination cost. For homogeneous batches, verify one representative unit, then fill available host capacity and replace completed Workers. Use one long blocking wait and one writer per shared file.
 
-Burst mode is session-scoped, supports `d1-d4`, and uses at most 25 child threads; `d4` cannot delegate. It increases parallel execution without lowering any quality gate.
+Super mode is session-scoped, supports `d1-d4`, and uses at most 25 child threads; `d4` cannot delegate. Use `enable super mode` / `disable super mode` or the Chinese commands to control it. It increases parallel execution without lowering any quality gate.
 
 On the exact selected-model-capacity message, continue the same subagent once without restarting completed work. A second failure returns to Sol. This recovery covers `SubagentStop` only; current Hooks cannot resume a root controller capacity notification.

@@ -37,8 +37,8 @@ async function main() {
   const text = String(payload?.prompt || payload?.user_prompt || payload?.message || '').trim();
   const id = sessionId(payload);
   const state = readState();
-  const enabledCommand = text === policy.burstMode.enabledByExactCommand;
-  const disabledCommand = text === policy.burstMode.disabledByExactCommand;
+  const enabledCommand = [policy.burstMode.enabledByExactCommand, policy.burstMode.enabledByExactCommandEnglish].includes(text);
+  const disabledCommand = [policy.burstMode.disabledByExactCommand, policy.burstMode.disabledByExactCommandEnglish].includes(text);
   if (!enabledCommand && !disabledCommand) return;
   state[id] = enabledCommand;
   writeState(state);

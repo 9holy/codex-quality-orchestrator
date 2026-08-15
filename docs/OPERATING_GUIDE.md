@@ -1,125 +1,87 @@
 # 操作指南
 
-## 1. 决策流程
+## 插件如何工作
 
-1. 短任务由当前主代理直接完成。
-2. 非短任务由当前 Sol 形成轻量内存计划，列出单元、目标、路径所有权、依赖、验收和集成顺序。
-3. 仅当工作决策已冻结、判断负荷低、可机械验证且 Luna Max 能可靠完成时优先使用 Luna；不能交给 Luna 试做。
-4. Luna 不适用时，边界明确、需要适度判断且适合独立下派的单元优先使用 Sol Medium。耦合、顺序或无并行收益的工作留给当前 Sol。
-5. Terra 只在具体任务上相比合格 Sol Medium 或当前 Sol 有明确质量、上下文、并发或总成本优势时使用最低可靠档；深推理本身不选择 Terra。
-6. 路由选择在当前根任务内冻结。单元、边界、可用性或结果不变时不重判。
-7. 通常使用一个 Worker；仅互不依赖、写入不冲突且确有收益的单元并行。大量同质批处理先验收一个代表性单元，再填满宿主可用容量，完成一个就补充一个；不设置任务级累计上限。
-8. Worker 运行且 Sol 没有可独立推进的工作时，使用一次最长一小时的原生阻塞等待；结果、失败或求助会提前唤醒，禁止主动轮询和重复短等待。
-9. Sol 按计划顺序检查实际差异、复跑必要验证、整合并作最终裁决。
+当前 Sol 始终是主控。它理解任务、拆分工作、选择合适的 Worker，并检查最终结果。插件不会改变已经启动任务的根模型或推理档位。
 
-架构、安全、公共接口、生产数据、不可逆操作、模糊需求和根因未定的决策不为了节省成本强行下派；边界和验收明确后，其中安全的证据或执行单元仍可下派。关键高风险变更需要独立复审时，才使用一次只读 `sol_reviewer`。
+简单任务由当前 Sol 直接完成。较大的任务只有在边界清楚、结果容易检查且下派确实有收益时才交给 Worker：
 
-## 2. 工作包
+- Luna Max：规则明确、判断少、容易验证。
+- Sol Medium：边界明确，需要正常判断。
+- Terra：只在具体任务上确实比 Sol 更合适时使用。
+- Sol Reviewer：关键高风险改动的一次只读复审。
 
-```text
-[CQO_WORK_PACKET_V1]
-route: <model> / <effort>
-目标: <明确结果>
-范围: <边界以及允许读取和修改的路径>
-验收: <可执行或可观察标准>
-接管: 失败时回到当前 Sol，保留已完成工作
-```
+边界明确、需要正常判断且适合独立下派的单元优先使用 Sol Medium；深推理本身不选择 Terra。为避免重复判断和模型切换，路由选择在当前根任务内冻结，只有任务边界、可用性或结果变化时才重新选择。
 
-默认 `fork_turns:"none"`；只有 Worker 确实需要少量历史上下文时才传正整数字符串。调用具名代理时不传 `model`。Terra 必须显式传 `xhigh`、`max` 或 `ultra`；Luna、Sol Medium 和 Reviewer 的档位由 TOML 固定。
+架构、安全、生产数据、不可逆操作、模糊需求和未查清原因的问题留给当前 Sol 决定。
 
-宿主会加密工作包正文后再交给 PreToolUse，因此 Hook 不解析 `message` 内容。Sol 负责工作包语义；Hook 通过下面的明文任务名校验实际代理和档位：
+## Super mode
+
+Super mode 适合大量互不依赖、不会修改同一文件的工作。它最多使用 25 个子线程，支持四层任务拆分。最深一层不能继续下派。
+
+开启或关闭当前会话：
 
 ```text
-luna_max__unit_name
-sol_medium__unit_name
-terra_xhigh__unit_name
-terra_max__unit_name
-terra_ultra__unit_name
-sol_reviewer_xhigh__unit_name
+开启爆种模式
+关闭爆种模式
+enable super mode
+disable super mode
 ```
 
-## 3. 四个 Hook
+Super mode 只提高并行度，不降低质量标准。Sol 仍会检查每个结果、复跑必要验证并负责最终整合。
 
-### SessionStart
+## 失败如何处理
 
-全局 `Codex Quality Routing` 一致且代理配置完整时不输出内容。规则缺失或过期时注入插件当前版本；代理配置缺失时明确报告。它不读取或修改当前根模型和档位。
-
-### UserPromptSubmit
-
-只识别精确命令 `开启爆种模式` 和 `关闭爆种模式`，按当前会话保存状态。其他提示静默，不添加上下文或状态文案。
-
-### PreToolUse
-
-只在调用 `luna_worker`、`sol_medium_worker`、`terra_worker` 或 `sol_reviewer` 时检查：
-
-- 代理配置是否存在并固定正确模型
-- Terra 档位是否为 `xhigh/max/ultra`
-- Luna、Sol Medium 和 Reviewer 是否被非法覆盖档位
-- 是否传入 `model`
-- `fork_turns` 是否有效
-- 可见任务名是否与代理和实际档位一致
-
-其他代理调用直接放行，避免与别的插件或 Skill 冲突。
-
-### SubagentStop
-
-仅当最后消息去除首尾空白后精确等于：
+子代理精确返回下面的容量提示时，插件会在原上下文自动继续一次，不会重做整个任务：
 
 ```text
 Selected model is at capacity. Please try a different model.
 ```
 
-且 `stop_hook_active=false` 时返回“继续”。续交发生在原代理上下文；第二次不再拦截，交回当前 Sol。
+第二次仍失败就交回 Sol。能力不足、越界或质量问题不会伪装成容量问题。当前 Codex Hook 无法替主控自动续交，因此插件不会宣称支持主控自动恢复。
 
-主控容量提示发生在根模型请求链路，不进入当前可续交 Hook；插件不宣称能替主控自动提交“继续”。
+## 安装
 
-## 4. 爆种模式
-
-爆种模式默认关闭。开启后 Sol 为 `d0`，子任务名包含 `__d1_` 至 `__d4_`，工作包包含 `burst_depth=dN` 和 `burst_delegate=yes`。最多使用 25 个子线程；只并行独立、写入安全、边界和验收冻结的单元；`d4` 不再下派。Sol 仍检查全部结果、实际差异和必要验证。
-
-## 5. Radar
-
-Luna 适用、候选唯一或 Sol 判断明确时不运行 Radar。仅多个合格 Sol/Terra 路由仍难以选择时，在一个根任务内运行一次：
+插件目前通过独立 Git Marketplace 分发，尚未进入 OpenAI 公共插件商城。
 
 ```powershell
-node <plugin-root>\scripts\radar-routing-evidence.cjs
+codex plugin marketplace add 9holy/codex-quality-orchestrator --ref main
+codex plugin add codex-quality-orchestrator@codex-quality-orchestrator
+powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-quality-orchestrator\plugins\codex-quality-orchestrator\scripts\install.ps1"
 ```
 
-数据默认缓存 24 小时，离线时最多使用 72 小时内的缓存。只输出允许模型的聚合数字和简短排序，不把外部任务标题或推荐文案放入模型上下文。当前根任务保留第一次结果，不重复调用脚本；Radar 只是合格候选间的辅助证据，不能覆盖可靠胜任要求。
+首次初始化会：
 
-## 6. 安装与升级
+- 安装 Luna、Sol Medium、Terra 和 Sol Reviewer 四个代理配置。
+- 写入无编号的 `Codex Quality Routing`。
+- 在 `AGENTS.md` 顶部加入一次性的英文 `Meta Rule - Conflict Resolution` 和 `Implementation`。
 
-本插件当前通过独立 Git Marketplace 分发，尚未进入 OpenAI 公共 curated Marketplace。新用户不能直接在公共商城搜索到，必须先添加一次 Marketplace：
+最后两条英文默认规则以后不会被安装器或配置守护恢复、覆盖。
+
+## Hook 与配置守护
+
+在 `/hooks` 中检查并信任以下四个 Hook：
+
+- `SessionStart`：缺少当前路由规则时补充上下文。
+- `UserPromptSubmit`：识别中文和英文 Super mode 命令。
+- `PreToolUse`：检查 CQO 代理调用是否符合配置。
+- `SubagentStop`：处理一次子代理容量重试。
+
+Hook 内容升级后必须重新检查并信任。插件不会绕过信任。
+
+如果 Cockpit Tools、CC Switch 等工具会覆盖 `config.toml`，启用配置守护：
 
 ```powershell
-$marketplace = codex plugin marketplace add 9holy/codex-quality-orchestrator --ref main --json | ConvertFrom-Json
-$plugin = codex plugin add "codex-quality-orchestrator@$($marketplace.marketplaceName)" --json | ConvertFrom-Json
-powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $plugin.installedPath 'scripts\install.ps1')
+powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-quality-orchestrator\plugins\codex-quality-orchestrator\scripts\config-guard.ps1" -Mode Install
 ```
 
-运行 `scripts/install.ps1` 安装四个代理配置和路由规则。首次安装会在 `AGENTS.md` 顶部加入纯英文、无编号的 `Meta Rule - Conflict Resolution` 和 `Implementation` 默认规则，再追加无编号 `Codex Quality Routing`。前两条不受后续安装或配置守护维护。安装器先获取锁，再检查所有目标；冲突时默认停止，`-Force` 才会在备份后替换。代理备份使用 `.toml.bak`，不会被 Codex 当成第二个角色加载。
+配置守护只恢复插件注册和已经批准的 Hook，不改认证、Provider、端点、模型或其他工具设置。
 
-升级后必须重新审核四个 Hook，因为可信哈希随实现变化；插件不会绕过或伪造 Hook 信任。旧任务不会自动加载新 Skill 和代理定义，应新建任务验证。
+## 验证
 
-## 7. 配置守护
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-quality-orchestrator\plugins\codex-quality-orchestrator\scripts\verify.ps1"
+codex plugin list --json
+```
 
-`config-guard.ps1` 只管理：
-
-- 插件注册
-- 四个已批准 Hook 的精确可信哈希
-- 插件 Marketplace 的已知来源
-
-它采用合并写入并保留其他 TOML 内容，不替换认证、Provider、端点、模型或其他工具的设置。Hook bundle 与批准摘要不一致时停止恢复，要求重新审核。
-
-## 8. 验收标准
-
-发布前必须满足：
-
-- 完整 `verify.ps1` 通过
-- 临时 `CODEX_HOME` 中安装、重复安装和冲突恢复通过
-- Cockpit 风格配置整体替换后，非插件配置保持不变且四个 Hook 恢复
-- 当前安装只有四个唯一角色和四个可信 Hook
-- 真实 SessionStart 宿主烟雾测试通过
-- 至少一次 Luna Max 主线路由在 Codex 使用记录中可核对
-
-单元测试、任务名或代理自述都不能单独证明实际后台模型。
+看到插件已安装并启用、四个代理配置唯一、四个 Hook 已信任，才算安装完成。升级后请新建任务，让新的规则和代理配置生效。

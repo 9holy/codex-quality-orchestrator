@@ -4,98 +4,119 @@
 
 ## 中文
 
-面向 `gpt-5.6-sol` 主控的质量优先多模型路由插件。Sol 负责理解、拆解、整合、验收和兜底；可靠的低判断执行单元优先交给 Luna Max；常规独立判断工作优先 Sol Medium；Terra 仅在具体任务上确有优势时使用，深推理本身不选择 Terra。
+这是一个给 `gpt-5.6-sol` 使用的多模型协作插件。Sol 负责理解任务、拆分工作和最终验收；适合的执行工作交给 Luna Max、Sol Medium 或 Terra。常规独立判断工作优先 Sol Medium，深推理本身不选择 Terra。目标是先保证质量，再减少不必要的模型开销。
 
-当前发布版：[`v0.7.1`](https://github.com/9holy/codex-quality-orchestrator/releases/tag/v0.7.1)。
+当前版本：[`v0.7.1`](https://github.com/9holy/codex-quality-orchestrator/releases/tag/v0.7.1)
 
-### 模型与职责
+### 模型分工
 
-| 角色 | 模型 / 档位 | 用途 |
-|---|---|---|
-| 当前主控 | `gpt-5.6-sol` / 当前档位 | 规划、拆解、整合、验收、决策和兜底 |
-| `luna_worker` | `gpt-5.6-luna / max` | 冻结、低判断、可机械验证的执行单元 |
-| `sol_medium_worker` | `gpt-5.6-sol / medium` | 边界明确、需要适度判断、可独立验证的单元 |
-| `terra_worker` | `gpt-5.6-terra / xhigh|max|ultra` | 相比 Sol 有明确任务优势的单元 |
-| `sol_reviewer` | `gpt-5.6-sol / xhigh` | 关键高风险变更的一次只读复审 |
+| 角色 | 用途 |
+|---|---|
+| 当前 Sol | 规划、拆分、整合、验收和兜底 |
+| Luna Max | 规则明确、判断少、容易验证的工作 |
+| Sol Medium | 边界清楚、需要正常判断的独立工作 |
+| Terra XHigh / Max / Ultra | 只在具体任务上确实比 Sol 更合适时使用 |
+| Sol Reviewer XHigh | 关键高风险改动的一次只读复审 |
 
-### 运行模式
+### 两种模式
 
-- 普通模式：短任务由主控直接完成；通常只派一个 Worker，仅独立且写入不冲突的单元并行。
-- 爆种模式：精确发送 `开启爆种模式` 开启当前会话，发送 `关闭爆种模式` 关闭。Sol 为 `d0`，允许 `d1-d4`，最多 25 个子线程；`d4` 不再下派。质量门槛不降低，所有结果仍由 Sol 审计。
-- 容量恢复：`SubagentStop` 精确遇到 `Selected model is at capacity. Please try a different model.` 时，在原子代理上下文自动“继续”一次。主控容量通知不经过当前可续交 Hook，插件不伪装成已自动恢复。
+- 普通模式：短任务由当前 Sol 直接完成；通常只使用一个 Worker。
+- Super mode：用于大量互不冲突的工作，最多同时使用 25 个子线程。Sol 仍会检查全部结果，质量标准不会降低。
 
-插件使用四个 Hook：
+开启或关闭当前会话的 Super mode：
 
-- `SessionStart`：按需注入最新 `Codex Quality Routing` 规则。
-- `UserPromptSubmit`：只处理爆种模式精确开关，普通消息静默。
-- `PreToolUse`：校验四个具名代理的确定性调用字段。
-- `SubagentStop`：对子代理容量错误原地续交一次。
-
-### 插件商城与安装
-
-本插件当前来自独立 Git Marketplace，尚未收录进 OpenAI 公共 curated Marketplace，因此新用户不能直接在公共商城搜索到。先添加一次 Git Marketplace，之后即可通过插件选择器安装，并可在已配置 Marketplace 的插件列表中使用。
-
-```powershell
-$marketplace = codex plugin marketplace add 9holy/codex-quality-orchestrator --ref main --json | ConvertFrom-Json
-$plugin = codex plugin add "codex-quality-orchestrator@$($marketplace.marketplaceName)" --json | ConvertFrom-Json
-powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $plugin.installedPath 'scripts\install.ps1')
+```text
+开启爆种模式
+关闭爆种模式
+enable super mode
+disable super mode
 ```
 
-首次安装会在 `AGENTS.md` 顶部加入纯英文、无编号的 `Meta Rule - Conflict Resolution` 和 `Implementation` 默认规则，并以无编号 `Codex Quality Routing` 标题追加路由规则。前两条仅初始化一次，不由插件或配置守护恢复、覆盖。
+### 安装
 
-在 `/hooks` 中审核并信任四个 Hook 后新建任务。Hook 内容随升级变化时必须重新审核，插件不会伪造或绕过信任。Cockpit Tools、CC Switch 等会覆盖 `config.toml` 时，可启用配置守护：
+本插件尚未进入 OpenAI 公共插件商城。新用户先添加这个 Git Marketplace，再安装插件：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $plugin.installedPath 'scripts\config-guard.ps1') -Mode Install
+codex plugin marketplace add 9holy/codex-quality-orchestrator --ref main
+codex plugin add codex-quality-orchestrator@codex-quality-orchestrator
 ```
 
-升级已添加的 Marketplace 与插件：
+首次安装后运行初始化脚本：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-quality-orchestrator\plugins\codex-quality-orchestrator\scripts\install.ps1"
+```
+
+初始化会安装四个代理配置，并写入无编号的 `Codex Quality Routing`。它还会在 `AGENTS.md` 顶部加入一次性的英文 `Meta Rule - Conflict Resolution` 和 `Implementation`；以后不会自动恢复或覆盖这两条。
+
+在 `/hooks` 中检查并信任四个 Hook，然后新建任务。插件升级后如果 Hook 内容改变，需要重新信任。
+
+如果 Cockpit Tools、CC Switch 等工具会覆盖 `config.toml`，再启用配置守护：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-quality-orchestrator\plugins\codex-quality-orchestrator\scripts\config-guard.ps1" -Mode Install
+```
+
+### 升级
 
 ```powershell
 codex plugin marketplace upgrade codex-quality-orchestrator
-$plugin = codex plugin add codex-quality-orchestrator@codex-quality-orchestrator --json | ConvertFrom-Json
-powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $plugin.installedPath 'scripts\install.ps1')
-```
-
-### 验证
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $plugin.installedPath 'scripts\verify.ps1')
-powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $plugin.installedPath 'scripts\runtime-smoke.ps1')
-codex plugin list --json
+codex plugin add codex-quality-orchestrator@codex-quality-orchestrator
+powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-quality-orchestrator\plugins\codex-quality-orchestrator\scripts\install.ps1"
 ```
 
 详细说明：[操作指南](docs/OPERATING_GUIDE.md) · [路由矩阵](docs/ROUTING_MATRIX.md) · [需求基线](docs/REQUIREMENTS.md)
 
 ## English
 
-Quality-first multi-model routing for a `gpt-5.6-sol` root. Sol owns understanding, decomposition, integration, verification, decisions, and fallback. Luna Max gets frozen low-judgment mechanical units; Sol Medium gets bounded moderate-judgment units; Terra is used only for a concrete task-specific advantage.
+This plugin gives a `gpt-5.6-sol` root a small model team. Sol understands the task, splits the work, checks every result, and handles anything that should not be delegated. Luna Max, Sol Medium, and Terra receive only work they can reliably complete. Quality comes first; cost savings come from avoiding unnecessarily expensive routes.
 
-Current release: [`v0.7.1`](https://github.com/9holy/codex-quality-orchestrator/releases/tag/v0.7.1).
+Current release: [`v0.7.1`](https://github.com/9holy/codex-quality-orchestrator/releases/tag/v0.7.1)
 
-### Roles
+### Model roles
 
-| Role | Model / effort | Purpose |
-|---|---|---|
-| Current root | `gpt-5.6-sol` / selected effort | Plan, decompose, integrate, verify, decide, and fall back |
-| `luna_worker` | `gpt-5.6-luna / max` | Frozen, low-judgment, mechanically verifiable work |
-| `sol_medium_worker` | `gpt-5.6-sol / medium` | Bounded, moderate-judgment, independently verifiable work |
-| `terra_worker` | `gpt-5.6-terra / xhigh|max|ultra` | Work with a clear advantage over capable Sol |
-| `sol_reviewer` | `gpt-5.6-sol / xhigh` | One read-only review for critical changes |
+| Role | Purpose |
+|---|---|
+| Current Sol | Plan, split, integrate, verify, and fall back |
+| Luna Max | Clear, low-judgment work with straightforward checks |
+| Sol Medium | Bounded independent work that needs normal judgment |
+| Terra XHigh / Max / Ultra | Use only when the specific task clearly favors Terra |
+| Sol Reviewer XHigh | One read-only review for a critical high-risk change |
 
 ### Modes
 
-- Normal: the root handles short work directly; one Worker is the default, with parallelism only for independent write-safe units.
-- Burst: send the exact command `开启爆种模式` to enable it for the session and `关闭爆种模式` to disable it. Sol is `d0`; children may use `d1-d4`; the host limit is 25 child threads; `d4` cannot delegate. Sol still audits every result.
-- Capacity recovery: `SubagentStop` resumes the same subagent once after the exact selected-model-capacity message. Root capacity notifications are not exposed through the resumable Hook path, so the plugin does not claim automatic root recovery.
+- Normal mode: the current Sol handles short work directly and normally uses one Worker.
+- Super mode: runs independent, write-safe work in parallel with up to 25 child threads. Sol still checks every result and keeps the same quality bar.
 
-The plugin has four Hooks: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, and `SubagentStop`. Ordinary prompts remain silent.
+Toggle Super mode for the current session with an exact command:
 
-### Marketplace and installation
+```text
+enable super mode
+disable super mode
+开启爆种模式
+关闭爆种模式
+```
 
-This plugin is currently distributed through an independent Git Marketplace and is not listed in OpenAI's public curated Marketplace. New users must add the Git Marketplace once before the plugin selector can install it or list it from that configured source.
+### Install
 
-Use the PowerShell commands in the Chinese installation section above, then review and trust all four Hooks in `/hooks` and start a new task. Hook changes require renewed review; the plugin never bypasses trust. The first install prepends unnumbered English `Meta Rule - Conflict Resolution` and `Implementation` defaults and appends an unnumbered `Codex Quality Routing` section. The first two defaults are not restored or overwritten later. Use `config-guard.ps1 -Mode Install` when another tool may replace `config.toml`.
+The plugin is not yet listed in OpenAI's public plugin marketplace. Add its Git Marketplace once, then install it:
+
+```powershell
+codex plugin marketplace add 9holy/codex-quality-orchestrator --ref main
+codex plugin add codex-quality-orchestrator@codex-quality-orchestrator
+```
+
+Run the first-install setup:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-quality-orchestrator\plugins\codex-quality-orchestrator\scripts\install.ps1"
+```
+
+Setup installs four agent profiles and the unnumbered `Codex Quality Routing` section. It also adds one-time English `Meta Rule - Conflict Resolution` and `Implementation` defaults at the top of `AGENTS.md`; later installs do not restore or overwrite them.
+
+Review and trust all four Hooks in `/hooks`, then start a new task. Review them again after an update changes Hook content.
+
+Use `config-guard.ps1 -Mode Install` only when another tool may replace `config.toml`.
 
 Detailed documentation: [Operating Guide](docs/OPERATING_GUIDE.en.md) · [Routing Matrix](docs/ROUTING_MATRIX.en.md) · [Requirements](docs/REQUIREMENTS.en.md)
 

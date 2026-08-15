@@ -94,4 +94,6 @@ for path in ROOT.rglob("*"):
 
 assert policy["burstMode"]["maxChildThreads"] == 25
 assert policy["burstMode"]["depths"] == [1, 2, 3, 4]
+assert policy["burstMode"]["enabledByExactCommandEnglish"] == "enable super mode"
+assert policy["burstMode"]["disabledByExactCommandEnglish"] == "disable super mode"
 print("PASS minimal policy, burst contract, and concise agent contracts")

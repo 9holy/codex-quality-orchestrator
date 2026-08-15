@@ -6,6 +6,7 @@
 - Set burst-mode and host concurrency defaults to 25 child threads.
 - On first install only, prepend unnumbered English `Meta Rule - Conflict Resolution` and `Implementation` defaults; upgrades and the configuration guard do not restore or overwrite them.
 - Clarify bilingual installation, upgrade, Hook-trust, and Marketplace visibility: the Git Marketplace must be added before installation and the plugin is not yet in OpenAI's public curated Marketplace.
+- Add exact English Super mode commands: `enable super mode` and `disable super mode`, alongside the Chinese commands.
 
 ## 0.7.0 - 2026-08-11
 
