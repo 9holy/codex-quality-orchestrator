@@ -57,7 +57,7 @@ try {
   fs.writeFileSync(path.join(codexHome, 'AGENTS.md'), '## Rule 16 — user rule\n\nuser content\n');
   const inserted = invoke();
   assert.match(inserted, /^\[CQO_RULE16_INJECTED\]/);
-  assert.match(inserted, /Codex Quality Routing/);
+  assert.match(inserted, /Codex Routing Matrix/);
   assert.doesNotMatch(inserted, /暂停具名代理|全局 Rule 16 与插件规则不一致/);
 
   fs.writeFileSync(path.join(codexHome, 'AGENTS.md'), canonical.replace(/^## .*$/m, '## Rule 8 - user numbering'));

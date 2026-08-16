@@ -64,7 +64,7 @@ codex plugin add codex-routing-matrix@codex-routing-matrix
 powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-routing-matrix\plugins\codex-routing-matrix\scripts\install.ps1"
 ```
 
-初始化会安装 Luna、Sol Medium、Terra 和 Sol Reviewer 四个具名代理，维护无编号的 `Codex Quality Routing`，并在首次安装时把英文 `Meta Rule - Conflict Resolution` 和 `Implementation` 放到 `AGENTS.md` 顶部。后两条不是守护内容，以后不会被安装器自动恢复或覆盖。
+初始化会安装 Luna、Sol Medium、Terra 和 Sol Reviewer 四个具名代理，维护无编号的 `Codex Routing Matrix`，并在首次安装时把英文 `Meta Rule - Conflict Resolution` 和 `Implementation` 放到 `AGENTS.md` 顶部。后两条不是守护内容，以后不会被安装器自动恢复或覆盖。
 
 升级命令：
 

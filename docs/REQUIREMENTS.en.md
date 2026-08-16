@@ -1,6 +1,6 @@
 # Requirements Baseline
 
-This file supports maintenance and regression tracking; it is not injected into model context. The unnumbered `Codex Quality Routing` section in `references/RULE16.md` is the only semantic routing rule. The routing skill applies it, while Hooks validate only observable mechanical fields.
+This file supports maintenance and regression tracking; it is not injected into model context. The unnumbered `Codex Routing Matrix` section in `references/RULE16.md` is the only semantic routing rule. The routing skill applies it, while Hooks validate only observable mechanical fields.
 
 ## Quality And Routing
 

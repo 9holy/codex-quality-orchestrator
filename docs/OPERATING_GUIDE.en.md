@@ -64,7 +64,7 @@ Run setup after first install or upgrade:
 powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-routing-matrix\plugins\codex-routing-matrix\scripts\install.ps1"
 ```
 
-Setup installs the Luna, Sol Medium, Terra, and Sol Reviewer profiles, maintains the unnumbered `Codex Quality Routing` section, and places one-time English `Meta Rule - Conflict Resolution` and `Implementation` defaults at the top of `AGENTS.md`. Those two defaults are not guarded and are never restored or overwritten by later installs.
+Setup installs the Luna, Sol Medium, Terra, and Sol Reviewer profiles, maintains the unnumbered `Codex Routing Matrix` section, and places one-time English `Meta Rule - Conflict Resolution` and `Implementation` defaults at the top of `AGENTS.md`. Those two defaults are not guarded and are never restored or overwritten by later installs.
 
 Upgrade commands:
 

@@ -515,7 +515,7 @@ function formatRadarContext(snapshot, config = {}) {
   }
   const lines = [
     '[CQO_RADAR]',
-    `只比较已通过 Codex Quality Routing 能力/风险门槛的候选；IQ 差<${formatNumber(iqTieMargin, 2)} 视为同级，同级先保留热模型/原代理，再选低预计总成本。`,
+    `只比较已通过 Codex Routing Matrix 能力/风险门槛的候选；IQ 差<${formatNumber(iqTieMargin, 2)} 视为同级，同级先保留热模型/原代理，再选低预计总成本。`,
   ];
   if (relations.length > 0) lines.push(`当前数据：${relations.join('；')}。`);
   lines.push('[/CQO_RADAR]');

@@ -1,4 +1,4 @@
-## Codex Quality Routing - Default Multi-Model Quality Team
+## Codex Routing Matrix - Default Multi-Model Quality Team
 
 - Use only with a `gpt-5.6-sol` root. Handle clear, low-risk short work directly; risk overrides size.
 - For non-short work, Sol owns planning, decomposition, ownership, integration, verification, decisions, and fallback. List bounded units.

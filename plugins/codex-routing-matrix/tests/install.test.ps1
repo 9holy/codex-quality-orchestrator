@@ -39,17 +39,23 @@ try {
   Assert-True ($second.Rule16.Status -ceq 'kept') 'Second install did not retain canonical Rule 16'
 
   $freshAgents = Join-Path $freshHome 'AGENTS.md'
-  $stalePluginRule = [regex]::Replace([IO.File]::ReadAllText($freshAgents, [Text.UTF8Encoding]::new($false)), '(?ms)(^## Codex Quality Routing[^\r\n]*\r?\n).*\z', '$1`nstale plugin content')
+  $legacyBrandRule = [IO.File]::ReadAllText($freshAgents, [Text.UTF8Encoding]::new($false)).Replace('## Codex Routing Matrix - Default Multi-Model Quality Team', '## Codex Quality Routing - Default Multi-Model Quality Team')
+  [IO.File]::WriteAllText($freshAgents, $legacyBrandRule, [Text.UTF8Encoding]::new($false))
+  $brandMigration = ((& $installScript -CodexHome $freshHome) -join [Environment]::NewLine) | ConvertFrom-Json
+  Assert-True ($brandMigration.Rule16.Status -ceq 'migrated-heading') 'Installer did not migrate the legacy routing brand heading'
+  Assert-True ([IO.File]::ReadAllText($freshAgents, [Text.UTF8Encoding]::new($false)).Contains('## Codex Routing Matrix - Default Multi-Model Quality Team')) 'Installer did not install the current routing matrix heading'
+
+  $stalePluginRule = [regex]::Replace([IO.File]::ReadAllText($freshAgents, [Text.UTF8Encoding]::new($false)), '(?ms)(^## Codex Routing Matrix[^\r\n]*\r?\n).*\z', '$1`nstale plugin content')
   [IO.File]::WriteAllText($freshAgents, $stalePluginRule, [Text.UTF8Encoding]::new($false))
   $refreshedRuleInstall = ((& $installScript -CodexHome $freshHome) -join [Environment]::NewLine) | ConvertFrom-Json
   Assert-True ($refreshedRuleInstall.Rule16.Status -ceq 'refreshed') 'Installer did not refresh its own stale routing section'
   Assert-True ([IO.File]::ReadAllText($freshAgents, [Text.UTF8Encoding]::new($false)).Contains('enable super mode')) 'Refreshed routing section did not contain the current Super mode command'
 
-  $numberedPluginRule = [IO.File]::ReadAllText($freshAgents, [Text.UTF8Encoding]::new($false)).Replace('## Codex Quality Routing - Default Multi-Model Quality Team', '## Rule 8 - Default Multi-Model Quality Team')
+  $numberedPluginRule = [IO.File]::ReadAllText($freshAgents, [Text.UTF8Encoding]::new($false)).Replace('## Codex Routing Matrix - Default Multi-Model Quality Team', '## Rule 8 - Default Multi-Model Quality Team')
   [IO.File]::WriteAllText($freshAgents, $numberedPluginRule, [Text.UTF8Encoding]::new($false))
   $migratedInstall = ((& $installScript -CodexHome $freshHome) -join [Environment]::NewLine) | ConvertFrom-Json
   Assert-True ($migratedInstall.Rule16.Status -ceq 'migrated-heading') 'Installer did not remove the legacy plugin rule number'
-  Assert-True ([IO.File]::ReadAllText($freshAgents, [Text.UTF8Encoding]::new($false)).Contains('## Codex Quality Routing - Default Multi-Model Quality Team')) 'Installer did not restore the unnumbered plugin heading'
+  Assert-True ([IO.File]::ReadAllText($freshAgents, [Text.UTF8Encoding]::new($false)).Contains('## Codex Routing Matrix - Default Multi-Model Quality Team')) 'Installer did not restore the unnumbered plugin heading'
 
   $staleRule = "## Rule 15 - keep`n`nkeep me`n`n## Rule 16 - user rule`n`nuser content`n`n## Rule 17 - keep`n`nkeep me too`n"
   [IO.File]::WriteAllText($freshAgents, $staleRule, [Text.UTF8Encoding]::new($false))
@@ -60,7 +66,7 @@ try {
   Assert-True ($syncedText.Contains('## Rule 15 - keep')) 'Rule 16 synchronization removed the preceding rule'
   Assert-True ($syncedText.Contains('## Rule 16 - user rule')) 'Installer replaced a user Rule 16'
   Assert-True ($syncedText.Contains('## Rule 17 - keep')) 'Rule 16 synchronization removed the following rule'
-  Assert-True ($syncedText.Contains('## Codex Quality Routing - Default Multi-Model Quality Team')) 'Installer did not append the unnumbered plugin rule'
+  Assert-True ($syncedText.Contains('## Codex Routing Matrix - Default Multi-Model Quality Team')) 'Installer did not append the unnumbered plugin rule'
   Assert-True (-not $syncedText.Contains('## Meta Rule - Conflict Resolution')) 'Default rules were restored after first install'
   Assert-True (Test-Path -LiteralPath (Join-Path $syncedInstall.Rule16.Backup 'AGENTS.md') -PathType Leaf) 'Rule 16 backup file is missing'
 
