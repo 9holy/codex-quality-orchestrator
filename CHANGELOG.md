@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.8.4 - 2026-08-18
+
 - Support the same plugin on macOS and Linux, including Linux Codex CLI servers, through a Node setup entry, portable paths, legacy backup-path normalization, and a `python3` verification fallback.
 - Add macOS to CI and keep automatic configuration-guard startup explicitly Windows-only.
 - Rename stale numbered-rule identifiers to the unnumbered `Codex Routing Matrix` terminology without changing routing behavior.

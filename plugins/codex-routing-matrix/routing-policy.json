@@ -1,6 +1,6 @@
 {
   "schemaVersion": 9,
-  "policyVersion": "0.8.3",
+  "policyVersion": "0.8.4",
   "toolNames": [
     "spawn_agent",
     "Agent",
