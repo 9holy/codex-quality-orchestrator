@@ -5,7 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const pluginRoot = path.resolve(__dirname, '..');
-const canonicalPath = path.join(pluginRoot, 'references', 'RULE16.md');
+const canonicalPath = path.join(pluginRoot, 'references', 'ROUTING_MATRIX.md');
 const policyPath = path.join(pluginRoot, 'routing-policy.json');
 
 function codexHome() {
@@ -65,15 +65,15 @@ async function main() {
   const installedRule = fs.existsSync(globalPath)
     ? extractCanonicalRule(fs.readFileSync(globalPath, 'utf8'), canonical)
     : null;
-  const rule16Status = installedRule === null
+  const routingMatrixStatus = installedRule === null
     ? 'injected'
     : normalizeRule(installedRule) === normalizeRule(canonical) ? 'match' : 'refreshed';
 
   const notes = [];
-  if (rule16Status === 'injected') {
-    notes.push(`[CQO_RULE16_INJECTED]\n${canonical}`);
-  } else if (rule16Status === 'refreshed') {
-    notes.push(`[CQO_RULE16_REFRESHED]\n${canonical}`);
+  if (routingMatrixStatus === 'injected') {
+    notes.push(`[CQO_ROUTING_MATRIX_INJECTED]\n${canonical}`);
+  } else if (routingMatrixStatus === 'refreshed') {
+    notes.push(`[CQO_ROUTING_MATRIX_REFRESHED]\n${canonical}`);
   }
   if (missingProfiles.length > 0) {
     notes.push(`[CQO_AGENT_PROFILES_MISSING] 缺少具名代理配置：${missingProfiles.join(', ')}。不得调用缺失的代理。`);
@@ -85,7 +85,7 @@ async function main() {
     notes.push(`[CQO_RUNTIME_SMOKE:${runtimeSmokeNonce}]`);
     try {
       writeRuntimeSmokeProof(runtimeSmokeNonce, process.env.CQO_RUNTIME_SMOKE_PROOF_PATH, {
-        rule16Status,
+        routingMatrixStatus,
         missingProfiles,
         radarStatus,
       });

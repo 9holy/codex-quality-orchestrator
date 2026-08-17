@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Support the same plugin on macOS and Linux, including Linux Codex CLI servers, through a Node setup entry, portable paths, legacy backup-path normalization, and a `python3` verification fallback.
+- Add macOS to CI and keep automatic configuration-guard startup explicitly Windows-only.
+- Rename stale numbered-rule identifiers to the unnumbered `Codex Routing Matrix` terminology without changing routing behavior.
+- After one in-context Luna capacity retry, let Sol reroute the same frozen packet to capable Sol Medium without restarting completed work.
+
 ## 0.8.3 - 2026-08-17
 
 - Remove current-version labels from the README; version information remains in Releases and plugin metadata.
@@ -63,12 +70,12 @@
 
 ## 0.4.0 - 2026-08-03
 
-- Rebuild routing around three small Hooks: conditional Rule 16 loading, CQO-only visible call validation, and one exact in-place capacity continuation.
+- Rebuild routing around three small Hooks: conditional routing-matrix loading, CQO-only visible call validation, and one exact in-place capacity continuation.
 - Remove the session ledger, SubagentStart Hook, wave/slot/attempt names, manual release command, fixed attempt budgets, and dead fallback chain.
 - Let unrelated agents and Skills pass through PreToolUse while continuing to validate CQO profiles, Terra effort, fork context, and visible route names.
 - Keep worker packets short and model-facing; acknowledge that the host encrypts packet messages before PreToolUse, so Hooks validate only observable mechanical fields.
 - Replace long agent instructions with bounded, verifiable worker contracts based on the native Luna template.
-- Keep SessionStart silent when the installed Rule 16 already matches, preventing repeated CQO activation context.
+- Keep SessionStart silent when the installed routing matrix already matches, preventing repeated CQO activation context.
 - Move Radar from the Hook directory to an optional script and retain its cached, candidate-only use.
 - Preserve Cockpit and CC Switch configuration by restoring only the plugin registration and three approved Hook hashes.
 
@@ -78,7 +85,7 @@
 - Route one substantial, bounded, verifiable Luna Max unit when delegation has net benefit; require multiple units only for parallel TeamPlan execution.
 - Keep the existing four-Hook surface and add a compact SessionStart routing reminder without per-prompt token overhead.
 - Stop injecting Radar into every task; Luna-capable work skips Radar, while other routes load one cached summary only when multiple capable candidates remain.
-- Remove duplicated semantic routing instructions from the daily Skill and keep Rule 16 as the single source of truth.
+- Remove duplicated semantic routing instructions from the daily Skill and keep the routing matrix as the single source of truth.
 - Keep ambiguous and root-cause diagnosis work with Sol even when the work is read-only.
 - Require explicit `agent_type` and `fork_turns` tool arguments before dispatch so the Hook does not reject an otherwise valid work packet.
 - Put the full model and reasoning effort on the second line of every work packet so the desktop agent-created message shows the actual route instead of only a random nickname and generic role.
@@ -107,7 +114,7 @@
 
 ## 0.3.13 - 2026-08-02
 
-- Keep Terra XHigh, Max, and Ultra mechanically callable while leaving current automatic model preference in Rule 16 and radar evidence instead of hard-coded Hook denials.
+- Keep Terra XHigh, Max, and Ultra mechanically callable while leaving current automatic model preference in the routing matrix and radar evidence instead of hard-coded Hook denials.
 
 ## 0.3.12 - 2026-08-02
 
@@ -128,7 +135,7 @@
 
 ## 0.3.9 - 2026-08-02
 
-- Replace the remaining Hook implementation narration in Rule 16 with direct Sol obligations, and align Terra's model instructions with the current non-automatic XHigh, independent/parallel Max, and deepest-reasoning Ultra routes.
+- Replace the remaining Hook implementation narration in the routing matrix with direct Sol obligations, and align Terra's model instructions with the current non-automatic XHigh, independent/parallel Max, and deepest-reasoning Ultra routes.
 
 ## 0.3.8 - 2026-08-02
 
@@ -151,7 +158,7 @@
 
 - Use one Worker normally and expand to two or three only when independent parallel work saves more than it costs; keep three as the mechanical concurrency cap.
 - Treat Terra XHigh, Max, and Ultra as a normal increasing reasoning ladder instead of reserving Ultra for a special task category.
-- Synchronize the canonical global Rule 16 during installation, with a full `AGENTS.md` backup before replacement.
+- Synchronize the canonical global routing matrix during installation, with a full `AGENTS.md` backup before replacement.
 
 ## 0.3.4 - 2026-08-02
 
@@ -212,7 +219,7 @@
 ## 0.1.4 - 2026-08-01
 
 - Reduce healthy SessionStart model context to `[CQO_ACTIVE]` and remove the stale-prone root-default advisory.
-- Make the maintenance skill reference canonical Rule 16 instead of duplicating its routing semantics.
+- Make the maintenance skill reference the canonical routing matrix instead of duplicating its routing semantics.
 - Add prompt-size and conditional-injection contracts to prevent future model-context growth.
 - Align Terra and Luna agent instructions with their canonical capability boundaries.
 

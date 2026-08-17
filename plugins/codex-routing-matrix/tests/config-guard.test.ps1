@@ -9,14 +9,14 @@ function Assert-True {
 function Get-HookBundleHash {
   param([string]$Root)
   $records = foreach ($relative in @(
-    'hooks\hooks.json',
-    'hooks\inject-routing-policy.cjs',
-    'hooks\enforce-agent-routing.cjs',
-    'hooks\burst-mode.cjs',
-    'hooks\context-window-config.cjs',
-    'hooks\continue-capacity-subagent.cjs',
+    'hooks/hooks.json',
+    'hooks/inject-routing-policy.cjs',
+    'hooks/enforce-agent-routing.cjs',
+    'hooks/burst-mode.cjs',
+    'hooks/context-window-config.cjs',
+    'hooks/continue-capacity-subagent.cjs',
     'routing-policy.json',
-    'references\RULE16.md'
+    'references/ROUTING_MATRIX.md'
   )) {
     $hash = (Get-FileHash -LiteralPath (Join-Path $Root $relative) -Algorithm SHA256).Hash.ToLowerInvariant()
     "$($relative.Replace('\', '/'))=$hash"
@@ -31,7 +31,7 @@ function Get-HookBundleHash {
 }
 
 $pluginRoot = Split-Path -Parent $PSScriptRoot
-$guardScript = Join-Path $pluginRoot 'scripts\config-guard.ps1'
+$guardScript = Join-Path $pluginRoot 'scripts/config-guard.ps1'
 $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ('cqo-config-guard-' + [guid]::NewGuid().ToString('N'))
 $codexHome = Join-Path $tempRoot '.codex'
 $guardDir = Join-Path $codexHome '.codex-routing-matrix-guard'
@@ -171,7 +171,7 @@ wire_api = "responses"
   $legacyState = $validState | ConvertFrom-Json
   $legacyState.marketplaceRef = $null
   [IO.File]::WriteAllText($statePath, ($legacyState | ConvertTo-Json -Depth 6), [Text.UTF8Encoding]::new($false))
-  $metadataRoot = Join-Path $codexHome '.tmp\marketplaces\codex-routing-matrix'
+  $metadataRoot = Join-Path $codexHome '.tmp/marketplaces/codex-routing-matrix'
   New-Item -ItemType Directory -Path $metadataRoot -Force | Out-Null
   $metadata = [ordered]@{ source_type='local'; source='owner/repo'; ref_name='main' } | ConvertTo-Json
   [IO.File]::WriteAllText((Join-Path $metadataRoot '.codex-marketplace-install.json'), $metadata, [Text.UTF8Encoding]::new($false))
@@ -251,7 +251,7 @@ wire_api = "responses"
   $startupDir = Join-Path $tempRoot 'startup'
   if ($runningOnWindows) {
     Assert-True ([long]$pidRecord.startTimeUtcTicks -eq $watchProcess.StartTime.ToUniversalTime().Ticks) 'Watch PID record was not bound to process start time'
-    $installMetadataRoot = Join-Path $codexHome '.tmp\marketplaces\cqo-test'
+    $installMetadataRoot = Join-Path $codexHome '.tmp/marketplaces/cqo-test'
     New-Item -ItemType Directory -Path $installMetadataRoot -Force | Out-Null
     [IO.File]::WriteAllText(
       (Join-Path $installMetadataRoot '.codex-marketplace-install.json'),
@@ -272,6 +272,13 @@ wire_api = "responses"
     $installedState = Get-Content -LiteralPath (Join-Path $guardDir 'state.json') -Raw | ConvertFrom-Json
     Assert-True ([string]$installedState.marketplaceRef -ceq 'main') 'Guard install did not preserve marketplace ref_name metadata'
   } else {
+    $installRejected = $false
+    try {
+      & $guardScript -Mode Install -CodexHome $codexHome -CodexCommand $fakeCodex -StartupDirectory $startupDir -NoStart | Out-Null
+    } catch {
+      $installRejected = $_.Exception.Message -match 'supported on Windows only'
+    }
+    Assert-True $installRejected 'Non-Windows automatic guard installation was not explicitly rejected'
     $watchProcess | Stop-Process -Force
     $watchProcess.WaitForExit(5000) | Out-Null
     Assert-True $watchProcess.HasExited 'Portable Watch process did not stop cleanly'

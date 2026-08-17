@@ -68,7 +68,7 @@ function Get-ObjectValue {
 function Get-MarketplaceInstallMetadata {
   param([string]$MarketplaceName)
   if ([string]::IsNullOrWhiteSpace($MarketplaceName)) { return $null }
-  $path = Join-Path $CodexHome (".tmp\marketplaces\$MarketplaceName\.codex-marketplace-install.json")
+  $path = Join-Path $CodexHome (".tmp/marketplaces/$MarketplaceName/.codex-marketplace-install.json")
   if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
   try {
     return Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -80,14 +80,14 @@ function Get-MarketplaceInstallMetadata {
 function Get-HookBundleHash {
   param([string]$PluginRoot)
   $relativeFiles = @(
-    'hooks\hooks.json',
-    'hooks\inject-routing-policy.cjs',
-    'hooks\enforce-agent-routing.cjs',
-    'hooks\burst-mode.cjs',
-    'hooks\context-window-config.cjs',
-    'hooks\continue-capacity-subagent.cjs',
+    'hooks/hooks.json',
+    'hooks/inject-routing-policy.cjs',
+    'hooks/enforce-agent-routing.cjs',
+    'hooks/burst-mode.cjs',
+    'hooks/context-window-config.cjs',
+    'hooks/continue-capacity-subagent.cjs',
     'routing-policy.json',
-    'references\RULE16.md'
+    'references/ROUTING_MATRIX.md'
   )
   $records = foreach ($relative in $relativeFiles) {
     $path = Join-Path $PluginRoot $relative
@@ -346,7 +346,7 @@ function Add-MarketplaceWithRecovery {
     if ($_.Exception.Message -notmatch "marketplace '.*' is already added from a different source") { throw }
   }
 
-  $marketplaceRoot = Join-Path $CodexHome (".tmp\marketplaces\$marketplaceName")
+  $marketplaceRoot = Join-Path $CodexHome (".tmp/marketplaces/$marketplaceName")
   $metadata = Get-MarketplaceInstallMetadata $marketplaceName
   $metadataMatches = $null -ne $metadata -and
     [string]$metadata.source_type -ceq [string]$State.marketplaceSourceType -and
@@ -550,7 +550,7 @@ switch ($Mode) {
         $null
       }
     }
-    $cachedRoot = Join-Path $CodexHome ("plugins\cache\$marketplaceName\codex-routing-matrix\$version")
+    $cachedRoot = Join-Path $CodexHome ("plugins/cache/$marketplaceName/codex-routing-matrix/$version")
     $installSource = if ($installed.PSObject.Properties.Name -contains 'source') { $installed.source } else { $null }
     $installType = Get-ObjectValue $installSource @('source', 'sourceType', 'type')
     $localRoot = Get-ObjectValue $installSource @('path', 'localPath')

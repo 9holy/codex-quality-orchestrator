@@ -74,7 +74,8 @@ function Resolve-RestorePath {
   if ([string]::IsNullOrWhiteSpace($RelativePath) -or [IO.Path]::IsPathRooted($RelativePath)) {
     throw "Invalid restore path for $FileName"
   }
-  $resolved = [IO.Path]::GetFullPath((Join-Path $CodexHome $RelativePath))
+  $portableRelative = $RelativePath.Replace('\', '/')
+  $resolved = [IO.Path]::GetFullPath((Join-Path $CodexHome $portableRelative))
   $agentsPrefix = [IO.Path]::GetFullPath($AgentsDir).TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
   if (-not $resolved.StartsWith($agentsPrefix, [StringComparison]::OrdinalIgnoreCase)) {
     throw "Restore path escapes the agents directory: $RelativePath"
@@ -94,7 +95,7 @@ if ([string]::IsNullOrWhiteSpace($CodexHome)) {
 }
 $CodexHome = [IO.Path]::GetFullPath($CodexHome)
 $pluginRoot = Split-Path -Parent $PSScriptRoot
-$templateDir = Join-Path $pluginRoot 'templates\agents'
+$templateDir = Join-Path $pluginRoot 'templates/agents'
 $policy = Get-Content -LiteralPath (Join-Path $pluginRoot 'routing-policy.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 $agentsDir = Join-Path $CodexHome 'agents'
 $statePath = Join-Path $CodexHome '.codex-routing-matrix.install-state.json'

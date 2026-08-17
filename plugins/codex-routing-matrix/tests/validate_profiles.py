@@ -9,7 +9,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 policy = json.loads((ROOT / "routing-policy.json").read_text(encoding="utf-8"))
 manifest = json.loads((ROOT / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8"))
 hooks = json.loads((ROOT / "hooks" / "hooks.json").read_text(encoding="utf-8"))
-rule = (ROOT / "references" / "RULE16.md").read_text(encoding="utf-8")
+rule = (ROOT / "references" / "ROUTING_MATRIX.md").read_text(encoding="utf-8")
 maintenance = (ROOT / "skills" / "codex-routing-matrix" / "SKILL.md").read_text(encoding="utf-8")
 routing = (ROOT / "skills" / "codex-quality-routing-team" / "SKILL.md").read_text(encoding="utf-8")
 

@@ -62,4 +62,4 @@ sol_reviewer: agent_type + task_name(sol_reviewer_xhigh__unit) + fork_turns
 
 ## 容量恢复
 
-子代理精确返回选定模型容量错误时，在同一上下文续交一次；第二次仍失败就交回当前 Sol。不得重启整个任务、重做已完成工作，也不得把能力或质量失败按容量错误处理。当前 Hook 只能处理 `SubagentStop`，不能替主控自动恢复容量通知。
+子代理精确返回选定模型容量错误时，在同一上下文续交一次；Luna 第二次仍失败且 Sol Medium 能可靠完成时，Sol 将同一冻结工作包交给 `sol_medium_worker`，否则当前 Sol 接管。其他子代理第二次容量失败交回当前 Sol。不得重启整个任务、重做已完成工作，也不得把能力或质量失败按容量错误处理。当前 Hook 只能处理 `SubagentStop`，不能替主控自动恢复容量通知。

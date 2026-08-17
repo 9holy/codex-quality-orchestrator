@@ -8,7 +8,7 @@ const root = path.resolve(__dirname, '..');
 const skillRoot = path.join(root, 'skills', 'codex-quality-routing-team');
 const skill = fs.readFileSync(path.join(skillRoot, 'SKILL.md'), 'utf8');
 const metadata = fs.readFileSync(path.join(skillRoot, 'agents', 'openai.yaml'), 'utf8');
-const rule = fs.readFileSync(path.join(root, 'references', 'RULE16.md'), 'utf8');
+const rule = fs.readFileSync(path.join(root, 'references', 'ROUTING_MATRIX.md'), 'utf8');
 
 for (const text of ['multi-step implementation', 'cross-file changes', 'located fixes', 'research', 'independent verification', 'simple questions', 'clear tiny edits', 'undiagnosed', 'architectural', 'security']) {
   assert.match(skill, new RegExp(text));

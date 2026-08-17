@@ -7,7 +7,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(root, '..', '..');
 const read = (relative) => fs.readFileSync(path.join(root, relative), 'utf8');
-const rule = read('references/RULE16.md');
+const rule = read('references/ROUTING_MATRIX.md');
 const skill = read('skills/codex-quality-routing-team/SKILL.md');
 
 for (const required of [

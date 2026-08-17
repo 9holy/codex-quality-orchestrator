@@ -1,6 +1,6 @@
 # 需求基线
 
-本文件用于维护和回归追踪，不注入模型上下文。`references/RULE16.md` 中的无编号 `Codex Routing Matrix` 是唯一语义路由规则，Routing Skill 只实现该规则，Hook 只校验机械字段。
+本文件用于维护和回归追踪，不注入模型上下文。`references/ROUTING_MATRIX.md` 中的无编号 `Codex Routing Matrix` 是唯一语义路由规则，Routing Skill 只实现该规则，Hook 只校验机械字段。
 
 ## 目标与路由
 
@@ -37,7 +37,7 @@
 | M01 | Luna 固定 Max；Sol Worker 固定 Medium；Terra 调用时选 XHigh/Max/Ultra；具名代理不传 `model` | Policy、Hook |
 | M02 | `task_name` 明文显示预期代理和档位，`fork_turns` 显式为 `none` 或正整数字符串 | Policy、Hook |
 | M03 | 工作包冻结目标、范围、路径所有权、验收和回到当前 Sol 的接管方式 | Routing Skill |
-| M04 | 精确容量消息只让同一代理在原上下文继续一次，不重启或重做；第二次交回 Sol 重新路由 | Codex Routing Matrix、SubagentStop Hook |
+| M04 | 精确容量消息只让同一代理在原上下文继续一次；Luna 第二次失败时，若 Sol Medium 能可靠完成则转交同一冻结工作包，否则由 Sol 接管；不重启或重做 | Codex Routing Matrix、SubagentStop Hook |
 | M05 | 禁止静默降级；任务名、工作包和代理自述不能单独证明实际后台模型 | 维护 Skill、README |
 | M06 | 只保留 SessionStart、UserPromptSubmit、PreToolUse、SubagentStop 四个 Hook；普通提示保持静默 | Hook、Policy |
 | M07 | 配置守护只恢复插件注册和已批准 Hook 哈希，保留 Cockpit、CC Switch 写入的认证、Provider、端点和模型配置 | Config Guard |

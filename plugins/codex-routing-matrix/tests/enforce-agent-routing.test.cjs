@@ -142,7 +142,7 @@ try {
   expectDeny('terra-pinned-effort', workerInput('terra_worker', { reasoning_effort: 'max' }));
   installProfiles();
 
-  fs.writeFileSync(path.join(codexHome, 'AGENTS.md'), '## Rule 16 — project override\n');
+  fs.writeFileSync(path.join(codexHome, 'AGENTS.md'), '## User Project Rule\n');
   expectAllow('rule-text-does-not-block', workerInput('luna_worker'));
   expectDeny('invalid-json', null, { raw: '{not-json' });
 

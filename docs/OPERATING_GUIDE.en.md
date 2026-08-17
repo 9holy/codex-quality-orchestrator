@@ -67,7 +67,7 @@ When a subagent returns this exact capacity message, the plugin continues once i
 Selected model is at capacity. Please try a different model.
 ```
 
-A second failure returns to Sol. Capability, scope, and quality failures are never treated as capacity failures or passed through a mechanical model ladder. Current Codex Hooks cannot resume a root-controller capacity notification, so the plugin promises subagent continuation only.
+After a second Luna capacity failure, Sol sends the same frozen packet to `sol_medium_worker` when Sol Medium can reliably finish it, without redoing completed work; otherwise the current Sol takes over. Other second capacity failures also return to Sol. Capability, scope, and quality failures are never treated as capacity failures or passed through a mechanical model ladder. Current Codex Hooks cannot resume a root-controller capacity notification, so the plugin promises subagent continuation only.
 
 ## Install and upgrade
 
@@ -84,6 +84,12 @@ Run setup after first install or upgrade:
 powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-routing-matrix\plugins\codex-routing-matrix\scripts\install.ps1"
 ```
 
+On macOS, Linux desktops, or Linux servers running Codex CLI, use:
+
+```bash
+node "$HOME/.codex/.tmp/marketplaces/codex-routing-matrix/plugins/codex-routing-matrix/scripts/portable-setup.cjs" install
+```
+
 Setup installs the Luna, Sol Medium, Terra, and Sol Reviewer profiles, maintains the unnumbered `Codex Routing Matrix` section, and places one-time English `Meta Rule - Conflict Resolution` and `Implementation` defaults at the top of `AGENTS.md`. Those two defaults are not guarded and are never restored or overwritten by later installs.
 
 Upgrade commands:
@@ -93,6 +99,8 @@ codex plugin marketplace upgrade codex-routing-matrix
 codex plugin add codex-routing-matrix@codex-routing-matrix
 powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-routing-matrix\plugins\codex-routing-matrix\scripts\install.ps1"
 ```
+
+For macOS or Linux upgrades, keep the first two `codex` commands and then run the Node setup command above.
 
 When migrating from `codex-quality-orchestrator`, install the new Marketplace and run setup first. After the new plugin and its four Hooks are verified, remove the old registration:
 
@@ -123,11 +131,26 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketpla
 
 The guard restores only plugin registration and already approved current Hooks. It preserves authentication, providers, endpoints, models, and unrelated settings.
 
+The configuration guard is currently Windows-only. Do not run `config-guard.ps1 -Mode Install` on macOS or Linux; core routing and all four Worker profiles remain supported.
+
 ## Verify
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-routing-matrix\plugins\codex-routing-matrix\scripts\verify.ps1"
 codex plugin list --json
+```
+
+On macOS or Linux, use the portable status check:
+
+```bash
+node "$HOME/.codex/.tmp/marketplaces/codex-routing-matrix/plugins/codex-routing-matrix/scripts/portable-setup.cjs" status
+codex plugin list --json
+```
+
+On macOS or Linux, remove the plugin-managed agent profiles with:
+
+```bash
+node "$HOME/.codex/.tmp/marketplaces/codex-routing-matrix/plugins/codex-routing-matrix/scripts/portable-setup.cjs" uninstall
 ```
 
 Installation is complete only when the plugin is installed and enabled, each of the four profiles is unique, and all four Hooks are trusted. Start a new task after an upgrade so the new rules and profiles load.

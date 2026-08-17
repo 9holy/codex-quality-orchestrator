@@ -1,6 +1,6 @@
 # Requirements Baseline
 
-This file supports maintenance and regression tracking; it is not injected into model context. The unnumbered `Codex Routing Matrix` section in `references/RULE16.md` is the only semantic routing rule. The routing skill applies it, while Hooks validate only observable mechanical fields.
+This file supports maintenance and regression tracking; it is not injected into model context. The unnumbered `Codex Routing Matrix` section in `references/ROUTING_MATRIX.md` is the only semantic routing rule. The routing skill applies it, while Hooks validate only observable mechanical fields.
 
 ## Quality And Routing
 
@@ -27,7 +27,7 @@ This file supports maintenance and regression tracking; it is not injected into 
 - Luna uses Max; Sol Worker uses Medium; Terra explicitly uses `xhigh`, `max`, or `ultra`; the read-only Sol Reviewer uses XHigh.
 - Named agents never receive a `model` override. `task_name` exposes the expected route and effort. `fork_turns` is `none` or a positive numeric string.
 - The plugin has exactly four Hooks: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, and `SubagentStop`. Ordinary prompts are silent.
-- On the exact selected-model-capacity message, the same subagent continues once without restarting work. A second failure returns to Sol. Current Hooks cannot resume the root controller request, and the plugin must not claim otherwise.
+- On the exact selected-model-capacity message, the same subagent continues once without restarting work. After a second Luna capacity failure, Sol sends the same frozen packet to `sol_medium_worker` when reliable; otherwise Sol takes over. Other second capacity failures return to Sol. Current Hooks cannot resume the root controller request, and the plugin must not claim otherwise.
 - Super mode is session-scoped and off by default. Exact Chinese or English commands toggle it. Sol is `d0`; children may use `d1-d4`; `d4` cannot delegate; the host limit is 25 child threads; all normal quality gates remain.
 - The configuration guard restores only plugin registration and trusted current Hook hashes while preserving authentication, provider, endpoint, model, and unrelated tool settings.
 - First install initializes unnumbered English `Meta Rule - Conflict Resolution` and `Implementation` defaults once. Upgrades and the configuration guard never restore or overwrite them.

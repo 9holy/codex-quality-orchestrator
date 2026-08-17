@@ -5,7 +5,7 @@ description: Apply quality-first Sol, Luna, and Terra routing to non-short work 
 
 # Codex Routing Matrix Team
 
-1. Follow `Codex Routing Matrix` already present in context; read `../../references/RULE16.md` only if it is missing. Do not start a team or claim Sol control when the root is not `gpt-5.6-sol`.
+1. Follow `Codex Routing Matrix` in context; if absent, read `../../references/ROUTING_MATRIX.md`. Only form a team with a `gpt-5.6-sol` root.
 2. For non-short work, compile a lightweight in-context plan before dispatch. Record each unit's goal, allowed paths and single-writer owner, dependencies, acceptance, and integration order. No separate or persistent planner by default. One substantial unit may be delegated when delegation has net benefit.
 3. Apply `Codex Routing Matrix` to every unit. Use Luna only for frozen, low-judgment, mechanically verifiable execution. Otherwise prefer `sol_medium_worker` for independently verifiable moderate-judgment work when delegation or parallelism pays; keep current Sol for coupled or sequential work. Use Terra only for a clear task-specific advantage, never merely because reasoning is deep. Before the first dispatch, read `../../routing-policy.json` once.
 4. At the first genuinely unresolved choice among multiple capable Sol/Terra routes, run `node ../../scripts/radar-routing-evidence.cjs` once. Keep that compact evidence in the current task and do not run it again. Freeze the selected route; reconsider only if the unit, boundary, availability, or result changes.

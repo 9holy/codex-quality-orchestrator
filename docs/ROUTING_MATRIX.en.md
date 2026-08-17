@@ -62,4 +62,4 @@ Do not pass `model` to named agents. Default to `fork_turns:"none"`; use a posit
 
 ## Capacity recovery
 
-On the exact selected-model-capacity message, continue the same subagent once in the same context. A second failure returns to the current Sol. Never restart the whole task, redo completed work, or treat capability and quality failures as capacity errors. The current Hook covers `SubagentStop` only and cannot resume a root-controller capacity notification.
+On the exact selected-model-capacity message, continue the same subagent once in the same context. After a second Luna capacity failure, Sol sends the same frozen packet to `sol_medium_worker` when Sol Medium can reliably finish it; otherwise the current Sol takes over. Other second capacity failures return to Sol. Never restart the whole task, redo completed work, or treat capability and quality failures as capacity errors. The current Hook covers `SubagentStop` only and cannot resume a root-controller capacity notification.

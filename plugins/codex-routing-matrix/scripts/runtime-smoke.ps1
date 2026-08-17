@@ -5,7 +5,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $pluginRoot = Split-Path -Parent $PSScriptRoot
-$manifest = Get-Content -LiteralPath (Join-Path $pluginRoot '.codex-plugin\plugin.json') -Raw -Encoding UTF8 |
+$manifest = Get-Content -LiteralPath (Join-Path $pluginRoot '.codex-plugin/plugin.json') -Raw -Encoding UTF8 |
   ConvertFrom-Json
 $pluginId = "$($manifest.name)@codex-routing-matrix"
 $expectedBaseVersion = ($manifest.version -split '\+', 2)[0]
@@ -56,7 +56,7 @@ try {
   if ([int]$proof.schemaVersion -ne 1 -or
       [string]$proof.hookEventName -ne 'SessionStart' -or
       [string]$proof.nonce -ne $nonce -or
-      [string]$proof.rule16Status -notin @('injected', 'match', 'refreshed')) {
+      [string]$proof.routingMatrixStatus -notin @('injected', 'match', 'refreshed')) {
     throw 'SessionStart Hook proof is invalid or belongs to a different smoke run'
   }
 } finally {

@@ -88,7 +88,8 @@ function Resolve-StateBackupPath {
   if ([string]::IsNullOrWhiteSpace($RelativePath) -or [IO.Path]::IsPathRooted($RelativePath)) {
     throw "Invalid restore path for $FileName"
   }
-  $resolved = [IO.Path]::GetFullPath((Join-Path $CodexHome $RelativePath))
+  $portableRelative = $RelativePath.Replace('\', '/')
+  $resolved = [IO.Path]::GetFullPath((Join-Path $CodexHome $portableRelative))
   $agentsPrefix = [IO.Path]::GetFullPath($AgentsDir).TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
   if (-not $resolved.StartsWith($agentsPrefix, [StringComparison]::OrdinalIgnoreCase)) {
     throw "Restore path escapes the agents directory: $RelativePath"
@@ -174,9 +175,9 @@ Minimal local refactoring is allowed when the existing structure directly preven
   return [pscustomobject]@{ Status=$status; Backup=$backup }
 }
 
-function Sync-CanonicalRule16 {
+function Sync-CanonicalRoutingMatrix {
   param([string]$CodexHome, [string]$PluginRoot)
-  $source = Join-Path $PluginRoot 'references\RULE16.md'
+  $source = Join-Path $PluginRoot 'references/ROUTING_MATRIX.md'
   $target = Join-Path $CodexHome 'AGENTS.md'
   $canonical = [IO.File]::ReadAllText($source, [Text.UTF8Encoding]::new($false)).Trim()
   $backup = $null
@@ -298,7 +299,7 @@ if ([string]::IsNullOrWhiteSpace($CodexHome)) {
 }
 $CodexHome = [IO.Path]::GetFullPath($CodexHome)
 $pluginRoot = Split-Path -Parent $PSScriptRoot
-$templateDir = Join-Path $pluginRoot 'templates\agents'
+$templateDir = Join-Path $pluginRoot 'templates/agents'
 $policy = Get-Content -LiteralPath (Join-Path $pluginRoot 'routing-policy.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 $agentsDir = Join-Path $CodexHome 'agents'
 $statePath = Join-Path $CodexHome '.codex-routing-matrix.install-state.json'
@@ -448,7 +449,7 @@ try {
     if ($null -ne $reason) { throw "Post-install verification failed: $target`: $reason" }
   }
   $defaultRulesResult = Install-DefaultAgentRules $CodexHome $firstInstall
-  $rule16Result = Sync-CanonicalRule16 $CodexHome $pluginRoot
+  $routingMatrixResult = Sync-CanonicalRoutingMatrix $CodexHome $pluginRoot
 } finally {
   if (Test-Path -LiteralPath $lock) { Remove-Item -LiteralPath $lock -Force }
 }
@@ -457,7 +458,7 @@ try {
   CodexHome = $CodexHome
   Results = $results
   DefaultRules = $defaultRulesResult
-  Rule16 = $rule16Result
+  RoutingMatrix = $routingMatrixResult
   Verified = $true
   NextStep = 'Install and enable the plugin, trust its hooks in /hooks, optionally enable config-guard.ps1 for external config switchers, then start a new task.'
 } | ConvertTo-Json -Depth 5

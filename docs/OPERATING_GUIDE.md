@@ -67,7 +67,7 @@ model_auto_compact_token_limit = 900000
 Selected model is at capacity. Please try a different model.
 ```
 
-第二次仍失败就交回 Sol。能力不足、越界或质量问题不会伪装成容量问题，也不会沿机械模型梯子逐级尝试。当前 Codex Hook 不能恢复主控自身的容量通知，因此插件只承诺子代理续交。
+Luna 第二次仍因容量失败时，如果 Sol Medium 能可靠完成同一工作包，Sol 会把原工作包转给 `sol_medium_worker`，不重做已经完成的工作；否则由当前 Sol 接管。其他子代理第二次容量失败也交回 Sol。能力不足、越界或质量问题不会伪装成容量问题，也不会沿机械模型梯子逐级尝试。当前 Codex Hook 不能恢复主控自身的容量通知，因此插件只承诺子代理续交。
 
 ## 安装与升级
 
@@ -84,6 +84,12 @@ codex plugin add codex-routing-matrix@codex-routing-matrix
 powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-routing-matrix\plugins\codex-routing-matrix\scripts\install.ps1"
 ```
 
+macOS、Linux 桌面或 Linux 服务器上的 Codex CLI 直接运行：
+
+```bash
+node "$HOME/.codex/.tmp/marketplaces/codex-routing-matrix/plugins/codex-routing-matrix/scripts/portable-setup.cjs" install
+```
+
 初始化会安装 Luna、Sol Medium、Terra 和 Sol Reviewer 四个具名代理，维护无编号的 `Codex Routing Matrix`，并在首次安装时把英文 `Meta Rule - Conflict Resolution` 和 `Implementation` 放到 `AGENTS.md` 顶部。后两条不是守护内容，以后不会被安装器自动恢复或覆盖。
 
 升级命令：
@@ -93,6 +99,8 @@ codex plugin marketplace upgrade codex-routing-matrix
 codex plugin add codex-routing-matrix@codex-routing-matrix
 powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-routing-matrix\plugins\codex-routing-matrix\scripts\install.ps1"
 ```
+
+macOS 或 Linux 升级时，前两条 `codex` 命令不变，最后运行上面的 Node 初始化命令。
 
 从旧版 `codex-quality-orchestrator` 迁移时，先执行新的 Marketplace 安装命令并运行初始化脚本。确认新插件和四个新 Hook 正常后，再执行：
 
@@ -123,11 +131,26 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketpla
 
 配置守护只恢复插件注册和已经批准的当前 Hook，不修改认证、Provider、端点、模型或其他工具设置。
 
+配置守护目前只支持 Windows。macOS 或 Linux 不运行 `config-guard.ps1 -Mode Install`；核心路由和四个 Worker profile 仍可正常使用。
+
 ## 验证
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketplaces\codex-routing-matrix\plugins\codex-routing-matrix\scripts\verify.ps1"
 codex plugin list --json
+```
+
+macOS 或 Linux 使用跨平台状态检查：
+
+```bash
+node "$HOME/.codex/.tmp/marketplaces/codex-routing-matrix/plugins/codex-routing-matrix/scripts/portable-setup.cjs" status
+codex plugin list --json
+```
+
+macOS 或 Linux 卸载插件管理的代理配置：
+
+```bash
+node "$HOME/.codex/.tmp/marketplaces/codex-routing-matrix/plugins/codex-routing-matrix/scripts/portable-setup.cjs" uninstall
 ```
 
 只有插件已安装并启用、四个代理配置各自唯一、四个 Hook 都已信任，才算安装完成。升级后新建任务，让新规则和代理配置进入上下文。

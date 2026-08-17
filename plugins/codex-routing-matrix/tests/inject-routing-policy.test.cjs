@@ -9,7 +9,7 @@ const { spawnSync } = require('node:child_process');
 const pluginRoot = path.resolve(__dirname, '..');
 const hookPath = path.join(pluginRoot, 'hooks', 'inject-routing-policy.cjs');
 const templateDir = path.join(pluginRoot, 'templates', 'agents');
-const canonical = fs.readFileSync(path.join(pluginRoot, 'references', 'RULE16.md'), 'utf8').trim();
+const canonical = fs.readFileSync(path.join(pluginRoot, 'references', 'ROUTING_MATRIX.md'), 'utf8').trim();
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'cqo-session-'));
 const codexHome = path.join(tempRoot, '.codex');
 const agentsDir = path.join(codexHome, 'agents');
@@ -36,7 +36,7 @@ function invoke(options = {}) {
 try {
   installProfiles();
   fs.writeFileSync(path.join(codexHome, 'AGENTS.md'), `${canonical}\n`);
-  assert.equal(invoke(), '', 'matching Rule 16 must stay silent');
+  assert.equal(invoke(), '', 'matching routing matrix must stay silent');
 
   const nonce = '0123456789abcdef0123456789abcdef';
   const proofPath = path.join(tempRoot, 'proof.json');
@@ -45,7 +45,7 @@ try {
     schemaVersion: 1,
     hookEventName: 'SessionStart',
     nonce,
-    rule16Status: 'match',
+    routingMatrixStatus: 'match',
     missingProfiles: [],
     radarStatus: 'disabled',
   });
@@ -54,17 +54,17 @@ try {
   assert.match(invoke(), /CQO_AGENT_PROFILES_MISSING.*luna-worker\.toml/s);
   installProfiles();
 
-  fs.writeFileSync(path.join(codexHome, 'AGENTS.md'), '## Rule 16 — user rule\n\nuser content\n');
+  fs.writeFileSync(path.join(codexHome, 'AGENTS.md'), '## User Project Rule\n\nuser content\n');
   const inserted = invoke();
-  assert.match(inserted, /^\[CQO_RULE16_INJECTED\]/);
+  assert.match(inserted, /^\[CQO_ROUTING_MATRIX_INJECTED\]/);
   assert.match(inserted, /Codex Routing Matrix/);
-  assert.doesNotMatch(inserted, /暂停具名代理|全局 Rule 16 与插件规则不一致/);
+  assert.doesNotMatch(inserted, /暂停具名代理|全局路由矩阵与插件规则不一致/);
 
   fs.writeFileSync(path.join(codexHome, 'AGENTS.md'), canonical.replace(/^## .*$/m, '## Rule 8 - user numbering'));
   assert.equal(invoke(), '', 'matching rule with a non-16 number must stay silent');
 
   fs.rmSync(path.join(codexHome, 'AGENTS.md'));
-  assert.equal(invoke(), `[CQO_RULE16_INJECTED]\n${canonical}`);
+  assert.equal(invoke(), `[CQO_ROUTING_MATRIX_INJECTED]\n${canonical}`);
 
   const outside = path.join(os.homedir(), '.cqo-outside-proof.json');
   fs.rmSync(outside, { force: true });
