@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.2 - 2026-08-17
+
+- Remove redundant routing and migration details from the README.
+
 ## 0.8.1 - 2026-08-17
 
 - Clarify that every named profile can run as a subagent while routing remains based on task fit, quality, and total cost.

@@ -73,7 +73,7 @@ enable 1M context
 disable 1M context
 ```
 
-开启后写入 `model_context_window = 1000000` 和 `model_auto_compact_token_limit = 900000`。必须重启 Codex 并重新打开同一个任务才会生效；任务历史不会丢失。关闭时恢复开启前的原值。该模式只适合确实需要超长历史的任务，默认路由和 Rule 16 不受影响。
+开启后写入 `model_context_window = 1000000` 和 `model_auto_compact_token_limit = 900000`。必须重启 Codex 并重新打开同一个任务才会生效；任务历史不会丢失。关闭时恢复开启前的原值。该模式只适合确实需要超长历史的任务。
 
 ### 安装
 
@@ -101,8 +101,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketpla
 ```
 
 详细说明：[操作指南](docs/OPERATING_GUIDE.md) · [路由矩阵](docs/ROUTING_MATRIX.md) · [需求基线](docs/REQUIREMENTS.md)
-
-旧版 `codex-quality-orchestrator` 用户迁移时，先安装新的 `codex-routing-matrix`，确认新插件和 Hook 正常后，再移除旧插件注册。新安装器会读取旧版代理安装状态，不会重复覆盖代理配置。
 
 ## English
 
@@ -173,7 +171,7 @@ disable 1M context
 关闭1M上下文
 ```
 
-Enabling writes `model_context_window = 1000000` and `model_auto_compact_token_limit = 900000`. Restart Codex and reopen the same task to apply the settings; its history is preserved. Disabling restores the values that existed before enabling. This mode is intended only for tasks that genuinely need very long history and does not change Rule 16 or model routing.
+Enabling writes `model_context_window = 1000000` and `model_auto_compact_token_limit = 900000`. Restart Codex and reopen the same task to apply the settings; its history is preserved. Disabling restores the values that existed before enabling. This mode is intended only for tasks that genuinely need very long history.
 
 ### Install
 
@@ -197,8 +195,6 @@ Review and trust all four Hooks in `/hooks`, then start a new task. Trust must b
 Use `config-guard.ps1 -Mode Install` only when another tool may replace `config.toml`.
 
 Detailed documentation: [Operating Guide](docs/OPERATING_GUIDE.en.md) · [Routing Matrix](docs/ROUTING_MATRIX.en.md) · [Requirements](docs/REQUIREMENTS.en.md)
-
-When upgrading from `codex-quality-orchestrator`, install `codex-routing-matrix` first, verify the new plugin and Hooks, then remove the old plugin registration. The new installer reads the old agent-install state and does not create duplicate profiles.
 
 ## License
 
