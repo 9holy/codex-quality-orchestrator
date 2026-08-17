@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { setContextWindowMode } = require('./context-window-config.cjs');
 
 const policy = JSON.parse(fs.readFileSync(path.resolve(__dirname, '..', 'routing-policy.json'), 'utf8'));
 const home = path.resolve(process.env.CODEX_HOME || path.join(os.homedir(), '.codex'));
@@ -39,7 +40,27 @@ async function main() {
   const state = readState();
   const enabledCommand = [policy.burstMode.enabledByExactCommand, policy.burstMode.enabledByExactCommandEnglish].includes(text);
   const disabledCommand = [policy.burstMode.disabledByExactCommand, policy.burstMode.disabledByExactCommandEnglish].includes(text);
-  if (!enabledCommand && !disabledCommand) return;
+  const contextEnabled = [policy.contextWindowMode.enabledByExactCommand, policy.contextWindowMode.enabledByExactCommandEnglish].includes(text);
+  const contextDisabled = [policy.contextWindowMode.disabledByExactCommand, policy.contextWindowMode.disabledByExactCommandEnglish].includes(text);
+  if (!enabledCommand && !disabledCommand && !contextEnabled && !contextDisabled) return;
+
+  if (contextEnabled || contextDisabled) {
+    setContextWindowMode({
+      home,
+      enabled: contextEnabled,
+      modelContextWindow: policy.contextWindowMode.modelContextWindow,
+      autoCompactTokenLimit: policy.contextWindowMode.autoCompactTokenLimit,
+    });
+    const modeContext = contextEnabled
+      ? `[CQO_CONTEXT_WINDOW:ON] Global config now uses model_context_window=${policy.contextWindowMode.modelContextWindow} and model_auto_compact_token_limit=${policy.contextWindowMode.autoCompactTokenLimit}. Restart Codex and reopen this task to apply it.`
+      : '[CQO_CONTEXT_WINDOW:OFF] Previous global context settings were restored. Restart Codex and reopen this task to apply them.';
+    process.stdout.write(`${JSON.stringify({ hookSpecificOutput: {
+      hookEventName: 'UserPromptSubmit',
+      additionalContext: modeContext,
+    } })}\n`);
+    return;
+  }
+
   state[id] = enabledCommand;
   writeState(state);
   const modeContext = enabledCommand
@@ -53,5 +74,5 @@ async function main() {
 
 main().catch((error) => process.stdout.write(`${JSON.stringify({ hookSpecificOutput: {
   hookEventName: 'UserPromptSubmit',
-  additionalContext: `[CQO_BURST_MODE_ERROR] ${error.message}`,
+  additionalContext: `[CQO_USER_COMMAND_ERROR] ${error.message}`,
 } })}\n`));

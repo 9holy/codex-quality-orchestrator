@@ -8,7 +8,7 @@ Codex 路由矩阵是给 `gpt-5.6-sol` 使用的多模型协作插件。它让 S
 
 它解决的不是“每个任务都换模型”，而是两个更实际的问题：复杂任务如何安全并行，以及如何在不降低质量的前提下减少不必要的高价模型调用。
 
-当前版本：[`v0.8.0`](https://github.com/9holy/codex-routing-matrix/releases/tag/v0.8.0)
+当前版本：[`v0.8.1`](https://github.com/9holy/codex-routing-matrix/releases/tag/v0.8.1)
 
 ### 运行原理
 
@@ -62,6 +62,19 @@ enable super mode
 disable super mode
 ```
 
+### 1M 上下文
+
+1M 上下文默认关闭。下面的精确命令会在全局 `~/.codex/config.toml` 中写入或恢复上下文配置：
+
+```text
+开启1M上下文
+关闭1M上下文
+enable 1M context
+disable 1M context
+```
+
+开启后写入 `model_context_window = 1000000` 和 `model_auto_compact_token_limit = 900000`。必须重启 Codex 并重新打开同一个任务才会生效；任务历史不会丢失。关闭时恢复开启前的原值。该模式只适合确实需要超长历史的任务，默认路由和 Rule 16 不受影响。
+
 ### 安装
 
 本插件尚未进入 OpenAI 公共插件商城。先添加这个 Git Marketplace，再安装插件：
@@ -97,7 +110,7 @@ Codex Routing Matrix gives a `gpt-5.6-sol` controller a small multi-model team. 
 
 The plugin is not designed to switch models for every prompt. It is designed to parallelize larger work safely and avoid expensive routes when a lower-cost capable route can deliver the same quality.
 
-Current release: [`v0.8.0`](https://github.com/9holy/codex-routing-matrix/releases/tag/v0.8.0)
+Current release: [`v0.8.1`](https://github.com/9holy/codex-routing-matrix/releases/tag/v0.8.1)
 
 ### How it works
 
@@ -148,6 +161,19 @@ disable super mode
 开启爆种模式
 关闭爆种模式
 ```
+
+### 1M context
+
+1M context is off by default. These exact commands write or restore the global context settings in `~/.codex/config.toml`:
+
+```text
+enable 1M context
+disable 1M context
+开启1M上下文
+关闭1M上下文
+```
+
+Enabling writes `model_context_window = 1000000` and `model_auto_compact_token_limit = 900000`. Restart Codex and reopen the same task to apply the settings; its history is preserved. Disabling restores the values that existed before enabling. This mode is intended only for tasks that genuinely need very long history and does not change Rule 16 or model routing.
 
 ### Install
 

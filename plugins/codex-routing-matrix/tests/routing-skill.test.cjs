@@ -41,6 +41,8 @@ assert.match(skill, /Freeze the selected route/);
 assert.match(skill, /call `wait_agent` once with `timeout_ms:3600000`/);
 assert.match(skill, /Never poll `list_agents` or repeat short waits/);
 assert.match(skill, /verify one unit, then fill host capacity and replace completed Workers/);
+assert.match(skill, /In normal mode, Workers do not delegate/);
+assert.match(skill, /Super mode, only an explicitly authorized `d1-d3` Worker may delegate/);
 assert.doesNotMatch(skill, /two or three|never exceed three/);
 assert.doesNotMatch(rule, /two or three|never exceed three/);
 assert.doesNotMatch(skill, /Ledger|wave|slot|attempt/);

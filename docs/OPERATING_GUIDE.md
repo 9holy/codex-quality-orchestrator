@@ -39,6 +39,26 @@ disable super mode
 
 无论并行多少，Sol 仍负责文件所有权、依赖顺序、实际差异检查、必要验证和最终验收。
 
+## 1M 上下文
+
+1M 上下文是全局、可逆、默认关闭的配置开关：
+
+```text
+开启1M上下文
+关闭1M上下文
+enable 1M context
+disable 1M context
+```
+
+开启时，插件把下面两项数字配置写入全局 `~/.codex/config.toml`；关闭时恢复开启前的原值：
+
+```toml
+model_context_window = 1000000
+model_auto_compact_token_limit = 900000
+```
+
+配置不会热切换正在运行的线程。执行命令后重启 Codex，再重新打开同一个任务即可继续原历史并使用新配置。普通任务不应开启该模式。
+
 ## 失败怎样处理
 
 子代理精确返回下面的容量提示时，插件会在原上下文自动继续一次，不重启整个任务，也不重做已经完成的工作：
@@ -89,7 +109,7 @@ codex plugin remove codex-quality-orchestrator@codex-quality-orchestrator
 | Hook | 作用 |
 |---|---|
 | `SessionStart` | 当前上下文缺少路由规则时补充规则 |
-| `UserPromptSubmit` | 识别中英文 Super mode 命令 |
+| `UserPromptSubmit` | 识别中英文 Super mode 和 1M 上下文精确命令 |
 | `PreToolUse` | 检查 CQO 具名代理调用是否符合机械配置 |
 | `SubagentStop` | 处理一次子代理容量续交 |
 

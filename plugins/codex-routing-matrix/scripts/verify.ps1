@@ -23,6 +23,7 @@ foreach ($relative in $jsonFiles) {
 $nodeFiles = @(
   'hooks\inject-routing-policy.cjs',
   'hooks\burst-mode.cjs',
+  'hooks\context-window-config.cjs',
   'hooks\enforce-agent-routing.cjs',
   'hooks\continue-capacity-subagent.cjs',
   'scripts\radar-routing-evidence.cjs',

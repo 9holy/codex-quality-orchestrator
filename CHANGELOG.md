@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.1 - 2026-08-17
+
+- Clarify that every named profile can run as a subagent while routing remains based on task fit, quality, and total cost.
+- Keep Workers non-delegating in normal mode; allow only explicitly authorized `d1-d3` delegation in Super mode, with `d4` and the read-only reviewer always terminal.
+- Add reversible global 1M context commands in Chinese and English without adding another Hook.
+- Write numeric `model_context_window = 1000000` and `model_auto_compact_token_limit = 900000`, preserve prior values, and require restarting Codex before reopening the same task.
+- Cover idempotent enable/disable, absent or existing settings, UTF-8 BOM preservation, Hook-bundle trust, and bilingual documentation.
+
 ## 0.8.0 - 2026-08-16
 
 - Rename the public repository, Marketplace, and plugin ID to `codex-routing-matrix`.

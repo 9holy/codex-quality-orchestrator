@@ -15,11 +15,12 @@ routing = (ROOT / "skills" / "codex-quality-routing-team" / "SKILL.md").read_tex
 
 base_version = manifest["version"].partition("+codex.")[0]
 assert manifest["name"] == "codex-routing-matrix"
-assert base_version == policy["policyVersion"] == "0.8.0"
-assert policy["schemaVersion"] == 8
+assert base_version == policy["policyVersion"] == "0.8.1"
+assert policy["schemaVersion"] == 9
 assert set(policy) == {
     "schemaVersion", "policyVersion", "toolNames", "workPacket",
-    "capacityRecovery", "radarEvidence", "namedAgents", "retiredProfiles", "burstMode", "forkTurns",
+    "capacityRecovery", "radarEvidence", "namedAgents", "retiredProfiles", "burstMode",
+    "contextWindowMode", "forkTurns",
 }
 assert "team" not in policy and "sol" not in policy
 assert "allowedFallbacks" not in json.dumps(policy)
@@ -49,7 +50,7 @@ for agent_type, config in policy["namedAgents"].items():
         assert profile["model_reasoning_effort"] == config["fixedEffort"]
     instructions = profile["developer_instructions"]
     if agent_type != "sol_reviewer":
-        assert "delegate to other agents" in instructions
+        assert "delegate" in instructions
         assert "acceptance criterion" in instructions
         assert "instead of guessing" in instructions
 
@@ -96,4 +97,12 @@ assert policy["burstMode"]["maxChildThreads"] == 25
 assert policy["burstMode"]["depths"] == [1, 2, 3, 4]
 assert policy["burstMode"]["enabledByExactCommandEnglish"] == "enable super mode"
 assert policy["burstMode"]["disabledByExactCommandEnglish"] == "disable super mode"
+assert policy["contextWindowMode"] == {
+    "enabledByExactCommand": "开启1M上下文",
+    "disabledByExactCommand": "关闭1M上下文",
+    "enabledByExactCommandEnglish": "enable 1M context",
+    "disabledByExactCommandEnglish": "disable 1M context",
+    "modelContextWindow": 1000000,
+    "autoCompactTokenLimit": 900000,
+}
 print("PASS minimal policy, burst contract, and concise agent contracts")

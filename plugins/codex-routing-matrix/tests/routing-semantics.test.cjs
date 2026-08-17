@@ -31,6 +31,10 @@ for (const forbidden of [
 ]) assert.doesNotMatch(rule, forbidden);
 
 assert.ok(rule.indexOf('MUST choose `luna_worker`') < rule.indexOf('When Luna is unsuitable'));
+assert.match(rule, /All named profiles may run as subagents/);
+assert.match(rule, /In normal mode, Workers do not delegate/);
+assert.match(rule, /Super mode, a Worker may delegate only when the packet explicitly authorizes it at `d1-d3`/);
+assert.doesNotMatch(rule, /The only Sol subagents are/);
 for (const field of ['allowed paths and single-writer owner', 'dependencies', 'acceptance', 'integration order']) {
   assert.match(skill, new RegExp(field));
 }

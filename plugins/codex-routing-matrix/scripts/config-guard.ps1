@@ -84,6 +84,7 @@ function Get-HookBundleHash {
     'hooks\inject-routing-policy.cjs',
     'hooks\enforce-agent-routing.cjs',
     'hooks\burst-mode.cjs',
+    'hooks\context-window-config.cjs',
     'hooks\continue-capacity-subagent.cjs',
     'routing-policy.json',
     'references\RULE16.md'

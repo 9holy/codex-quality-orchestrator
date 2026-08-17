@@ -39,6 +39,26 @@ disable super mode
 
 At any concurrency, Sol still owns file boundaries, dependency order, actual-diff inspection, required checks, and final acceptance.
 
+## 1M context
+
+1M context is a global, reversible setting and is off by default:
+
+```text
+enable 1M context
+disable 1M context
+开启1M上下文
+关闭1M上下文
+```
+
+Enabling writes these numeric values to the global `~/.codex/config.toml`; disabling restores the values that existed before enabling:
+
+```toml
+model_context_window = 1000000
+model_auto_compact_token_limit = 900000
+```
+
+The settings do not hot-switch a loaded thread. Restart Codex and reopen the same task to keep its history and apply the new context settings. Leave this mode off for ordinary work.
+
 ## Failure handling
 
 When a subagent returns this exact capacity message, the plugin continues once in the same context. It does not restart the task or redo completed work:
@@ -89,7 +109,7 @@ Review and trust these four Hooks in `/hooks`:
 | Hook | Purpose |
 |---|---|
 | `SessionStart` | Supplies the routing rule when it is missing from context |
-| `UserPromptSubmit` | Recognizes Chinese and English Super mode commands |
+| `UserPromptSubmit` | Recognizes exact Chinese and English Super mode and 1M context commands |
 | `PreToolUse` | Checks that CQO named-agent calls match mechanical configuration |
 | `SubagentStop` | Handles one subagent capacity continuation |
 

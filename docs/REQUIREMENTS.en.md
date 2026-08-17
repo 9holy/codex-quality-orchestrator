@@ -32,6 +32,7 @@ This file supports maintenance and regression tracking; it is not injected into 
 - The configuration guard restores only plugin registration and trusted current Hook hashes while preserving authentication, provider, endpoint, model, and unrelated tool settings.
 - First install initializes unnumbered English `Meta Rule - Conflict Resolution` and `Implementation` defaults once. Upgrades and the configuration guard never restore or overwrite them.
 - The independent Git Marketplace must be added before installation. Do not claim public search availability unless OpenAI's curated Marketplace lists the plugin.
+- 1M context is off by default. Exact Chinese or English commands modify only global config with numeric values, restore the previous values when disabled, and require restarting Codex before reopening the same task.
 
 ## Explicit Exclusions
 

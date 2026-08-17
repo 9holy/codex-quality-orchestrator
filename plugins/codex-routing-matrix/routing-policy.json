@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 8,
-  "policyVersion": "0.8.0",
+  "schemaVersion": 9,
+  "policyVersion": "0.8.1",
   "toolNames": [
     "spawn_agent",
     "Agent",
@@ -67,6 +67,14 @@
     "depths": [1, 2, 3, 4],
     "depthTaskNamePattern": "__d[1-4]_",
     "packetFields": ["burst_depth", "burst_delegate"]
+  },
+  "contextWindowMode": {
+    "enabledByExactCommand": "\u5f00\u542f1M\u4e0a\u4e0b\u6587",
+    "disabledByExactCommand": "\u5173\u95ed1M\u4e0a\u4e0b\u6587",
+    "enabledByExactCommandEnglish": "enable 1M context",
+    "disabledByExactCommandEnglish": "disable 1M context",
+    "modelContextWindow": 1000000,
+    "autoCompactTokenLimit": 900000
   },
   "forkTurns": {
     "allowedLiterals": [

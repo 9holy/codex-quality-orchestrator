@@ -46,6 +46,7 @@
 | M10 | 主控容量通知不进入当前可续交 Hook；插件不得宣称主控已自动恢复 | README、操作指南 |
 | M11 | 首次安装只初始化一次无编号英文 `Meta Rule - Conflict Resolution` 和 `Implementation`；升级与配置守护不恢复、不覆盖 | Installer、README |
 | M12 | 独立 Git Marketplace 必须先添加；未进入公共 curated Marketplace 时不得宣称可直接公共搜索安装 | README、操作指南 |
+| M13 | 1M 上下文默认关闭；中英文精确命令只修改全局配置，使用无引号数字值，关闭时恢复原值，并明确要求重启后重新打开同一任务 | UserPromptSubmit Hook、Policy、README |
 
 ## 明确排除
 
