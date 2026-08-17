@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.3 - 2026-08-17
+
+- Remove current-version labels from the README; version information remains in Releases and plugin metadata.
+
 ## 0.8.2 - 2026-08-17
 
 - Remove redundant routing and migration details from the README.

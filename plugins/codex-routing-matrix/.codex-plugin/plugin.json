@@ -1,6 +1,6 @@
 {
   "name": "codex-routing-matrix",
-  "version": "0.8.2+codex.20260817041241",
+  "version": "0.8.3+codex.20260817152840",
   "description": "Quality-first multi-model routing and review guardrails for Codex.",
   "author": {
     "name": "Codex Routing Matrix contributors"

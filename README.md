@@ -8,8 +8,6 @@ Codex 路由矩阵是给 `gpt-5.6-sol` 使用的多模型协作插件。它让 S
 
 它解决的不是“每个任务都换模型”，而是两个更实际的问题：复杂任务如何安全并行，以及如何在不降低质量的前提下减少不必要的高价模型调用。
 
-当前版本：[`v0.8.1`](https://github.com/9holy/codex-routing-matrix/releases/tag/v0.8.1)
-
 ### 运行原理
 
 1. Sol 先理解任务，短任务或强耦合工作直接完成。
@@ -107,8 +105,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.codex\.tmp\marketpla
 Codex Routing Matrix gives a `gpt-5.6-sol` controller a small multi-model team. Sol keeps ownership of understanding, planning, decomposition, integration, and final acceptance. It delegates only bounded work that Luna Max, Sol Medium, or Terra can reliably complete.
 
 The plugin is not designed to switch models for every prompt. It is designed to parallelize larger work safely and avoid expensive routes when a lower-cost capable route can deliver the same quality.
-
-Current release: [`v0.8.1`](https://github.com/9holy/codex-routing-matrix/releases/tag/v0.8.1)
 
 ### How it works
 
